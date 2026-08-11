@@ -1,14 +1,32 @@
-// Запускается при старте контейнера: применяет миграции и сидит справочник тем.
+// Запускается при старте контейнера: применяет SQL-миграции drizzle и сидит справочник тем.
+// Использует только better-sqlite3 — drizzle-orm в standalone-сборку Next не попадает.
 import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const dbPath = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "mipsy.db");
 const sqlite = new Database(dbPath);
 sqlite.pragma("journal_mode = WAL");
 
-migrate(drizzle(sqlite), { migrationsFolder: path.join(process.cwd(), "drizzle") });
+sqlite.exec("CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TEXT DEFAULT (datetime('now')))");
+
+const dir = path.join(process.cwd(), "drizzle");
+const files = readdirSync(dir).filter((f) => f.endsWith(".sql")).sort();
+const isApplied = sqlite.prepare("SELECT 1 FROM _migrations WHERE name = ?");
+const markApplied = sqlite.prepare("INSERT INTO _migrations (name) VALUES (?)");
+
+for (const file of files) {
+  if (isApplied.get(file)) continue;
+  const statements = readFileSync(path.join(dir, file), "utf8")
+    .split("--> statement-breakpoint")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  sqlite.transaction(() => {
+    for (const stmt of statements) sqlite.exec(stmt);
+    markApplied.run(file);
+  })();
+  console.log(`migrate: применена ${file} (${statements.length} statements)`);
+}
 
 // Держать в согласии с src/db/seed.ts
 const TOPICS = [
@@ -37,4 +55,4 @@ sqlite.transaction(() => {
   TOPICS.forEach(([slug, title], i) => insert.run(slug, title, i));
 })();
 
-console.log(`migrate: схема применена, тем засеяно: ${TOPICS.length} (${dbPath})`);
+console.log(`migrate: схема актуальна, тем засеяно: ${TOPICS.length} (${dbPath})`);
