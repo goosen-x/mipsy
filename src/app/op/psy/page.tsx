@@ -55,6 +55,11 @@ export default async function OpPsyListPage() {
                     <Badge variant={TONE[p.moderationStatus] ?? "default"}>
                       {label(MODERATION_STATUS_LABELS, p.moderationStatus)}
                     </Badge>
+                    {p.needsReview && (
+                      <Badge variant="outline" className="ml-2">
+                        профиль изменён
+                      </Badge>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

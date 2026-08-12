@@ -3,8 +3,9 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { clientRequests, db, matches, psychologists, slots } from "@/db";
+import { clientRequests, db, matches, notifications, psychologists, slots } from "@/db";
 import { isOperator, OP_COOKIE, opPasswordHash } from "@/lib/op-auth";
+import { messages, notify } from "@/lib/notify";
 
 export async function opLogin(password: string): Promise<{ ok: boolean; error?: string }> {
   const hash = opPasswordHash();
@@ -69,8 +70,44 @@ export async function assignPsychologist(
     note: note?.trim() || null,
   });
   await db.update(clientRequests).set({ status: "matched" }).where(eq(clientRequests.id, requestId));
+
+  const [client] = await db
+    .select({
+      name: clientRequests.name,
+      phone: clientRequests.phone,
+      token: clientRequests.clientToken,
+    })
+    .from(clientRequests)
+    .where(eq(clientRequests.id, requestId));
+  const [psyFull] = await db
+    .select({ name: psychologists.name })
+    .from(psychologists)
+    .where(eq(psychologists.id, psychologistId));
+  if (client?.token) {
+    await notify({
+      kind: "matched",
+      recipientRole: "client",
+      recipientName: client.name,
+      recipientPhone: client.phone,
+      body: messages.clientMatched(psyFull.name, client.token),
+      clientRequestId: requestId,
+      psychologistId,
+    });
+  }
+
   revalidatePath(`/op/requests/${requestId}`);
   revalidatePath("/op");
+  return { ok: true };
+}
+
+/** Отправка уведомления вручную, когда SMS-провайдер не подключён. */
+export async function markNotificationSent(id: number): Promise<{ ok: boolean }> {
+  await guard();
+  await db
+    .update(notifications)
+    .set({ status: "sent", sentAt: new Date().toISOString().slice(0, 16).replace("T", " ") })
+    .where(eq(notifications.id, id));
+  revalidatePath("/op/notifications");
   return { ok: true };
 }
 
@@ -139,8 +176,22 @@ export async function moderatePsychologist(
       moderationStatus: decision,
       moderationNotes: notes?.trim() || null,
       slug: decision === "approved" ? (psy.slug ?? slugify(psy.name, psy.id)) : psy.slug,
+      needsReview: false,
     })
     .where(eq(psychologists.id, id));
+
+  const [full] = await db
+    .select({ name: psychologists.name, phone: psychologists.phone, token: psychologists.cabinetToken })
+    .from(psychologists)
+    .where(eq(psychologists.id, id));
+  await notify({
+    kind: "moderation",
+    recipientRole: "psychologist",
+    recipientName: full.name,
+    recipientPhone: full.phone,
+    body: messages.psyModerated(decision === "approved", full.token),
+    psychologistId: id,
+  });
   revalidatePath(`/op/psy/${id}`);
   revalidatePath("/op/psy");
   revalidatePath("/");

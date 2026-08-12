@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { updateProfile, type ProfileUpdate } from "./actions";
+import { uploadPhoto } from "./upload";
 
 type Topic = { slug: string; title: string };
 
@@ -60,18 +61,46 @@ export function ProfileForm({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Фото — ссылка на изображение">
-          <Input
-            value={form.photoUrl}
-            onChange={(e) => set("photoUrl", e.target.value)}
-            placeholder="https://…"
-          />
-        </Field>
-        <Field label="Подход" hint="Например: КПТ, гештальт-терапия">
-          <Input value={form.approach} onChange={(e) => set("approach", e.target.value)} />
-        </Field>
-      </div>
+      <Field label="Фото" hint="JPG, PNG или WebP до 5 МБ. Лучше портрет крупным планом на светлом фоне">
+        <div className="flex flex-wrap items-center gap-4">
+          {form.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={form.photoUrl}
+              alt="Ваше фото"
+              className="h-24 w-24 rounded-xl object-cover"
+            />
+          ) : (
+            <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-brand-100 text-sm text-brand-700">
+              нет фото
+            </div>
+          )}
+          <div>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="block text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-white hover:file:bg-brand-700"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const fd = new FormData();
+                fd.set("photo", file);
+                setSaved(false);
+                setError(null);
+                startTransition(async () => {
+                  const res = await uploadPhoto(token, fd);
+                  if (res.ok) set("photoUrl", res.url);
+                  else setError(res.error);
+                });
+              }}
+            />
+            {pending && <p className="mt-1 text-xs text-neutral-500">Загружаем…</p>}
+          </div>
+        </div>
+      </Field>
+      <Field label="Подход" hint="Например: КПТ, гештальт-терапия">
+        <Input value={form.approach} onChange={(e) => set("approach", e.target.value)} />
+      </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Формат работы">
           <div className="flex gap-2">

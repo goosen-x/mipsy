@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { clientRequests, db, matches, psychologists, slots } from "@/db";
 import { Badge } from "@/components/ui/badge";
-import { formatSlot, isPast } from "@/lib/datetime";
-import { BookingSection, CancelBookingButton, RematchControl } from "./controls";
+import { canClientChange, formatSlot, isPast, TZ_LABEL } from "@/lib/datetime";
+import { BookingActions, BookingSection, RematchControl } from "./controls";
 
 export const metadata = { title: "Моя страница — mipsy" };
 export const dynamic = "force-dynamic";
@@ -122,20 +122,31 @@ export default async function ClientCabinetPage({
         {upcoming.length > 0 && (
           <section className="rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="text-lg font-bold">Ваши встречи</h2>
+            <p className="mt-1 text-xs text-neutral-500">Время указано {TZ_LABEL}</p>
             <ul className="mt-4 space-y-3">
               {upcoming.map((s) => (
-                <li
-                  key={s.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4"
-                >
-                  <div>
-                    <div className="font-medium">{formatSlot(s.startsAt)}</div>
-                    <div className="text-sm text-neutral-500">
-                      {s.durationMin} минут
-                      {s.isIntroCall && " · первая встреча, бесплатно"}
+                <li key={s.id} className="rounded-xl border p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="font-medium">{formatSlot(s.startsAt)}</div>
+                      <div className="text-sm text-neutral-500">
+                        {s.durationMin} минут
+                        {s.isIntroCall && " · первая встреча, бесплатно"}
+                      </div>
                     </div>
+                    <BookingActions
+                      token={token}
+                      slotId={s.id}
+                      startsAt={s.startsAt}
+                      canChange={canClientChange(s.startsAt, now)}
+                      freeSlots={freeSlots.map((f) => ({
+                        id: f.id,
+                        startsAt: f.startsAt,
+                        durationMin: f.durationMin,
+                        isIntroCall: f.isIntroCall,
+                      }))}
+                    />
                   </div>
-                  <CancelBookingButton token={token} slotId={s.id} />
                 </li>
               ))}
             </ul>
@@ -164,6 +175,21 @@ export default async function ClientCabinetPage({
                 />
               </div>
             )}
+          </section>
+        )}
+
+        {/* Оплата — пока без онлайн-платежей */}
+        {match && (
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-bold">Оплата</h2>
+            <p className="mt-2 text-neutral-600">
+              Первая встреча бесплатная — платить за неё не нужно. Последующие сессии
+              {match.psy.price ? ` стоят ${match.psy.price} и ` : " "}
+              оплачиваются напрямую специалисту, как вы договоритесь.
+            </p>
+            <p className="mt-2 text-sm text-neutral-400">
+              Онлайн-оплата на платформе появится позже.
+            </p>
           </section>
         )}
 

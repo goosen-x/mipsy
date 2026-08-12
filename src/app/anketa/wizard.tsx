@@ -14,7 +14,6 @@ import { submitAnketa, type AnketaPayload } from "./actions";
 type Topic = { slug: string; title: string };
 
 type State = {
-  forWhom: string | null;
   gender: string | null;
   age: string;
   therapyExperience: string | null;
@@ -66,7 +65,6 @@ function countWords(s: string) {
 
 export function AnketaWizard({ topics }: { topics: Topic[] }) {
   const [state, setState] = useState<State>({
-    forWhom: null,
     gender: null,
     age: "",
     therapyExperience: null,
@@ -94,7 +92,6 @@ export function AnketaWizard({ topics }: { topics: Topic[] }) {
   // если ответ — не «никогда».
   const steps = useMemo(() => {
     const s = [
-      "forWhom",
       "gender",
       "age",
       "therapy",
@@ -195,20 +192,6 @@ export function AnketaWizard({ topics }: { topics: Topic[] }) {
 
   return (
     <Shell progress={progress} onBack={stepIdx > 0 ? back : null}>
-      {step === "forWhom" && (
-        <Question title="Кому нужна поддержка?">
-          <OptionButton onClick={() => pick("forWhom", "self")} active={state.forWhom === "self"}>
-            Мне лично
-          </OptionButton>
-          <OptionButton disabled>
-            Мне и партнёру <SoonBadge />
-          </OptionButton>
-          <OptionButton disabled>
-            Ребёнку <SoonBadge />
-          </OptionButton>
-        </Question>
-      )}
-
       {step === "gender" && (
         <Question title="Ваш пол?">
           {[
@@ -712,8 +695,3 @@ function WordMeter({ words }: { words: number }) {
   );
 }
 
-function SoonBadge() {
-  return (
-    <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500">скоро</span>
-  );
-}

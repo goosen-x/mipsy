@@ -17,9 +17,30 @@ import {
   assignPsychologist,
   bookSlotForClient,
   freeSlot,
+  markNotificationSent,
   moderatePsychologist,
   updateRequest,
 } from "./actions";
+
+export function MarkSentButton({ id }: { id: number }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={pending}
+      onClick={() =>
+        startTransition(async () => {
+          await markNotificationSent(id);
+          router.refresh();
+        })
+      }
+    >
+      {pending ? "…" : "Отправлено"}
+    </Button>
+  );
+}
 
 export function RequestStatusControl({ id, status }: { id: number; status: string }) {
   const router = useRouter();

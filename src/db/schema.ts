@@ -82,7 +82,10 @@ export const psychologists = sqliteTable("psychologists", {
   faq: text("faq", { mode: "json" }).$type<{ q: string; a: string }[]>(),
   introCallEnabled: integer("intro_call_enabled", { mode: "boolean" })
     .notNull()
-    .default(false), // бесплатная встреча-знакомство 20 минут
+    .default(false), // историческое поле: первая встреча теперь бесплатна у всех
+
+  // Профиль изменён после одобрения — оператор должен перечитать тексты.
+  needsReview: integer("needs_review", { mode: "boolean" }).notNull().default(false),
 });
 
 // Привязка клиент↔психолог; переподбор = деактивация старой и новая запись.
@@ -118,4 +121,26 @@ export const slots = sqliteTable("slots", {
   clientRequestId: integer("client_request_id").references(() => clientRequests.id),
   isIntroCall: integer("is_intro_call", { mode: "boolean" }).notNull().default(false),
   meetingLink: text("meeting_link"),
+});
+
+/**
+ * Исходящие уведомления. Если задан ключ SMS-провайдера — отправляются автоматически,
+ * иначе копятся здесь и оператор отправляет их вручную из админки.
+ */
+export const notifications = sqliteTable("notifications", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  kind: text("kind").notNull(), // booked | rescheduled | cancelled | reminder | matched | moderation
+  recipientRole: text("recipient_role").notNull(), // client | psychologist
+  recipientName: text("recipient_name").notNull(),
+  recipientPhone: text("recipient_phone").notNull(),
+  body: text("body").notNull(),
+  status: text("status").notNull().default("pending"), // pending | sent | failed
+  sentAt: text("sent_at"),
+  error: text("error"),
+  clientRequestId: integer("client_request_id").references(() => clientRequests.id),
+  psychologistId: integer("psychologist_id").references(() => psychologists.id),
+  slotId: integer("slot_id").references(() => slots.id),
 });

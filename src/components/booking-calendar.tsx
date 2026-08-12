@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TZ_LABEL } from "@/lib/datetime";
 
 export type CalendarSlot = {
   id: number;
@@ -35,11 +36,11 @@ function weekdayIndex(y: number, m: number, d: number) {
 export function BookingCalendar({
   slots,
   onBook,
-  timezoneNote = "по вашему времени",
+  submitLabel = "Забронировать",
 }: {
   slots: CalendarSlot[];
   onBook: (slotId: number) => Promise<{ ok: boolean; error?: string }>;
-  timezoneNote?: string;
+  submitLabel?: string;
 }) {
   const today = new Date();
   const byDate = useMemo(() => {
@@ -156,7 +157,7 @@ export function BookingCalendar({
         {/* Время выбранного дня */}
         <div className="flex-1 border-t pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
           <div className="text-sm font-medium">Время встречи</div>
-          <div className="text-xs text-neutral-500">{timezoneNote}</div>
+          <div className="text-xs text-neutral-500">{TZ_LABEL}</div>
           {daySlots.length === 0 ? (
             <p className="mt-4 text-xs text-neutral-500">
               Нажмите на подсвеченную дату, чтобы увидеть свободное время.
@@ -214,7 +215,7 @@ export function BookingCalendar({
           })
         }
       >
-        {pending ? "Бронируем…" : "Забронировать"}
+        {pending ? "Сохраняем…" : submitLabel}
       </Button>
     </div>
   );

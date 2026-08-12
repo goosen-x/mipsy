@@ -21,7 +21,11 @@ export async function updateProfile(
   data: ProfileUpdate,
 ): Promise<{ ok: boolean; error?: string }> {
   const [psy] = await db
-    .select({ id: psychologists.id, slug: psychologists.slug })
+    .select({
+      id: psychologists.id,
+      slug: psychologists.slug,
+      moderationStatus: psychologists.moderationStatus,
+    })
     .from(psychologists)
     .where(eq(psychologists.cabinetToken, token));
   if (!psy) return { ok: false, error: "Кабинет не найден" };
@@ -29,6 +33,8 @@ export async function updateProfile(
   await db
     .update(psychologists)
     .set({
+      // Одобренный профиль после правок снова показывается оператору на вычитку.
+      needsReview: psy.moderationStatus === "approved",
       photoUrl: data.photoUrl?.trim() || null,
       approach: data.approach?.trim() || null,
       format: data.format || null,

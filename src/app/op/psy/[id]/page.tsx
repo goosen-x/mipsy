@@ -44,6 +44,13 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
         </dl>
       </section>
 
+      {psy.needsReview && (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <strong>Профиль изменён после одобрения.</strong> Перечитайте тексты ниже: контакты и
+          обещания клиентам не проверяются автоматически. После проверки нажмите «Одобрить» ещё раз.
+        </div>
+      )}
+
       <section className="rounded-2xl bg-white p-6 shadow-sm">
         <h2 className="text-lg font-bold">Профиль (заполняет психолог)</h2>
         <dl className="mt-4 space-y-3 text-sm">
@@ -59,7 +66,23 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
 
       <section className="rounded-2xl bg-white p-6 shadow-sm">
         <h2 className="text-lg font-bold">Решение</h2>
-        <div className="mt-3">
+        <div className="mt-4 rounded-xl bg-brand-50 p-4 text-sm">
+          <div className="font-medium text-brand-800">Критерии допуска — проверьте по списку</div>
+          <ul className="mt-2 space-y-1 text-neutral-700">
+            <li>· высшее психологическое образование или профпереподготовка, документы приложены</li>
+            <li>· обучение основному подходу: от 200 часов (КПТ-подобные) или от 500 часов (длительные)</li>
+            <li>· опыт консультирования от 2 лет</li>
+            <li>· личная терапия — есть</li>
+            <li>· супервизия — текущая, регулярная</li>
+            <li>· самозанятость или ИП (нужно для выплат)</li>
+            <li>· согласие с этическим кодексом: научно обоснованные методы, запрет увода клиентов</li>
+            <li>· интервью 30 минут проведено</li>
+          </ul>
+          <p className="mt-2 text-xs text-neutral-500">
+            Обоснование порогов — в docs/research/dopusk-referensy.md
+          </p>
+        </div>
+        <div className="mt-4">
           <ModerationControl psyId={psy.id} status={psy.moderationStatus} />
         </div>
       </section>
