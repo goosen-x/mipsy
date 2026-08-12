@@ -90,6 +90,12 @@ export default async function Home() {
               <Link href="/anketa">Подобрать психолога</Link>
             </Button>
             <p className="mt-3 text-sm text-neutral-500">≈ 5 минут · бесплатно · без обязательств</p>
+            <p className="mt-4 text-sm text-neutral-600">
+              или{" "}
+              <Link href="/catalog" className="font-medium text-brand-700 underline">
+                посмотреть психологов самостоятельно
+              </Link>
+            </p>
           </div>
         </section>
 
@@ -143,7 +149,12 @@ export default async function Home() {
         {/* Примеры профилей — появляются, когда есть одобренные специалисты */}
         {approved.length > 0 && (
           <section className="mx-auto max-w-5xl px-4 pb-16">
-            <h2 className="text-3xl font-bold">Наши специалисты</h2>
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h2 className="text-3xl font-bold">Наши специалисты</h2>
+              <Link href="/catalog" className="font-medium text-brand-700 underline">
+                Все психологи →
+              </Link>
+            </div>
             <div className="mt-8 grid gap-6 sm:grid-cols-3">
               {approved.map((p) => (
                 <Link key={p.id} href={`/p/${p.slug}`}>

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { desc, eq } from "drizzle-orm";
-import { clientRequests, db, matches, psychologists, sessions, topics } from "@/db";
+import { and, asc, desc, eq } from "drizzle-orm";
+import { clientRequests, db, matches, psychologists, slots, topics } from "@/db";
+import { formatSlot } from "@/lib/datetime";
 import { Badge } from "@/components/ui/badge";
 import {
   FREQ_LABELS,
@@ -14,7 +15,13 @@ import {
   THERAPY_EXP_LABELS,
   TIME_LABELS,
 } from "@/lib/labels";
-import { AddSessionControl, AssignControl, RequestNotesControl, RequestStatusControl } from "../../controls";
+import {
+  AssignControl,
+  BookSlotControl,
+  FreeSlotButton,
+  RequestNotesControl,
+  RequestStatusControl,
+} from "../../controls";
 
 export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -42,14 +49,24 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     .where(eq(matches.clientRequestId, req.id))
     .orderBy(desc(matches.createdAt));
 
-  const matchSessions =
-    reqMatches.length > 0
-      ? await db
-          .select()
-          .from(sessions)
-          .where(eq(sessions.matchId, reqMatches[0].id))
-          .orderBy(desc(sessions.createdAt))
-      : [];
+  const [activeMatch] = await db
+    .select({ psychologistId: matches.psychologistId })
+    .from(matches)
+    .where(and(eq(matches.clientRequestId, req.id), eq(matches.active, true)));
+
+  const bookedSlots = await db
+    .select()
+    .from(slots)
+    .where(eq(slots.clientRequestId, req.id))
+    .orderBy(asc(slots.startsAt));
+
+  const freeSlots = activeMatch
+    ? await db
+        .select()
+        .from(slots)
+        .where(and(eq(slots.psychologistId, activeMatch.psychologistId), eq(slots.status, "free")))
+        .orderBy(asc(slots.startsAt))
+    : [];
 
   const candidates = await db
     .select({ id: psychologists.id, name: psychologists.name })
@@ -84,6 +101,26 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
           {req.createdAt.slice(0, 16)} · тел. <span className="font-medium text-neutral-900">{req.phone}</span>
         </p>
       </div>
+
+      {req.status === "rematch" && (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <strong>Клиент попросил другого специалиста.</strong>
+          {req.rematchReason ? ` Причина: «${req.rematchReason}»` : " Причину не указал."} Прежние
+          записи освобождены — подберите нового психолога ниже.
+        </div>
+      )}
+
+      {req.clientToken && (
+        <div className="rounded-2xl bg-white p-4 text-sm shadow-sm">
+          <span className="text-neutral-500">Личная страница клиента: </span>
+          <Link href={`/me/${req.clientToken}`} className="break-all text-brand-700 underline">
+            /me/{req.clientToken}
+          </Link>
+          <p className="mt-1 text-xs text-neutral-400">
+            Отправьте ссылку клиенту в SMS — там он выберет время и сможет попросить переподбор.
+          </p>
+        </div>
+      )}
 
       {req.crisisFlag && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
@@ -140,20 +177,30 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
         <div className="mt-4">
           <AssignControl requestId={req.id} candidates={candidates} />
         </div>
-        {reqMatches.length > 0 && reqMatches[0].active && (
+        {activeMatch && (
           <div className="mt-5 border-t pt-4">
             <h3 className="text-sm font-semibold text-neutral-600">Встречи</h3>
-            {matchSessions.length > 0 && (
+            {bookedSlots.length > 0 && (
               <ul className="mt-2 space-y-1 text-sm text-neutral-700">
-                {matchSessions.map((s) => (
-                  <li key={s.id}>
-                    {s.isIntroCall ? "Знакомство" : "Сессия"} · {s.scheduledAt ?? "—"} · {s.status}
+                {bookedSlots.map((s) => (
+                  <li key={s.id} className="flex items-center gap-2">
+                    <span>
+                      {formatSlot(s.startsAt)} · {s.durationMin} мин
+                      {s.isIntroCall && " · знакомство"}
+                    </span>
+                    {s.status === "booked" && <FreeSlotButton requestId={req.id} slotId={s.id} />}
                   </li>
                 ))}
               </ul>
             )}
             <div className="mt-3">
-              <AddSessionControl matchId={reqMatches[0].id} />
+              <BookSlotControl
+                requestId={req.id}
+                freeSlots={freeSlots.map((s) => ({
+                  id: s.id,
+                  label: `${formatSlot(s.startsAt)}${s.isIntroCall ? " · знакомство" : ""}`,
+                }))}
+              />
             </div>
           </div>
         )}

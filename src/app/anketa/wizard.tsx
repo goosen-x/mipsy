@@ -88,7 +88,7 @@ export function AnketaWizard({ topics }: { topics: Topic[] }) {
   const [stepIdx, setStepIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [done, setDone] = useState(false);
+  const [doneToken, setDoneToken] = useState<string | null>(null);
 
   // Кризисный экран вставляется в маршрут сразу после вопроса о самоповреждении,
   // если ответ — не «никогда».
@@ -154,12 +154,12 @@ export function AnketaWizard({ topics }: { topics: Topic[] }) {
     };
     startTransition(async () => {
       const res = await submitAnketa(payload);
-      if (res.ok) setDone(true);
+      if (res.ok) setDoneToken(res.token);
       else setError(res.error ?? "Что-то пошло не так, попробуйте ещё раз");
     });
   }
 
-  if (done) {
+  if (doneToken) {
     return (
       <Shell progress={100} onBack={null}>
         <h1 className="text-3xl font-bold">Спасибо, {state.name}!</h1>
@@ -168,9 +168,27 @@ export function AnketaWizard({ topics }: { topics: Topic[] }) {
           <span className="font-medium text-neutral-900">{state.phone}</span>, чтобы обсудить
           подбор психолога. Обычно это занимает не больше одного рабочего дня.
         </p>
-        <Button asChild variant="outline" className="mt-8">
-          <Link href="/">На главную</Link>
-        </Button>
+        <div className="mt-6 rounded-2xl bg-brand-50 p-5">
+          <div className="font-semibold text-brand-800">Ваша личная страница</div>
+          <p className="mt-1 text-sm text-neutral-600">
+            Здесь будет виден подобранный психолог и свободное время для записи. Сохраните ссылку —
+            она личная и открывается без пароля.
+          </p>
+          <Link
+            href={`/me/${doneToken}`}
+            className="mt-3 block break-all rounded-xl bg-white p-3 font-mono text-sm text-brand-700 underline"
+          >
+            /me/{doneToken}
+          </Link>
+        </div>
+        <div className="mt-6 flex gap-3">
+          <Button asChild>
+            <Link href={`/me/${doneToken}`}>Перейти на мою страницу</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/">На главную</Link>
+          </Button>
+        </div>
       </Shell>
     );
   }

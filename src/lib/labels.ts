@@ -60,6 +60,7 @@ export const REQUEST_STATUS_LABELS: Record<string, string> = {
   new: "Новая",
   called: "Позвонили",
   matched: "Подобран",
+  rematch: "Нужен переподбор",
   rejected: "Отказ",
 };
 

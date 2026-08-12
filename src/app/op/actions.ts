@@ -3,7 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { clientRequests, db, matches, psychologists, sessions } from "@/db";
+import { clientRequests, db, matches, psychologists, slots } from "@/db";
 import { isOperator, OP_COOKIE, opPasswordHash } from "@/lib/op-auth";
 
 export async function opLogin(password: string): Promise<{ ok: boolean; error?: string }> {
@@ -74,18 +74,32 @@ export async function assignPsychologist(
   return { ok: true };
 }
 
-export async function addSession(
-  matchId: number,
-  scheduledAt: string,
-  isIntroCall: boolean,
-): Promise<{ ok: boolean }> {
+// Оператор записывает клиента в свободное окно психолога (обычно по телефону).
+export async function bookSlotForClient(
+  requestId: number,
+  slotId: number,
+): Promise<{ ok: boolean; error?: string }> {
   await guard();
-  await db.insert(sessions).values({
-    matchId,
-    scheduledAt: scheduledAt?.trim() || null,
-    isIntroCall,
-  });
-  revalidatePath("/op");
+  const [slot] = await db.select().from(slots).where(eq(slots.id, slotId));
+  if (!slot) return { ok: false, error: "Окно не найдено" };
+  if (slot.status !== "free") return { ok: false, error: "Окно уже занято" };
+
+  await db
+    .update(slots)
+    .set({ status: "booked", clientRequestId: requestId })
+    .where(and(eq(slots.id, slotId), eq(slots.status, "free")));
+
+  revalidatePath(`/op/requests/${requestId}`);
+  return { ok: true };
+}
+
+export async function freeSlot(requestId: number, slotId: number): Promise<{ ok: boolean }> {
+  await guard();
+  await db
+    .update(slots)
+    .set({ status: "free", clientRequestId: null })
+    .where(eq(slots.id, slotId));
+  revalidatePath(`/op/requests/${requestId}`);
   return { ok: true };
 }
 

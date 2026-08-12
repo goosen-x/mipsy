@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { db, clientRequests } from "@/db";
 
 export type AnketaPayload = {
@@ -25,7 +26,9 @@ export type AnketaPayload = {
 
 const FREQ = ["never", "seldom", "monthly", "weekly", "daily"];
 
-export async function submitAnketa(payload: AnketaPayload): Promise<{ ok: boolean; error?: string }> {
+export async function submitAnketa(
+  payload: AnketaPayload,
+): Promise<{ ok: true; token: string } | { ok: false; error: string }> {
   const name = payload.name?.trim();
   const phone = payload.phone?.replace(/[^\d+]/g, "") ?? "";
 
@@ -35,8 +38,10 @@ export async function submitAnketa(payload: AnketaPayload): Promise<{ ok: boolea
 
   const crisisFlag =
     !!payload.freqSelfHarm && FREQ.indexOf(payload.freqSelfHarm) >= FREQ.indexOf("monthly");
+  const token = randomUUID();
 
   await db.insert(clientRequests).values({
+    clientToken: token,
     forWhom: "self",
     gender: payload.gender,
     age: payload.age,
@@ -59,5 +64,5 @@ export async function submitAnketa(payload: AnketaPayload): Promise<{ ok: boolea
     status: "new",
   });
 
-  return { ok: true };
+  return { ok: true, token };
 }

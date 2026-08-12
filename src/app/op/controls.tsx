@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -15,7 +13,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { REQUEST_STATUS_LABELS } from "@/lib/labels";
-import { addSession, assignPsychologist, moderatePsychologist, updateRequest } from "./actions";
+import {
+  assignPsychologist,
+  bookSlotForClient,
+  freeSlot,
+  moderatePsychologist,
+  updateRequest,
+} from "./actions";
 
 export function RequestStatusControl({ id, status }: { id: number; status: string }) {
   const router = useRouter();
@@ -134,41 +138,80 @@ export function AssignControl({
   );
 }
 
-export function AddSessionControl({ matchId }: { matchId: number }) {
+export function BookSlotControl({
+  requestId,
+  freeSlots,
+}: {
+  requestId: number;
+  freeSlots: { id: number; label: string }[];
+}) {
   const router = useRouter();
-  const [when, setWhen] = useState("");
-  const [intro, setIntro] = useState(false);
+  const [slotId, setSlotId] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  if (freeSlots.length === 0) {
+    return (
+      <p className="text-sm text-neutral-500">
+        У психолога нет открытых окон — попросите его открыть расписание в кабинете.
+      </p>
+    );
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Input
-        value={when}
-        onChange={(e) => setWhen(e.target.value)}
-        placeholder="Когда: напр. 15.08 в 18:00"
-        className="w-56"
-      />
-      <div className="flex items-center gap-2">
-        <Checkbox id={`intro-${matchId}`} checked={intro} onCheckedChange={(c) => setIntro(c === true)} />
-        <Label htmlFor={`intro-${matchId}`} className="text-sm font-normal">
-          знакомство 20 мин
-        </Label>
-      </div>
+      <Select value={slotId} onValueChange={setSlotId}>
+        <SelectTrigger className="w-72">
+          <SelectValue placeholder="Свободное окно" />
+        </SelectTrigger>
+        <SelectContent>
+          {freeSlots.map((s) => (
+            <SelectItem key={s.id} value={String(s.id)}>
+              {s.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <Button
         size="sm"
         variant="outline"
-        disabled={pending || !when.trim()}
+        disabled={pending || !slotId}
         onClick={() =>
           startTransition(async () => {
-            await addSession(matchId, when, intro);
-            setWhen("");
-            setIntro(false);
-            router.refresh();
+            setError(null);
+            const res = await bookSlotForClient(requestId, Number(slotId));
+            if (!res.ok) setError(res.error ?? "Не вышло");
+            else {
+              setSlotId("");
+              router.refresh();
+            }
           })
         }
       >
-        {pending ? "…" : "Добавить встречу"}
+        {pending ? "…" : "Записать клиента"}
       </Button>
+      {error && <span className="text-sm text-red-600">{error}</span>}
     </div>
+  );
+}
+
+export function FreeSlotButton({ requestId, slotId }: { requestId: number; slotId: number }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      disabled={pending}
+      onClick={() =>
+        startTransition(async () => {
+          await freeSlot(requestId, slotId);
+          router.refresh();
+        })
+      }
+    >
+      отменить
+    </Button>
   );
 }
 

@@ -8,6 +8,9 @@ export function SiteHeader() {
           mipsy
         </Link>
         <nav className="flex items-center gap-6 text-sm">
+          <Link href="/catalog" className="text-neutral-600 hover:text-brand-700">
+            Психологи
+          </Link>
           <Link href="/psy" className="text-neutral-600 hover:text-brand-700">
             Психологам
           </Link>
@@ -31,6 +34,9 @@ export function SiteFooter() {
           <span className="font-semibold text-brand-700">mipsy</span> · подбор психолога
         </div>
         <div className="flex gap-6">
+          <Link href="/catalog" className="hover:text-brand-700">
+            Психологи
+          </Link>
           <Link href="/psy" className="hover:text-brand-700">
             Психологам
           </Link>

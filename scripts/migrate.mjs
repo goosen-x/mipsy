@@ -28,6 +28,16 @@ for (const file of files) {
   console.log(`migrate: применена ${file} (${statements.length} statements)`);
 }
 
+// Старым заявкам, созданным до появления кабинета клиента, выдаём токен.
+const needToken = sqlite.prepare("SELECT id FROM client_requests WHERE client_token IS NULL").all();
+if (needToken.length > 0) {
+  const setToken = sqlite.prepare("UPDATE client_requests SET client_token = ? WHERE id = ?");
+  sqlite.transaction(() => {
+    for (const row of needToken) setToken.run(crypto.randomUUID(), row.id);
+  })();
+  console.log(`migrate: выдано токенов клиентам: ${needToken.length}`);
+}
+
 // Держать в согласии с src/db/seed.ts
 const TOPICS = [
   ["anxiety", "Тревога и страхи"],

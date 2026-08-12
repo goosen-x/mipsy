@@ -40,8 +40,12 @@ export const clientRequests = sqliteTable("client_requests", {
   pdConsent: integer("pd_consent", { mode: "boolean" }).notNull().default(false),
 
   crisisFlag: integer("crisis_flag", { mode: "boolean" }).notNull().default(false),
-  status: text("status").notNull().default("new"), // new | called | matched | rejected
+  status: text("status").notNull().default("new"), // new | called | matched | rematch | rejected
   operatorNotes: text("operator_notes"),
+
+  // Личный кабинет клиента открывается по секретной ссылке (SMS от оператора).
+  clientToken: text("client_token").unique(),
+  rematchReason: text("rematch_reason"), // почему предыдущий специалист не подошёл
 });
 
 // Психолог: заявка на модерацию и, после одобрения, публичный профиль.
@@ -97,19 +101,21 @@ export const matches = sqliteTable("matches", {
   note: text("note"),
 });
 
-// Запись на сессию. Слоты календаря и встроенные звонки — позже:
-// scheduledAt пока свободная дата/время, meetingLink — задел под комнату звонка.
-export const sessions = sqliteTable("sessions", {
+// Календарь по образцу Zigmund: психолог отмечает свободные интервалы,
+// клиент записывается только в свободные. Слот — единственный источник правды
+// о встречах. meetingLink — задел под встроенные звонки.
+export const slots = sqliteTable("slots", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-  matchId: integer("match_id")
+  psychologistId: integer("psychologist_id")
     .notNull()
-    .references(() => matches.id),
-  scheduledAt: text("scheduled_at"),
+    .references(() => psychologists.id),
+  startsAt: text("starts_at").notNull(), // локальное время психолога, "YYYY-MM-DDTHH:mm"
+  durationMin: integer("duration_min").notNull().default(50),
+  status: text("status").notNull().default("free"), // free | booked | done | cancelled
+  clientRequestId: integer("client_request_id").references(() => clientRequests.id),
   isIntroCall: integer("is_intro_call", { mode: "boolean" }).notNull().default(false),
-  format: text("format"), // video | phone | offline
   meetingLink: text("meeting_link"),
-  status: text("status").notNull().default("planned"), // planned | done | cancelled
 });

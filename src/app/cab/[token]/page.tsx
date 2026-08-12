@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { asc, desc, eq } from "drizzle-orm";
-import { clientRequests, db, matches, psychologists, sessions, topics } from "@/db";
+import { clientRequests, db, matches, psychologists, slots, topics } from "@/db";
 import { Badge } from "@/components/ui/badge";
+import { formatSlot } from "@/lib/datetime";
 import { ProfileForm } from "./profile-form";
+import { Schedule } from "./schedule";
 
 export const metadata = { title: "Кабинет психолога — mipsy" };
 export const dynamic = "force-dynamic";
@@ -31,18 +33,20 @@ export default async function CabinetPage({ params }: { params: Promise<{ token:
     .innerJoin(clientRequests, eq(matches.clientRequestId, clientRequests.id))
     .where(eq(matches.psychologistId, psy.id))
     .orderBy(desc(matches.createdAt));
-  const mySessions = await db
+  const mySlots = await db
     .select({
-      id: sessions.id,
-      matchId: sessions.matchId,
-      scheduledAt: sessions.scheduledAt,
-      isIntroCall: sessions.isIntroCall,
-      status: sessions.status,
+      id: slots.id,
+      startsAt: slots.startsAt,
+      durationMin: slots.durationMin,
+      status: slots.status,
+      isIntroCall: slots.isIntroCall,
+      clientName: clientRequests.name,
     })
-    .from(sessions)
-    .innerJoin(matches, eq(sessions.matchId, matches.id))
-    .where(eq(matches.psychologistId, psy.id))
-    .orderBy(desc(sessions.createdAt));
+    .from(slots)
+    .leftJoin(clientRequests, eq(slots.clientRequestId, clientRequests.id))
+    .where(eq(slots.psychologistId, psy.id))
+    .orderBy(asc(slots.startsAt));
+  const booked = mySlots.filter((s) => s.status === "booked");
 
   const status = STATUS_LABELS[psy.moderationStatus] ?? STATUS_LABELS.new;
 
@@ -87,41 +91,49 @@ export default async function CabinetPage({ params }: { params: Promise<{ token:
         </section>
 
         <section className="rounded-2xl bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-bold">Ваши записи</h2>
+          <h2 className="text-xl font-bold">Ваши клиенты и записи</h2>
           {myMatches.length === 0 ? (
             <p className="mt-3 text-neutral-500">
               Пока пусто. Когда оператор подберёт вам клиента, он появится здесь.
             </p>
           ) : (
             <ul className="mt-4 space-y-3">
-              {myMatches.map((m) => {
-                const ms = mySessions.filter((s) => s.matchId === m.id);
-                return (
-                  <li key={m.id} className="rounded-xl border p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{m.clientName}</span>
-                      <Badge variant={m.active ? "default" : "secondary"}>
-                        {m.active ? "активный клиент" : "завершено"}
-                      </Badge>
-                    </div>
-                    {ms.length > 0 && (
-                      <ul className="mt-2 space-y-1 text-sm text-neutral-600">
-                        {ms.map((s) => (
-                          <li key={s.id}>
-                            {s.isIntroCall ? "Знакомство" : "Сессия"} ·{" "}
-                            {s.scheduledAt ?? "время уточняется"} · {s.status}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <p className="mt-2 text-xs text-neutral-400">
-                      Время встреч согласует оператор — он свяжется с вами.
-                    </p>
-                  </li>
-                );
-              })}
+              {myMatches.map((m) => (
+                <li key={m.id} className="rounded-xl border p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{m.clientName}</span>
+                    <Badge variant={m.active ? "default" : "secondary"}>
+                      {m.active ? "активный клиент" : "завершено"}
+                    </Badge>
+                  </div>
+                </li>
+              ))}
             </ul>
           )}
+          {booked.length > 0 && (
+            <ul className="mt-4 space-y-2 border-t pt-4 text-sm">
+              {booked.map((s) => (
+                <li key={s.id} className="flex justify-between gap-3">
+                  <span>{formatSlot(s.startsAt)}</span>
+                  <span className="text-neutral-500">
+                    {s.clientName ?? "клиент"}
+                    {s.isIntroCall && " · знакомство"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-bold">Расписание</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Откройте часы, когда готовы консультировать. Клиент сможет записаться только в открытое
+            время — как только оператор подберёт его вам.
+          </p>
+          <div className="mt-6">
+            <Schedule token={token} slots={mySlots} />
+          </div>
         </section>
 
         <section className="rounded-2xl bg-white p-6 shadow-sm">
