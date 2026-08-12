@@ -11,7 +11,7 @@ const PSYCHOLOGISTS = [
   {
     token: "demo-kovaleva",
     slug: "mariya-kovaleva",
-    photoUrl: "/demo/kovaleva.svg",
+    photoUrl: "/demo/kovaleva.jpg",
     name: "Мария Ковалёва",
     phone: "+79001110011",
     email: "demo1@mipsy.test",
@@ -44,7 +44,7 @@ const PSYCHOLOGISTS = [
   {
     token: "demo-demyanov",
     slug: "igor-demyanov",
-    photoUrl: "/demo/demyanov.svg",
+    photoUrl: "/demo/demyanov.jpg",
     name: "Игорь Демьянов",
     phone: "+79001110022",
     email: "demo2@mipsy.test",
@@ -77,7 +77,7 @@ const PSYCHOLOGISTS = [
   {
     token: "demo-severtseva",
     slug: "alina-severtseva",
-    photoUrl: "/demo/severtseva.svg",
+    photoUrl: "/demo/severtseva.jpg",
     name: "Алина Северцева",
     phone: "+79001110033",
     email: "demo3@mipsy.test",
