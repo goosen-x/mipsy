@@ -13,7 +13,7 @@ export function SiteHeader() {
           </Link>
           <Link
             href="/anketa"
-            className="rounded-full bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
+            className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
           >
             Подобрать психолога
           </Link>

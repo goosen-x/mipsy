@@ -4,17 +4,21 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Палитра по дизайн-системе mip.institute: фиолетовый + оранжевый акцент */
 @theme {
-  --color-brand-50: #f0f7f4;
-  --color-brand-100: #dcefe6;
-  --color-brand-200: #b9dfd0;
-  --color-brand-300: #8cc8b1;
-  --color-brand-400: #5aab8e;
-  --color-brand-500: #3a8f72;
-  --color-brand-600: #2a735c;
-  --color-brand-700: #245c4b;
-  --color-brand-800: #1f4a3e;
-  --color-brand-900: #1b3d34;
+  --color-brand-50: #faf5ff;
+  --color-brand-100: #f1e9fe;
+  --color-brand-200: #e7dffa;
+  --color-brand-300: #c9b3f2;
+  --color-brand-400: #947aff;
+  --color-brand-500: #855edf;
+  --color-brand-600: #6f01c6;
+  --color-brand-700: #5d01a6;
+  --color-brand-800: #4a0184;
+  --color-brand-900: #3a0168;
+  --color-accent-400: #ff8f52;
+  --color-accent-500: #f87e1b;
+  --color-accent-600: #e56f0e;
 }
 
 body {
@@ -71,18 +75,18 @@ body {
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #2a735c;
+  --primary: #6f01c6;
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: #f0f7f4;
-  --secondary-foreground: #1f4a3e;
+  --secondary: #faf5ff;
+  --secondary-foreground: #4a0184;
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: #f0f7f4;
-  --accent-foreground: #1f4a3e;
+  --accent: #faf5ff;
+  --accent-foreground: #4a0184;
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: #947aff;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

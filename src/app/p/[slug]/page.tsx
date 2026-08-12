@@ -144,7 +144,11 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
             Заполните анкету и скажите оператору, что вам откликнулся профиль {psy.name} — мы
             согласуем время встречи.
           </p>
-          <Button asChild size="lg" className="mt-6 rounded-full px-8">
+          <Button
+            asChild
+            size="lg"
+            className="mt-6 rounded-lg bg-accent-500 px-8 hover:bg-accent-600"
+          >
             <Link href="/anketa">Записаться</Link>
           </Button>
         </section>
