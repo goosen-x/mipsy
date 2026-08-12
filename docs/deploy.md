@@ -1,6 +1,14 @@
 # Деплой mipsy на VPS
 
-Прототип живёт на VPS `91.197.99.37` в Docker-контейнере, порт **8081** → http://91.197.99.37:8081
+Прототип живёт на VPS `91.197.99.37` в Docker-контейнере и доступен по адресу **https://mipsy.mskacademy.ru**
+
+## Домен и HTTPS
+
+- A-запись `mipsy` в зоне `mskacademy.ru` (панель reg.ru) → `91.197.99.37`.
+- nginx: `/etc/nginx/sites-available/mipsy.conf` + симлинк в `sites-enabled` — по образцу соседних сайтов (snippets `security-headers` и `proxy-nextjs`, `limit_req zone=req_limit`), проксирует на `127.0.0.1:8081`.
+- Сертификат Let's Encrypt выпущен certbot'ом (`certbot --nginx -d mipsy.mskacademy.ru --redirect`), продление автоматическое. HTTP отдаёт 301 на HTTPS.
+- Контейнер слушает **только 127.0.0.1:8081** — снаружи порт закрыт, весь трафик идёт через nginx по HTTPS.
+- Домен временный: `mipsy.mskacademy.ru` — поддомен чужого бренда. Перед платным трафиком стоит взять собственный домен (`mipsy.ru` на момент проверки 2026-08-12 свободен) — тогда достаточно повторить два шага: A-запись и `certbot --nginx -d <домен>`.
 
 ## Устройство
 
@@ -20,7 +28,7 @@ tar czf - --exclude node_modules --exclude .next --exclude .git --exclude data -
 ssh -i /root/.ssh/id_ed25519_vps root@91.197.99.37 '
   cd /root/mipsy-src && docker build -t mipsy . &&
   docker rm -f mipsy &&
-  docker run -d --name mipsy --restart unless-stopped -p 8081:3000 \
+  docker run -d --name mipsy --restart unless-stopped -p 127.0.0.1:8081:3000 \
     -v /root/mipsy-data:/app/data -e OPERATOR_PASSWORD=<пароль> mipsy
 '
 ```
