@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { clientRequests, db, matches, psychologists, slots } from "@/db";
+import { grantAccess } from "@/lib/access";
 import { isPast } from "@/lib/datetime";
 import { meetingInvite, messages, notify, subjects } from "@/lib/notify";
 
@@ -38,6 +39,7 @@ export async function bookFirstSession(
       phone: psychologists.phone,
       email: psychologists.email,
       cabinetToken: psychologists.cabinetToken,
+      meetingUrl: psychologists.meetingUrl,
     })
     .from(psychologists)
     .where(and(eq(psychologists.slug, slug), eq(psychologists.moderationStatus, "approved")));
@@ -65,7 +67,12 @@ export async function bookFirstSession(
 
   const booked = await db
     .update(slots)
-    .set({ status: "booked", clientRequestId: req.id, isIntroCall: true })
+    .set({
+      status: "booked",
+      clientRequestId: req.id,
+      isIntroCall: true,
+      meetingLink: psy.meetingUrl,
+    })
     .where(and(eq(slots.id, slotId), eq(slots.status, "free")));
   if ((booked as unknown as { changes: number }).changes === 0) {
     await db.delete(clientRequests).where(eq(clientRequests.id, req.id));
@@ -112,6 +119,7 @@ export async function bookFirstSession(
     slotId,
   });
 
+  await grantAccess("me", token);
   revalidatePath(`/p/${slug}`);
   revalidatePath("/op");
   return { ok: true, token };

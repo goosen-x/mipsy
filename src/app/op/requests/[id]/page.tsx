@@ -128,7 +128,14 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
             /me/{req.clientToken}
           </Link>
           <p className="mt-1 text-xs text-neutral-400">
-            Отправьте ссылку клиенту в SMS — там он выберет время и сможет попросить переподбор.
+            Отправьте ссылку клиенту — там он выберет время и сможет попросить переподбор. С нового
+            устройства страница попросит код подтверждения; он придёт клиенту сам, а при
+            необходимости виден здесь.
+            {req.accessCode && (
+              <>
+                {" "}Текущий код: <span className="font-mono font-medium text-neutral-700">{req.accessCode}</span>
+              </>
+            )}
           </p>
         </div>
       )}

@@ -15,6 +15,8 @@ import {
 } from "@/db";
 import { isOperator, OP_COOKIE, opPasswordHash } from "@/lib/op-auth";
 import { messages, notify, subjects } from "@/lib/notify";
+import { logAdmin } from "@/lib/logs";
+import { errorLog } from "@/db";
 
 export async function opLogin(password: string): Promise<{ ok: boolean; error?: string }> {
   const hash = opPasswordHash();
@@ -51,6 +53,13 @@ export async function updateRequest(
       ...(data.operatorNotes !== undefined ? { operatorNotes: data.operatorNotes } : {}),
     })
     .where(eq(clientRequests.id, id));
+  await logAdmin("изменил заявку", {
+    type: "request",
+    id,
+    detail: [data.status && `статус → ${data.status}`, data.operatorNotes !== undefined && "пометки"]
+      .filter(Boolean)
+      .join(", "),
+  });
   revalidatePath(`/op/requests/${id}`);
   revalidatePath("/op");
   return { ok: true };
@@ -92,6 +101,7 @@ export async function assignPsychologist(
   });
   await db.update(clientRequests).set({ status: "matched" }).where(eq(clientRequests.id, requestId));
 
+  await logAdmin("предложил психолога", { type: "request", id: requestId, detail: `психолог #${psychologistId}` });
   revalidatePath(`/op/requests/${requestId}`);
   revalidatePath("/op");
   return { ok: true };
@@ -132,6 +142,7 @@ export async function sendProposals(requestId: number): Promise<{ ok: boolean; e
     clientRequestId: requestId,
   });
 
+  await logAdmin("отправил подборку клиенту", { type: "request", id: requestId });
   revalidatePath(`/op/requests/${requestId}`);
   return { ok: true };
 }
@@ -156,6 +167,10 @@ export async function moderateReview(
     .update(reviews)
     .set({ status: decision, moderationNotes: notes?.trim() || null })
     .where(eq(reviews.id, id));
+  await logAdmin(decision === "published" ? "опубликовал отзыв" : "отклонил отзыв", {
+    type: "review",
+    id,
+  });
   revalidatePath("/op/reviews");
   revalidatePath("/catalog");
   return { ok: true };
@@ -173,7 +188,15 @@ export async function updateTicket(
       ...(data.operatorNotes !== undefined ? { operatorNotes: data.operatorNotes } : {}),
     })
     .where(eq(supportTickets.id, id));
+  await logAdmin("обработал обращение", { type: "ticket", id, detail: data.status ?? "заметка" });
   revalidatePath("/op/support");
+  return { ok: true };
+}
+
+export async function markErrorsSeen(): Promise<{ ok: boolean }> {
+  await guard();
+  await db.update(errorLog).set({ seen: true }).where(eq(errorLog.seen, false));
+  revalidatePath("/op/errors");
   return { ok: true };
 }
 
@@ -275,6 +298,11 @@ export async function moderatePsychologist(
     subject: subjects.moderation,
     body: messages.psyModerated(decision === "approved", full.token),
     psychologistId: id,
+  });
+  await logAdmin(decision === "approved" ? "одобрил психолога" : "отклонил психолога", {
+    type: "psychologist",
+    id,
+    detail: notes?.trim() || undefined,
   });
   revalidatePath(`/op/psy/${id}`);
   revalidatePath("/op/psy");

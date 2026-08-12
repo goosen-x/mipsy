@@ -4,6 +4,8 @@ import { asc, desc, eq } from "drizzle-orm";
 import { clientRequests, db, matches, psychologists, slots, topics } from "@/db";
 import { Badge } from "@/components/ui/badge";
 import { formatSlot, isPast } from "@/lib/datetime";
+import { hasAccess } from "@/lib/access";
+import { PsyGate } from "./gate";
 import { ProfileForm } from "./profile-form";
 import { OutcomeControl, Schedule } from "./schedule";
 
@@ -20,6 +22,7 @@ export default async function CabinetPage({ params }: { params: Promise<{ token:
   const { token } = await params;
   const [psy] = await db.select().from(psychologists).where(eq(psychologists.cabinetToken, token));
   if (!psy) notFound();
+  if (!(await hasAccess("cab", token))) return <PsyGate token={token} />;
 
   const topicList = await db.select().from(topics).orderBy(asc(topics.sort));
   const myMatches = await db
@@ -163,6 +166,7 @@ export default async function CabinetPage({ params }: { params: Promise<{ token:
               token={token}
               topics={topicList.map((t) => ({ slug: t.slug, title: t.title }))}
               initial={{
+                meetingUrl: psy.meetingUrl ?? "",
                 photoUrl: psy.photoUrl ?? "",
                 approach: psy.approach ?? "",
                 format: psy.format ?? "",

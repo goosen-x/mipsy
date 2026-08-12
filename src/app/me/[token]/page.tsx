@@ -4,6 +4,8 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { clientRequests, db, matches, psychologists, reviews, slots, topics } from "@/db";
 import { Badge } from "@/components/ui/badge";
 import { canClientChange, formatSlot, isPast, TZ_LABEL } from "@/lib/datetime";
+import { hasAccess } from "@/lib/access";
+import { ClientGate } from "./gate";
 import {
   BookingActions,
   BookingSection,
@@ -24,6 +26,7 @@ export default async function ClientCabinetPage({
   const { token } = await params;
   const [req] = await db.select().from(clientRequests).where(eq(clientRequests.clientToken, token));
   if (!req) notFound();
+  if (!(await hasAccess("me", token))) return <ClientGate token={token} />;
 
   const proposals = await db
     .select({ matchId: matches.id, chosen: matches.chosen, note: matches.note, psy: psychologists })
@@ -228,12 +231,24 @@ export default async function ClientCabinetPage({
                         {s.durationMin} минут
                         {s.isIntroCall && " · первая встреча, бесплатно"}
                       </div>
-                      <Link
-                        href={`/api/ics?token=${token}&slot=${s.id}`}
-                        className="mt-1 inline-block text-sm text-brand-700 underline"
-                      >
-                        Добавить в календарь
-                      </Link>
+                      <div className="mt-1 flex flex-wrap gap-3 text-sm">
+                        <Link
+                          href={`/api/ics?token=${token}&slot=${s.id}`}
+                          className="text-brand-700 underline"
+                        >
+                          Добавить в календарь
+                        </Link>
+                        {s.meetingLink && (
+                          <a
+                            href={s.meetingLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-medium text-accent-600 underline"
+                          >
+                            Ссылка на встречу
+                          </a>
+                        )}
+                      </div>
                     </div>
                     <BookingActions
                       token={token}

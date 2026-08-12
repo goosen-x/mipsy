@@ -101,6 +101,16 @@ export function ProfileForm({
       <Field label="Подход" hint="Например: КПТ, гештальт-терапия">
         <Input value={form.approach} onChange={(e) => set("approach", e.target.value)} />
       </Field>
+      <Field
+        label="Ссылка на видеовстречу"
+        hint="Постоянная комната в Телемосте, Zoom или другом сервисе. Её увидит только клиент, записавшийся к вам, — и только после брони"
+      >
+        <Input
+          value={form.meetingUrl}
+          onChange={(e) => set("meetingUrl", e.target.value)}
+          placeholder="https://telemost.yandex.ru/..."
+        />
+      </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Формат работы">
           <div className="flex gap-2">

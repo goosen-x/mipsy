@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { db, clientRequests } from "@/db";
+import { grantAccess } from "@/lib/access";
 
 export type AnketaPayload = {
   forWhom: "self";
@@ -66,5 +67,6 @@ export async function submitAnketa(
     status: "new",
   });
 
+  await grantAccess("me", token);
   return { ok: true, token };
 }

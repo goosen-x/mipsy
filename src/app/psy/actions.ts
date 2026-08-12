@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { db, psychologists } from "@/db";
+import { grantAccess } from "@/lib/access";
 
 export type PsyApplication = {
   name: string;
@@ -37,5 +38,6 @@ export async function submitPsyApplication(
     moderationStatus: "new",
   });
 
+  await grantAccess("cab", token);
   return { ok: true, token };
 }

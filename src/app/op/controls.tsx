@@ -18,6 +18,7 @@ import {
   bookSlotForClient,
   dropProposal,
   freeSlot,
+  markErrorsSeen,
   markNotificationSent,
   moderatePsychologist,
   moderateReview,
@@ -25,6 +26,26 @@ import {
   updateRequest,
   updateTicket,
 } from "./actions";
+
+export function MarkErrorsSeen() {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={pending}
+      onClick={() =>
+        startTransition(async () => {
+          await markErrorsSeen();
+          router.refresh();
+        })
+      }
+    >
+      {pending ? "…" : "Отметить просмотренными"}
+    </Button>
+  );
+}
 
 export function ReviewModeration({ id }: { id: number }) {
   const router = useRouter();

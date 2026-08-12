@@ -4,6 +4,7 @@ import { db, notifications } from "@/db";
 import { formatSlot, TZ_SHORT } from "./datetime";
 import { buildIcs } from "./ics";
 import { mailConfigured, sendMail, type MailAttachment } from "./mail";
+import { logError } from "./logs";
 
 const SITE_URL = process.env.SITE_URL ?? "https://mipsy.mskacademy.ru";
 
@@ -98,6 +99,11 @@ export async function notify(input: NotifyInput): Promise<void> {
       .where(eq(notifications.id, row.id));
   } else if (!result.error?.includes("не настроен")) {
     await db.update(notifications).set({ error: result.error }).where(eq(notifications.id, row.id));
+    await logError({
+      source: "notify",
+      message: `Не удалось отправить уведомление (${channel})`,
+      detail: `${input.kind} → ${input.recipientName}: ${result.error}`,
+    });
   }
 }
 
@@ -108,6 +114,7 @@ export function meetingInvite(params: {
   durationMin: number;
   psyName: string;
   clientToken: string;
+  meetingLink?: string | null;
 }): MailAttachment {
   return {
     filename: "vstrecha-mipsy.ics",
@@ -117,16 +124,18 @@ export function meetingInvite(params: {
       startsAt: params.startsAt,
       durationMin: params.durationMin,
       summary: `Встреча с психологом ${params.psyName} (mipsy)`,
-      description: `Ваша страница на mipsy: ${SITE_URL}/me/${params.clientToken}`,
-      url: `${SITE_URL}/me/${params.clientToken}`,
+      description: params.meetingLink
+        ? `Ссылка на встречу: ${params.meetingLink}\nВаша страница на mipsy: ${SITE_URL}/me/${params.clientToken}`
+        : `Ваша страница на mipsy: ${SITE_URL}/me/${params.clientToken}`,
+      url: params.meetingLink ?? `${SITE_URL}/me/${params.clientToken}`,
     }),
   };
 }
 
 // Тексты уведомлений собраны здесь, чтобы их было легко вычитать целиком.
 export const messages = {
-  clientBooked: (psyName: string, startsAt: string, token: string) =>
-    `Вы записаны к психологу ${psyName} на ${formatSlot(startsAt)}. Первая встреча бесплатная.\n\nЕсли планы изменятся, встречу можно перенести или отменить не позднее чем за 24 часа на вашей странице: ${SITE_URL}/me/${token}\n\nКоманда mipsy`,
+  clientBooked: (psyName: string, startsAt: string, token: string, meetingLink?: string | null) =>
+    `Вы записаны к психологу ${psyName} на ${formatSlot(startsAt)}. Первая встреча бесплатная.${meetingLink ? `\n\nСсылка на встречу: ${meetingLink}` : ""}\n\nЕсли планы изменятся, встречу можно перенести или отменить не позднее чем за 24 часа на вашей странице: ${SITE_URL}/me/${token}\n\nКоманда mipsy`,
   clientMatched: (names: string[], token: string) =>
     names.length > 1
       ? `Мы подобрали для вас ${names.length} специалистов: ${names.join(", ")}. Посмотрите профили, выберите того, кто откликнется, и запишитесь на бесплатную первую встречу: ${SITE_URL}/me/${token}`

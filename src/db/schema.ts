@@ -47,6 +47,7 @@ export const clientRequests = sqliteTable("client_requests", {
   // Личный кабинет клиента открывается по секретной ссылке (SMS от оператора).
   clientToken: text("client_token").unique(),
   rematchReason: text("rematch_reason"), // почему предыдущий специалист не подошёл
+  accessCode: text("access_code"), // код подтверждения входа в кабинет
 });
 
 // Психолог: заявка на модерацию и, после одобрения, публичный профиль.
@@ -87,6 +88,11 @@ export const psychologists = sqliteTable("psychologists", {
 
   // Профиль изменён после одобрения — оператор должен перечитать тексты.
   needsReview: integer("needs_review", { mode: "boolean" }).notNull().default(false),
+
+  // Постоянная ссылка на видеовстречу (Телемост, Zoom и т.п.) — своего видеомодуля не делаем.
+  meetingUrl: text("meeting_url"),
+  // Код подтверждения входа в кабинет с нового устройства.
+  accessCode: text("access_code"),
 });
 
 // Привязка клиент↔психолог; переподбор = деактивация старой и новая запись.
@@ -187,4 +193,29 @@ export const notifications = sqliteTable("notifications", {
   clientRequestId: integer("client_request_id").references(() => clientRequests.id),
   psychologistId: integer("psychologist_id").references(() => psychologists.id),
   slotId: integer("slot_id").references(() => slots.id),
+});
+
+/** Журнал ошибок приложения: видно в админке, не нужно лезть в docker logs. */
+export const errorLog = sqliteTable("error_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  source: text("source").notNull(), // request | action | notify | job
+  message: text("message").notNull(),
+  detail: text("detail"),
+  path: text("path"),
+  seen: integer("seen", { mode: "boolean" }).notNull().default(false),
+});
+
+/** Журнал действий администратора — требование по работе с данными о здоровье. */
+export const adminLog = sqliteTable("admin_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  action: text("action").notNull(),
+  targetType: text("target_type"), // request | psychologist | review | ticket | notification
+  targetId: integer("target_id"),
+  detail: text("detail"),
 });

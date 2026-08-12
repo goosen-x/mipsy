@@ -50,6 +50,12 @@ export default async function OpLayout({ children }: { children: React.ReactNode
               <Link href="/op/stats" className="text-neutral-600 hover:text-brand-700">
                 Аналитика
               </Link>
+              <Link href="/op/errors" className="text-neutral-600 hover:text-brand-700">
+                Ошибки
+              </Link>
+              <Link href="/op/audit" className="text-neutral-600 hover:text-brand-700">
+                Журнал
+              </Link>
             </nav>
           </div>
           <LogoutButton />

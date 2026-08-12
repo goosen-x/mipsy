@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function CatalogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ topic?: string; gender?: string; format?: string }>;
+  searchParams: Promise<{ topic?: string; gender?: string; format?: string; q?: string }>;
 }) {
   const sp = await searchParams;
   const all = await db
@@ -40,9 +40,22 @@ export default async function CatalogPage({
           .groupBy(reviews.psychologistId)
       : [];
 
+  // Поиск фильтруем в приложении: SQLite LIKE не умеет регистр кириллицы,
+  // а специалистов на платформе десятки, а не тысячи.
+  const query = (sp.q ?? "").trim().toLowerCase();
   const list = all.filter((p) => {
     if (sp.topic && !(p.topicSlugs ?? []).includes(sp.topic)) return false;
     if (sp.format && p.format !== sp.format && p.format !== "both") return false;
+    if (query) {
+      const topicTitles = (p.topicSlugs ?? [])
+        .map((slug) => topicList.find((t) => t.slug === slug)?.title ?? "")
+        .join(" ");
+      const haystack = [p.name, p.approach, p.about, p.howSessions, p.education, topicTitles]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!query.split(/\s+/).every((word) => haystack.includes(word))) return false;
+    }
     return true;
   });
 
@@ -69,8 +82,28 @@ export default async function CatalogPage({
           , и мы подберём психолога за вас.
         </p>
 
-        {/* Фильтры */}
-        <div className="mt-8 space-y-3">
+        {/* Поиск и фильтры */}
+        <form action="/catalog" className="mt-8 flex flex-wrap gap-2">
+          {sp.topic && <input type="hidden" name="topic" value={sp.topic} />}
+          {sp.format && <input type="hidden" name="format" value={sp.format} />}
+          <input
+            type="search"
+            name="q"
+            defaultValue={sp.q ?? ""}
+            placeholder="Имя, подход или тема — например «тревога» или «гештальт»"
+            className="h-11 flex-1 rounded-lg border border-neutral-300 px-4 text-base outline-none focus:border-brand-400"
+          />
+          <Button type="submit" className="h-11 rounded-lg">
+            Найти
+          </Button>
+          {sp.q && (
+            <Button asChild variant="ghost" className="h-11">
+              <Link href={q({ q: undefined })}>Сбросить</Link>
+            </Button>
+          )}
+        </form>
+
+        <div className="mt-6 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-neutral-500">Тема:</span>
             <FilterChip href={q({ topic: undefined })} active={!sp.topic}>
@@ -102,7 +135,9 @@ export default async function CatalogPage({
             <p className="text-lg font-medium">
               {all.length === 0
                 ? "Мы как раз набираем первую команду специалистов"
-                : "По этим условиям пока никого нет"}
+                : query
+                  ? `По запросу «${sp.q}» никого не нашлось`
+                  : "По этим условиям пока никого нет"}
             </p>
             <p className="mt-2 text-neutral-600">
               Оставьте заявку — оператор подберёт психолога вручную, как только появится подходящий.

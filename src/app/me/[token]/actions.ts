@@ -7,7 +7,14 @@ import { canClientChange, isPast } from "@/lib/datetime";
 import { meetingInvite, messages, notify, subjects } from "@/lib/notify";
 
 type Client = { id: number; name: string; phone: string; email: string | null; token: string };
-type Psy = { id: number; name: string; phone: string; email: string | null; cabinetToken: string };
+type Psy = {
+  id: number;
+  name: string;
+  phone: string;
+  email: string | null;
+  cabinetToken: string;
+  meetingUrl: string | null;
+};
 
 async function client(token: string): Promise<Client | null> {
   const [row] = await db
@@ -31,6 +38,7 @@ async function chosenPsy(clientRequestId: number): Promise<Psy | null> {
       phone: psychologists.phone,
       email: psychologists.email,
       cabinetToken: psychologists.cabinetToken,
+      meetingUrl: psychologists.meetingUrl,
     })
     .from(matches)
     .innerJoin(psychologists, eq(matches.psychologistId, psychologists.id))
@@ -90,7 +98,7 @@ export async function bookSlot(
 
   const res = await db
     .update(slots)
-    .set({ status: "booked", clientRequestId: c.id })
+    .set({ status: "booked", clientRequestId: c.id, meetingLink: psy.meetingUrl })
     .where(and(eq(slots.id, slotId), eq(slots.status, "free")));
   if ((res as unknown as { changes: number }).changes === 0) {
     return { ok: false, error: "Это время только что заняли" };
@@ -162,7 +170,12 @@ export async function rescheduleSlot(
 
   const taken = await db
     .update(slots)
-    .set({ status: "booked", clientRequestId: c.id, isIntroCall: from.isIntroCall })
+    .set({
+      status: "booked",
+      clientRequestId: c.id,
+      isIntroCall: from.isIntroCall,
+      meetingLink: psy.meetingUrl,
+    })
     .where(and(eq(slots.id, toSlotId), eq(slots.status, "free")));
   if ((taken as unknown as { changes: number }).changes === 0) {
     return { ok: false, error: "Это время только что заняли" };

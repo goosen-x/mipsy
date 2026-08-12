@@ -7,6 +7,7 @@ import { isPast } from "@/lib/datetime";
 import { messages, notify, subjects } from "@/lib/notify";
 
 export type ProfileUpdate = {
+  meetingUrl: string;
   photoUrl: string;
   approach: string;
   format: string;
@@ -38,6 +39,7 @@ export async function updateProfile(
       // Одобренный профиль после правок снова показывается оператору на вычитку.
       needsReview: psy.moderationStatus === "approved",
       photoUrl: data.photoUrl?.trim() || null,
+      meetingUrl: data.meetingUrl?.trim() || null,
       approach: data.approach?.trim() || null,
       format: data.format || null,
       price: data.price?.trim() || null,

@@ -31,6 +31,14 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
           {psy.createdAt.slice(0, 16)} · тел. <span className="font-medium text-neutral-900">{psy.phone}</span>
           {psy.email && <> · {psy.email}</>}
         </p>
+        <p className="mt-2 text-sm text-neutral-500">
+          Кабинет: <Link href={`/cab/${psy.cabinetToken}`} className="break-all text-brand-700 underline">/cab/{psy.cabinetToken}</Link>
+          {psy.accessCode && (
+            <>
+              {" · "}код для входа: <span className="font-mono font-medium text-neutral-900">{psy.accessCode}</span>
+            </>
+          )}
+        </p>
       </div>
 
       <section className="rounded-2xl bg-white p-6 shadow-sm">

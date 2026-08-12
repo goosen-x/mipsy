@@ -1,0 +1,43 @@
+import { desc } from "drizzle-orm";
+import { adminLog, db } from "@/db";
+import { Badge } from "@/components/ui/badge";
+
+export const dynamic = "force-dynamic";
+
+export default async function AuditPage() {
+  const rows = await db.select().from(adminLog).orderBy(desc(adminLog.createdAt)).limit(300);
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">Журнал действий</h1>
+      <p className="mt-2 text-neutral-600">
+        Что оператор делал с данными клиентов и психологов. При работе с данными о здоровье такой
+        журнал обязателен: он показывает, кто и когда менял статусы, подбирал специалистов,
+        публиковал отзывы и разбирал жалобы.
+      </p>
+
+      {rows.length === 0 ? (
+        <p className="mt-6 text-neutral-500">Пока пусто.</p>
+      ) : (
+        <ul className="mt-6 space-y-2">
+          {rows.map((r) => (
+            <li
+              key={r.id}
+              className="flex flex-wrap items-center gap-3 rounded-xl bg-white p-3 text-sm shadow-sm"
+            >
+              <span className="text-neutral-400">{r.createdAt.slice(0, 16)}</span>
+              <Badge variant="secondary">{r.action}</Badge>
+              {r.targetType && (
+                <span className="text-neutral-500">
+                  {r.targetType}
+                  {r.targetId != null && ` #${r.targetId}`}
+                </span>
+              )}
+              {r.detail && <span className="text-neutral-700">{r.detail}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
