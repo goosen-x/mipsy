@@ -36,6 +36,7 @@ export async function bookFirstSession(
       id: psychologists.id,
       name: psychologists.name,
       phone: psychologists.phone,
+      email: psychologists.email,
       cabinetToken: psychologists.cabinetToken,
     })
     .from(psychologists)
@@ -103,6 +104,8 @@ export async function bookFirstSession(
     recipientRole: "psychologist",
     recipientName: psy.name,
     recipientPhone: psy.phone,
+    recipientEmail: psy.email,
+    subject: subjects.booked,
     body: messages.psyBooked(name, slot.startsAt, psy.cabinetToken),
     clientRequestId: req.id,
     psychologistId: psy.id,

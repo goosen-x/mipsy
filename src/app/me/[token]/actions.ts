@@ -7,7 +7,7 @@ import { canClientChange, isPast } from "@/lib/datetime";
 import { meetingInvite, messages, notify, subjects } from "@/lib/notify";
 
 type Client = { id: number; name: string; phone: string; email: string | null; token: string };
-type Psy = { id: number; name: string; phone: string; cabinetToken: string };
+type Psy = { id: number; name: string; phone: string; email: string | null; cabinetToken: string };
 
 async function client(token: string): Promise<Client | null> {
   const [row] = await db
@@ -29,6 +29,7 @@ async function chosenPsy(clientRequestId: number): Promise<Psy | null> {
       id: psychologists.id,
       name: psychologists.name,
       phone: psychologists.phone,
+      email: psychologists.email,
       cabinetToken: psychologists.cabinetToken,
     })
     .from(matches)
@@ -121,6 +122,8 @@ export async function bookSlot(
     recipientRole: "psychologist",
     recipientName: psy.name,
     recipientPhone: psy.phone,
+    recipientEmail: psy.email,
+    subject: subjects.booked,
     body: messages.psyBooked(c.name, slot.startsAt, psy.cabinetToken),
     clientRequestId: c.id,
     psychologistId: psy.id,
@@ -195,6 +198,8 @@ export async function rescheduleSlot(
     recipientRole: "psychologist",
     recipientName: psy.name,
     recipientPhone: psy.phone,
+    recipientEmail: psy.email,
+    subject: subjects.rescheduled,
     body: messages.psyRescheduled(c.name, to.startsAt, psy.cabinetToken),
     clientRequestId: c.id,
     psychologistId: psy.id,
@@ -233,6 +238,8 @@ export async function cancelBooking(
       recipientRole: "psychologist",
       recipientName: psy.name,
       recipientPhone: psy.phone,
+      recipientEmail: psy.email,
+      subject: subjects.cancelled,
       body: messages.psyCancelled(c.name, slot.startsAt),
       clientRequestId: c.id,
       psychologistId: psy.id,

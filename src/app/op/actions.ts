@@ -258,7 +258,12 @@ export async function moderatePsychologist(
     .where(eq(psychologists.id, id));
 
   const [full] = await db
-    .select({ name: psychologists.name, phone: psychologists.phone, token: psychologists.cabinetToken })
+    .select({
+      name: psychologists.name,
+      phone: psychologists.phone,
+      email: psychologists.email,
+      token: psychologists.cabinetToken,
+    })
     .from(psychologists)
     .where(eq(psychologists.id, id));
   await notify({
@@ -266,6 +271,8 @@ export async function moderatePsychologist(
     recipientRole: "psychologist",
     recipientName: full.name,
     recipientPhone: full.phone,
+    recipientEmail: full.email,
+    subject: subjects.moderation,
     body: messages.psyModerated(decision === "approved", full.token),
     psychologistId: id,
   });
