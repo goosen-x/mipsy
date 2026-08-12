@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Иллюстрированный портрет">
+  <defs>
+    <clipPath id="c3"><rect width="400" height="400"/></clipPath>
+  </defs>
+  <g clip-path="url(#c3)">
+    <rect width="400" height="400" fill="#e8f3ee"/>
+    <circle cx="200" cy="168" r="118" fill="#d3e9de"/>
+    <!-- плечи -->
+    <path d="M60 400c0-78 63-141 140-141s140 63 140 141z" fill="#3a8f72"/>
+    <path d="M170 258v26c0 16 60 16 60 0v-26z" fill="#e3a982"/>
+    <!-- шея и голова -->
+    <rect x="178" y="210" width="44" height="58" rx="22" fill="#e3a982"/>
+    <ellipse cx="200" cy="172" rx="60" ry="68" fill="#f0bf9a"/>
+    <!-- собранные волосы с пучком -->
+    <circle cx="200" cy="86" r="26" fill="#7a4a2c"/>
+    <path d="M140 172c-2-48 24-78 60-78s62 30 60 78c-4-26-14-44-24-52-18 12-64 14-84-2-8 12-10 32-12 54z" fill="#7a4a2c"/>
+    <path d="M134 170c-8 34-2 60 8 74 2-30 0-52 4-70z" fill="#7a4a2c"/>
+    <path d="M266 170c8 34 2 60-8 74-2-30 0-52-4-70z" fill="#7a4a2c"/>
+  </g>
+</svg>

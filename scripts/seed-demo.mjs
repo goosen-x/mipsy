@@ -11,6 +11,7 @@ const PSYCHOLOGISTS = [
   {
     token: "demo-kovaleva",
     slug: "mariya-kovaleva",
+    photoUrl: "/demo/kovaleva.svg",
     name: "Мария Ковалёва",
     phone: "+79001110011",
     email: "demo1@mipsy.test",
@@ -43,6 +44,7 @@ const PSYCHOLOGISTS = [
   {
     token: "demo-demyanov",
     slug: "igor-demyanov",
+    photoUrl: "/demo/demyanov.svg",
     name: "Игорь Демьянов",
     phone: "+79001110022",
     email: "demo2@mipsy.test",
@@ -75,6 +77,7 @@ const PSYCHOLOGISTS = [
   {
     token: "demo-severtseva",
     slug: "alina-severtseva",
+    photoUrl: "/demo/severtseva.svg",
     name: "Алина Северцева",
     phone: "+79001110033",
     email: "demo3@mipsy.test",
@@ -110,8 +113,8 @@ const insertPsy = db.prepare(`
   INSERT INTO psychologists
     (cabinet_token, slug, name, phone, email, education, education_docs, experience_years,
      supervision, personal_therapy, moderation_status, approach, format, price, about,
-     topic_slugs, how_sessions, faq, intro_call_enabled)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?, ?, ?, ?, 0)
+     topic_slugs, how_sessions, faq, photo_url, intro_call_enabled)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?, ?, ?, ?, ?, 0)
 `);
 const insertSlot = db.prepare(
   "INSERT INTO slots (psychologist_id, starts_at, duration_min, status, is_intro_call) VALUES (?, ?, ?, 'free', 0)",
@@ -131,7 +134,7 @@ for (const p of PSYCHOLOGISTS) {
     p.token, p.slug, p.name, p.phone, p.email, p.education,
     "демо-данные, документы не прикладывались", p.experienceYears,
     p.supervision, p.personalTherapy, p.approach, p.format, p.price, p.about,
-    JSON.stringify(p.topicSlugs), p.howSessions, JSON.stringify(p.faq),
+    JSON.stringify(p.topicSlugs), p.howSessions, JSON.stringify(p.faq), p.photoUrl,
   );
   const { id } = findPsy.get(p.token);
   created++;
