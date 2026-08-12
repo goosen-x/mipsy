@@ -16,6 +16,17 @@
 - При старте контейнер запускает `scripts/migrate.mjs`: применяет SQL-миграции из `drizzle/` (журнал — таблица `_migrations`) и сидит справочник тем. Использует только better-sqlite3 — drizzle-orm в standalone не попадает.
 - БД: SQLite в volume `/root/mipsy-data` на хосте (`/app/data/mipsy.db` в контейнере) — переживает пересборки.
 - Пароль оператора передаётся через `-e OPERATOR_PASSWORD=…` (админка: `/op`).
+- `-e SITE_URL=https://mipsy.mskacademy.ru` — подставляется в ссылки внутри SMS.
+- SMS: `-e SMS_LOGIN=… -e SMS_PASSWORD=… [-e SMS_SENDER=…]` (провайдер smsc.ru). Без них уведомления копятся в `/op/notifications`, оператор отправляет вручную.
+- Загруженные фото психологов лежат в `/root/mipsy-data/uploads` (тот же volume, что и база) и отдаются роутом `/uploads/[name]`.
+
+## Бэкапы
+
+`/root/mipsy-backup.sh` (исходник — `scripts/backup.sh`) запускается кроном ежедневно в 04:00: делает `VACUUM INTO` без остановки сервиса, жмёт gzip, отдельно архивирует загруженные фото, хранит 14 дней в `/root/mipsy-data/backups`. Лог — `/var/log/mipsy-backup.log`. Проверка восстановления: распаковать копию и открыть её через `docker run --rm -v …:/t mipsy node -e "…"`.
+
+## Тесты
+
+`npm test` — 13 проверок на node:test: перевод в московское время, правило 24 часов, гонка за слот на настоящей SQLite, кризисный флаг, фильтр контактов в профиле.
 
 ## Обновление версии
 
