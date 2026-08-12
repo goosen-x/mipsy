@@ -44,11 +44,12 @@ export default async function CatalogPage({
       <main className="mx-auto max-w-5xl px-4 py-10">
         <h1 className="text-3xl font-bold">Наши психологи</h1>
         <p className="mt-3 max-w-2xl text-neutral-600">
-          Можно выбрать специалиста самостоятельно. Если не хочется разбираться —{" "}
+          Первая встреча с любым специалистом бесплатная — выбирайте и записывайтесь сразу. Если не
+          хочется разбираться —{" "}
           <Link href="/anketa" className="font-medium text-brand-700 underline">
             заполните анкету
           </Link>
-          , и мы подберём его за вас.
+          , и мы подберём психолога за вас.
         </p>
 
         {/* Фильтры */}
@@ -131,11 +132,12 @@ export default async function CatalogPage({
                         </span>
                       ))}
                     </div>
-                    {p.introCallEnabled && (
-                      <Badge variant="secondary" className="mt-3">
-                        Бесплатное знакомство
-                      </Badge>
-                    )}
+                    <div className="mt-3 flex items-center justify-between">
+                      <Badge variant="secondary">Первая встреча бесплатно</Badge>
+                      <span className="text-sm font-medium text-accent-600">
+                        Выбрать время →
+                      </span>
+                    </div>
                   </CardContent>
                 </Card>
               </Link>

@@ -103,8 +103,7 @@ export default async function ClientCabinetPage({
                 <div className="text-xl font-semibold">{match.psy.name}</div>
                 <div className="text-neutral-500">{match.psy.approach}</div>
                 <div className="mt-1 text-sm text-neutral-600">
-                  {match.psy.price || "стоимость уточняется"}
-                  {match.psy.introCallEnabled && " · есть бесплатное знакомство на 20 минут"}
+                  {match.psy.price || "стоимость уточняется"} · первая встреча бесплатно
                 </div>
                 {match.psy.slug && (
                   <Link
@@ -133,7 +132,7 @@ export default async function ClientCabinetPage({
                     <div className="font-medium">{formatSlot(s.startsAt)}</div>
                     <div className="text-sm text-neutral-500">
                       {s.durationMin} минут
-                      {s.isIntroCall && " · знакомство, бесплатно"}
+                      {s.isIntroCall && " · первая встреча, бесплатно"}
                     </div>
                   </div>
                   <CancelBookingButton token={token} slotId={s.id} />

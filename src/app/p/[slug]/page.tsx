@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { db, psychologists, topics } from "@/db";
+import { db, psychologists, slots, topics } from "@/db";
 import { SiteFooter, SiteHeader } from "@/components/site";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { isPast } from "@/lib/datetime";
+import { ProfileBooking } from "./booking";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +25,15 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
           .where(inArray(topics.slug, psy.topicSlugs))
           .orderBy(asc(topics.sort))
       : [];
+
+  const now = new Date();
+  const freeSlots = (
+    await db
+      .select()
+      .from(slots)
+      .where(and(eq(slots.psychologistId, psy.id), eq(slots.status, "free")))
+      .orderBy(asc(slots.startsAt))
+  ).filter((s) => !isPast(s.startsAt, now));
 
   const formatLabel =
     psy.format === "online" ? "Онлайн" : psy.format === "offline" ? "Очно" : "Онлайн и очно";
@@ -71,11 +80,9 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
               <dt className="text-neutral-500">Стоимость</dt>
               <dd>{psy.price || "уточняется при подборе"}</dd>
             </dl>
-            {psy.introCallEnabled && (
-              <Badge className="mt-3" variant="secondary">
-                Бесплатное знакомство · 20 минут
-              </Badge>
-            )}
+            <Badge className="mt-3" variant="secondary">
+              Первая встреча — бесплатно
+            </Badge>
           </div>
         </section>
 
@@ -137,20 +144,27 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
           </Section>
         )}
 
-        {/* 7. Единственная кнопка «Записаться» — через анкету, контакты закрыты */}
-        <section className="mt-12 rounded-3xl bg-brand-50 p-8 text-center">
-          <h2 className="text-2xl font-bold">Хотите работать с этим специалистом?</h2>
-          <p className="mx-auto mt-2 max-w-md text-neutral-600">
-            Заполните анкету и скажите оператору, что вам откликнулся профиль {psy.name} — мы
-            согласуем время встречи.
-          </p>
-          <Button
-            asChild
-            size="lg"
-            className="mt-6 rounded-lg bg-accent-500 px-8 hover:bg-accent-600"
-          >
-            <Link href="/anketa">Записаться</Link>
-          </Button>
+        {/* 7. Запись: выбор времени прямо здесь, первая встреча бесплатна */}
+        <section id="booking" className="mt-12 rounded-3xl bg-brand-50 p-6 sm:p-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold">Запись на встречу</h2>
+            <p className="mx-auto mt-2 max-w-lg text-neutral-600">
+              Первая встреча с {psy.name} бесплатная — чтобы вы поняли, ваш ли это специалист.
+              Выберите удобную дату и время.
+            </p>
+          </div>
+          <div className="mt-6">
+            <ProfileBooking
+              slug={slug}
+              psyName={psy.name}
+              slots={freeSlots.map((s) => ({
+                id: s.id,
+                startsAt: s.startsAt,
+                durationMin: s.durationMin,
+                isIntroCall: s.isIntroCall,
+              }))}
+            />
+          </div>
         </section>
       </main>
       <SiteFooter />

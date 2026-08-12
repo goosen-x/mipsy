@@ -175,15 +175,10 @@ export function ProfileForm({
           )}
         </div>
       </Field>
-      <div className="flex items-start gap-3 rounded-xl bg-brand-50 p-4">
-        <Checkbox
-          id="intro"
-          checked={form.introCallEnabled}
-          onCheckedChange={(c) => set("introCallEnabled", c === true)}
-        />
-        <Label htmlFor="intro" className="text-sm font-normal leading-snug">
-          Провожу бесплатную встречу-знакомство на 20 минут — клиентам будет видна эта отметка
-        </Label>
+      <div className="rounded-xl bg-brand-50 p-4 text-sm text-brand-900">
+        <strong>Первая встреча с новым клиентом — бесплатная.</strong> Это правило платформы: так
+        человек понимает, подходите ли вы друг другу, и охотнее решается прийти. Платными будут все
+        последующие сессии.
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {saved && <p className="text-sm text-brand-700">Сохранено ✓</p>}

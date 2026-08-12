@@ -29,7 +29,6 @@ export function Schedule({ token, slots }: { token: string; slots: Slot[] }) {
   const [date, setDate] = useState("");
   const [times, setTimes] = useState<string[]>([]);
   const [duration, setDuration] = useState("50");
-  const [intro, setIntro] = useState(false);
   const [repeat, setRepeat] = useState("1");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -45,7 +44,7 @@ export function Schedule({ token, slots }: { token: string; slots: Slot[] }) {
         date,
         times,
         durationMin: Number(duration) || 50,
-        isIntroCall: intro,
+        isIntroCall: false,
         repeatWeeks: Number(repeat) || 1,
       });
       if (!res.ok) setError(res.error ?? "Не получилось");
@@ -116,12 +115,9 @@ export function Schedule({ token, slots }: { token: string; slots: Slot[] }) {
               className="w-20"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Checkbox id="introslot" checked={intro} onCheckedChange={(c) => setIntro(c === true)} />
-            <Label htmlFor="introslot" className="text-sm font-normal">
-              это знакомство (бесплатно)
-            </Label>
-          </div>
+          <span className="text-sm text-neutral-500">
+            Первая встреча каждого нового клиента бесплатная — отмечать это не нужно.
+          </span>
         </div>
 
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
