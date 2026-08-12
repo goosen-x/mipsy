@@ -73,7 +73,7 @@ export default async function Home() {
       <SiteHeader />
       <main>
         {/* Hero */}
-        <section className="bg-gradient-to-b from-brand-50 via-brand-100 to-white">
+        <section className="bg-brand-50">
           <div className="mx-auto max-w-5xl px-4 py-20 text-center">
             <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
               Мы подберём вам психолога
@@ -130,7 +130,7 @@ export default async function Home() {
 
         {/* Проверка психологов — мягкая формулировка, критерии модерации ещё не зафиксированы */}
         <section className="mx-auto max-w-5xl px-4 py-16">
-          <div className="rounded-3xl bg-gradient-to-br from-brand-400 to-brand-600 p-10 text-white">
+          <div className="rounded-3xl bg-brand-600 p-10 text-white">
             <h2 className="text-3xl font-bold">Кто наши психологи</h2>
             <p className="mt-4 max-w-3xl text-lg text-brand-100">
               Каждый специалист проходит проверку перед тем, как попасть на платформу: мы смотрим
