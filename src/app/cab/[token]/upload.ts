@@ -1,12 +1,10 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, psychologists } from "@/db";
-import { uploadsDir } from "@/lib/uploads";
+import { putObject } from "@/lib/storage";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const TYPES: Record<string, string> = {
@@ -14,6 +12,16 @@ const TYPES: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
 };
+
+/** Заявленному Content-Type не доверяем — проверяем сигнатуру самих байтов. */
+function looksLikeImage(bytes: Buffer): boolean {
+  const isJpg = bytes[0] === 0xff && bytes[1] === 0xd8;
+  const isPng =
+    bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+  const isWebp =
+    bytes.subarray(0, 4).toString() === "RIFF" && bytes.subarray(8, 12).toString() === "WEBP";
+  return isJpg || isPng || isWebp;
+}
 
 export async function uploadPhoto(
   token: string,
@@ -33,18 +41,9 @@ export async function uploadPhoto(
   if (!ext) return { ok: false, error: "Подойдёт JPG, PNG или WebP" };
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  // Проверяем сигнатуру файла, а не только заявленный тип.
-  const isJpg = bytes[0] === 0xff && bytes[1] === 0xd8;
-  const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
-  const isWebp = bytes.subarray(0, 4).toString() === "RIFF" && bytes.subarray(8, 12).toString() === "WEBP";
-  if (!isJpg && !isPng && !isWebp) return { ok: false, error: "Файл не похож на изображение" };
+  if (!looksLikeImage(bytes)) return { ok: false, error: "Файл не похож на изображение" };
 
-  const name = `${randomUUID()}.${ext}`;
-  const dir = uploadsDir();
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, name), bytes);
-
-  const url = `/uploads/${name}`;
+  const { url } = await putObject(`${randomUUID()}.${ext}`, bytes);
   await db.update(psychologists).set({ photoUrl: url }).where(eq(psychologists.id, psy.id));
 
   revalidatePath(`/cab/${token}`);
