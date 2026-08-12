@@ -8,7 +8,33 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { formatDay, groupByDate } from "@/lib/datetime";
-import { addSlots, removeSlot } from "./actions";
+import { addSlots, markSlotOutcome, removeSlot } from "./actions";
+
+/** Отметка исхода прошедшей встречи. */
+export function OutcomeControl({ token, slotId }: { token: string; slotId: number }) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const mark = (outcome: "done" | "no_show") =>
+    startTransition(async () => {
+      const res = await markSlotOutcome(token, slotId, outcome);
+      if (!res.ok) setError(res.error ?? "Не вышло");
+      else router.refresh();
+    });
+
+  return (
+    <span className="flex items-center gap-2">
+      <Button size="sm" disabled={pending} onClick={() => mark("done")}>
+        Встреча состоялась
+      </Button>
+      <Button size="sm" variant="ghost" disabled={pending} onClick={() => mark("no_show")}>
+        не пришёл
+      </Button>
+      {error && <span className="text-xs text-red-600">{error}</span>}
+    </span>
+  );
+}
 
 type Slot = {
   id: number;

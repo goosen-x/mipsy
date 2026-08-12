@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { and, asc, eq, inArray } from "drizzle-orm";
-import { db, psychologists, slots, topics } from "@/db";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { db, psychologists, reviews, slots, topics } from "@/db";
 import { SiteFooter, SiteHeader } from "@/components/site";
 import { Badge } from "@/components/ui/badge";
 import { isPast } from "@/lib/datetime";
@@ -25,6 +25,23 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
           .where(inArray(topics.slug, psy.topicSlugs))
           .orderBy(asc(topics.sort))
       : [];
+
+  const published = await db
+    .select({
+      id: reviews.id,
+      rating: reviews.rating,
+      body: reviews.body,
+      authorName: reviews.authorName,
+      createdAt: reviews.createdAt,
+    })
+    .from(reviews)
+    .where(and(eq(reviews.psychologistId, psy.id), eq(reviews.status, "published")))
+    .orderBy(desc(reviews.createdAt))
+    .limit(10);
+  const avg =
+    published.length > 0
+      ? (published.reduce((sum, r) => sum + r.rating, 0) / published.length).toFixed(1)
+      : null;
 
   const now = new Date();
   const freeSlots = (
@@ -80,9 +97,15 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
               <dt className="text-neutral-500">Стоимость</dt>
               <dd>{psy.price || "уточняется при подборе"}</dd>
             </dl>
-            <Badge className="mt-3" variant="secondary">
-              Первая встреча — бесплатно
-            </Badge>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <Badge variant="secondary">Первая встреча — бесплатно</Badge>
+              {avg && (
+                <span className="text-sm">
+                  <span className="text-accent-500">★</span> {avg}{" "}
+                  <span className="text-neutral-500">· {published.length} отзыв(ов)</span>
+                </span>
+              )}
+            </div>
           </div>
         </section>
 
@@ -141,6 +164,28 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
                 </div>
               ))}
             </div>
+          </Section>
+        )}
+
+        {/* Отзывы клиентов */}
+        {published.length > 0 && (
+          <Section title="Отзывы">
+            <ul className="space-y-4">
+              {published.map((r) => (
+                <li key={r.id} className="rounded-2xl border p-4">
+                  <div className="flex items-center gap-3 text-sm">
+                    <span className="text-accent-500">{"★".repeat(r.rating)}</span>
+                    <span className="font-medium">{r.authorName}</span>
+                    <span className="text-neutral-400">{r.createdAt.slice(0, 10)}</span>
+                  </div>
+                  {r.body && <p className="mt-2 text-neutral-700">{r.body}</p>}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-neutral-400">
+              Отзывы оставляют только клиенты, у которых встреча состоялась. Каждый проходит проверку
+              оператором.
+            </p>
           </Section>
         )}
 

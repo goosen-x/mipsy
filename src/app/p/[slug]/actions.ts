@@ -5,11 +5,12 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { clientRequests, db, matches, psychologists, slots } from "@/db";
 import { isPast } from "@/lib/datetime";
-import { messages, notify } from "@/lib/notify";
+import { meetingInvite, messages, notify, subjects } from "@/lib/notify";
 
 export type DirectBooking = {
   name: string;
   phone: string;
+  email: string;
   note: string;
   pdConsent: boolean;
 };
@@ -53,6 +54,7 @@ export async function bookFirstSession(
       forWhom: "self",
       name,
       phone,
+      email: data.email?.trim() || null,
       story: data.note?.trim() || null,
       pdConsent: true,
       status: "matched",
@@ -80,7 +82,18 @@ export async function bookFirstSession(
     recipientRole: "client",
     recipientName: name,
     recipientPhone: phone,
+    recipientEmail: data.email?.trim() || null,
+    subject: subjects.booked,
     body: messages.clientBooked(psy.name, slot.startsAt, token),
+    attachments: [
+      meetingInvite({
+        slotId,
+        startsAt: slot.startsAt,
+        durationMin: slot.durationMin,
+        psyName: psy.name,
+        clientToken: token,
+      }),
+    ],
     clientRequestId: req.id,
     psychologistId: psy.id,
     slotId,

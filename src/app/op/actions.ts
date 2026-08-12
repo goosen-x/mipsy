@@ -3,9 +3,18 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { clientRequests, db, matches, notifications, psychologists, slots } from "@/db";
+import {
+  clientRequests,
+  db,
+  matches,
+  notifications,
+  psychologists,
+  reviews,
+  slots,
+  supportTickets,
+} from "@/db";
 import { isOperator, OP_COOKIE, opPasswordHash } from "@/lib/op-auth";
-import { messages, notify } from "@/lib/notify";
+import { messages, notify, subjects } from "@/lib/notify";
 
 export async function opLogin(password: string): Promise<{ ok: boolean; error?: string }> {
   const hash = opPasswordHash();
@@ -47,7 +56,10 @@ export async function updateRequest(
   return { ok: true };
 }
 
-// Подбор: деактивирует прежнюю привязку (переподбор) и создаёт новую.
+/**
+ * Подбор: оператор предлагает клиенту 2–3 специалистов, клиент выбирает сам.
+ * Повторный вызов добавляет ещё одного к предложенным.
+ */
 export async function assignPsychologist(
   requestId: number,
   psychologistId: number,
@@ -60,43 +72,108 @@ export async function assignPsychologist(
     .where(eq(psychologists.id, psychologistId));
   if (!psy || psy.status !== "approved") return { ok: false, error: "Психолог не одобрен" };
 
-  await db
-    .update(matches)
-    .set({ active: false })
+  const current = await db
+    .select({ id: matches.id, psychologistId: matches.psychologistId })
+    .from(matches)
     .where(and(eq(matches.clientRequestId, requestId), eq(matches.active, true)));
+  if (current.some((m) => m.psychologistId === psychologistId)) {
+    return { ok: false, error: "Этот специалист уже предложен" };
+  }
+  if (current.length >= 3) {
+    return { ok: false, error: "Больше трёх вариантов клиенту показывать не стоит" };
+  }
+
   await db.insert(matches).values({
     clientRequestId: requestId,
     psychologistId,
     note: note?.trim() || null,
+    // Единственный вариант выбираем за клиента, иначе он выбирает сам.
+    chosen: current.length === 0,
   });
   await db.update(clientRequests).set({ status: "matched" }).where(eq(clientRequests.id, requestId));
 
+  revalidatePath(`/op/requests/${requestId}`);
+  revalidatePath("/op");
+  return { ok: true };
+}
+
+/** Оператор отправляет клиенту подборку целиком, когда набрал варианты. */
+export async function sendProposals(requestId: number): Promise<{ ok: boolean; error?: string }> {
+  await guard();
   const [client] = await db
     .select({
       name: clientRequests.name,
       phone: clientRequests.phone,
+      email: clientRequests.email,
       token: clientRequests.clientToken,
     })
     .from(clientRequests)
     .where(eq(clientRequests.id, requestId));
-  const [psyFull] = await db
+  if (!client?.token) return { ok: false, error: "У заявки нет личной страницы" };
+
+  const proposed = await db
     .select({ name: psychologists.name })
-    .from(psychologists)
-    .where(eq(psychologists.id, psychologistId));
-  if (client?.token) {
-    await notify({
-      kind: "matched",
-      recipientRole: "client",
-      recipientName: client.name,
-      recipientPhone: client.phone,
-      body: messages.clientMatched(psyFull.name, client.token),
-      clientRequestId: requestId,
-      psychologistId,
-    });
-  }
+    .from(matches)
+    .innerJoin(psychologists, eq(matches.psychologistId, psychologists.id))
+    .where(and(eq(matches.clientRequestId, requestId), eq(matches.active, true)));
+  if (proposed.length === 0) return { ok: false, error: "Сначала подберите специалистов" };
+
+  await notify({
+    kind: "matched",
+    recipientRole: "client",
+    recipientName: client.name,
+    recipientPhone: client.phone,
+    recipientEmail: client.email,
+    subject: subjects.matched,
+    body: messages.clientMatched(
+      proposed.map((p) => p.name),
+      client.token,
+    ),
+    clientRequestId: requestId,
+  });
 
   revalidatePath(`/op/requests/${requestId}`);
-  revalidatePath("/op");
+  return { ok: true };
+}
+
+export async function dropProposal(
+  requestId: number,
+  matchId: number,
+): Promise<{ ok: boolean }> {
+  await guard();
+  await db.update(matches).set({ active: false, chosen: false }).where(eq(matches.id, matchId));
+  revalidatePath(`/op/requests/${requestId}`);
+  return { ok: true };
+}
+
+export async function moderateReview(
+  id: number,
+  decision: "published" | "rejected",
+  notes: string,
+): Promise<{ ok: boolean }> {
+  await guard();
+  await db
+    .update(reviews)
+    .set({ status: decision, moderationNotes: notes?.trim() || null })
+    .where(eq(reviews.id, id));
+  revalidatePath("/op/reviews");
+  revalidatePath("/catalog");
+  return { ok: true };
+}
+
+export async function updateTicket(
+  id: number,
+  data: { status?: string; operatorNotes?: string },
+): Promise<{ ok: boolean }> {
+  await guard();
+  await db
+    .update(supportTickets)
+    .set({
+      ...(data.status !== undefined ? { status: data.status } : {}),
+      ...(data.operatorNotes !== undefined ? { operatorNotes: data.operatorNotes } : {}),
+    })
+    .where(eq(supportTickets.id, id));
+  revalidatePath("/op/support");
   return { ok: true };
 }
 

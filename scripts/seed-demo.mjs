@@ -109,6 +109,40 @@ const PSYCHOLOGISTS = [
   },
 ];
 
+
+// Ещё десять специалистов, чтобы каталог и подбор 2–3 вариантов были похожи на настоящие.
+const MORE = [
+  ["demo-orlova","elena-orlova","Елена Орлова","КПТ и схема-терапия",11,"online","4 000 ₽ / 50 минут",["anxiety","self-esteem","work-study","life-changes"],[1,3,4],["10:00","14:00","18:00"]],
+  ["demo-rybakov","pavel-rybakov","Павел Рыбаков","Экзистенциальный анализ",15,"both","5 000 ₽ / 60 минут",["loss","loneliness","life-changes","depression"],[2,5],["11:00","16:00","19:00"]],
+  ["demo-gafarova","dinara-gafarova","Динара Гафарова","Гештальт-терапия",7,"online","3 200 ₽ / 50 минут",["relationships","family","anger","intimacy"],[1,2,4],["09:00","13:00","17:00"]],
+  ["demo-belyaev","artem-belyaev","Артём Беляев","КПТ",5,"online","2 800 ₽ / 50 минут",["anxiety","sleep","work-study"],[3,5,6],["12:00","15:00","20:00"]],
+  ["demo-nikitina","olga-nikitina","Ольга Никитина","Психоанализ",18,"both","6 000 ₽ / 50 минут",["childhood-trauma","depression","self-esteem"],[2,4],["10:00","12:00"]],
+  ["demo-shvets","kirill-shvets","Кирилл Швец","Схема-терапия",8,"online","3 700 ₽ / 50 минут",["self-esteem","relationships","anger"],[1,3,5],["14:00","18:00","21:00"]],
+  ["demo-lazareva","vera-lazareva","Вера Лазарева","Семейная системная терапия",13,"both","4 500 ₽ / 60 минут",["family","parenting","relationships"],[2,6],["11:00","15:00","18:00"]],
+  ["demo-tarasov","maksim-tarasov","Максим Тарасов","Коучинг и КПТ",6,"online","3 000 ₽ / 50 минут",["burnout","work-study","life-changes"],[1,4],["08:00","13:00","19:00"]],
+  ["demo-yusupova","aliya-yusupova","Алия Юсупова","Телесно-ориентированная терапия",9,"online","3 400 ₽ / 50 минут",["anxiety","eating","sleep","intimacy"],[3,5,6],["10:00","16:00"]],
+  ["demo-kondratev","sergey-kondratev","Сергей Кондратьев","КПТ, работа с зависимостями",14,"both","4 800 ₽ / 60 минут",["anger","loneliness","depression","burnout"],[2,4,6],["12:00","17:00","20:00"]],
+];
+
+for (const [token, slug, name, approach, years, format, price, topicSlugs, days, times] of MORE) {
+  PSYCHOLOGISTS.push({
+    token, slug, name, approach, format, price, topicSlugs, days, times,
+    photoUrl: null,
+    phone: `+7900111${String(PSYCHOLOGISTS.length + 10).padStart(4, "0")}`,
+    email: `${slug}@mipsy.test`,
+    experienceYears: years,
+    education: `Профильное образование, специализация «${approach}»`,
+    supervision: "Регулярная супервизия",
+    personalTherapy: "Личная терапия пройдена",
+    about: `Работаю в подходе «${approach}» ${years} лет.\n\nПомогаю разобраться в том, что мешает жить привычной жизнью, и найти опору внутри себя. На встречах спокойно и без осуждения — вы задаёте темп.\n\nЧаще всего ко мне приходят с темами, перечисленными ниже.`,
+    howSessions: `${format === "both" ? "Онлайн или очно" : "Онлайн"}, ${format === "both" ? 60 : 50} минут, обычно раз в неделю.`,
+    faq: [
+      { q: "Как понять, что мы подходим друг другу?", a: "Первая встреча бесплатная — она как раз для этого. После неё вы решаете, продолжать ли." },
+      { q: "Что если станет тяжело между встречами?", a: "Обсудим на первой сессии, что делать в такие моменты, и договоримся о поддержке." },
+    ],
+  });
+}
+
 const insertPsy = db.prepare(`
   INSERT INTO psychologists
     (cabinet_token, slug, name, phone, email, education, education_docs, experience_years,

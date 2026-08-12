@@ -2,6 +2,8 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db, notifications } from "@/db";
 import { formatSlot, TZ_SHORT } from "./datetime";
+import { buildIcs } from "./ics";
+import { mailConfigured, sendMail, type MailAttachment } from "./mail";
 
 const SITE_URL = process.env.SITE_URL ?? "https://mipsy.mskacademy.ru";
 
@@ -11,24 +13,24 @@ export type NotifyKind =
   | "cancelled"
   | "reminder"
   | "matched"
-  | "moderation";
+  | "moderation"
+  | "review";
 
 type NotifyInput = {
   kind: NotifyKind;
   recipientRole: "client" | "psychologist";
   recipientName: string;
   recipientPhone: string;
+  recipientEmail?: string | null;
+  subject?: string;
   body: string;
+  attachments?: MailAttachment[];
   clientRequestId?: number;
   psychologistId?: number;
   slotId?: number;
 };
 
-/**
- * Отправка SMS. Провайдер подключается переменными окружения; пока их нет,
- * уведомление остаётся в очереди со статусом pending — оператор отправляет
- * его вручную из админки, где для этого есть готовый текст и ссылка.
- */
+/** SMS через smsc.ru — подключается парой переменных окружения. */
 async function sendSms(phone: string, body: string): Promise<{ ok: boolean; error?: string }> {
   const login = process.env.SMS_LOGIN;
   const password = process.env.SMS_PASSWORD;
@@ -52,15 +54,27 @@ async function sendSms(phone: string, body: string): Promise<{ ok: boolean; erro
   }
 }
 
-/** Кладёт уведомление в очередь и пробует отправить сразу. */
+const stamp = () => new Date().toISOString().slice(0, 16).replace("T", " ");
+
+/**
+ * Кладёт уведомление в очередь и пробует отправить. Письмо уходит, если задан
+ * SMTP и известен адрес; иначе остаётся SMS. Неотправленное видно оператору
+ * в админке с готовым текстом.
+ */
 export async function notify(input: NotifyInput): Promise<void> {
+  const useEmail = Boolean(input.recipientEmail) && mailConfigured();
+  const channel = useEmail ? "email" : "sms";
+
   const [row] = await db
     .insert(notifications)
     .values({
       kind: input.kind,
+      channel,
       recipientRole: input.recipientRole,
       recipientName: input.recipientName,
       recipientPhone: input.recipientPhone,
+      recipientEmail: input.recipientEmail ?? null,
+      subject: input.subject ?? null,
       body: input.body,
       clientRequestId: input.clientRequestId,
       psychologistId: input.psychologistId,
@@ -68,37 +82,81 @@ export async function notify(input: NotifyInput): Promise<void> {
     })
     .returning({ id: notifications.id });
 
-  const sent = await sendSms(input.recipientPhone, input.body);
-  if (sent.ok) {
+  const result = useEmail
+    ? await sendMail({
+        to: input.recipientEmail!,
+        subject: input.subject ?? "mipsy",
+        text: input.body,
+        attachments: input.attachments,
+      })
+    : await sendSms(input.recipientPhone, input.body);
+
+  if (result.ok) {
     await db
       .update(notifications)
-      .set({ status: "sent", sentAt: new Date().toISOString().slice(0, 16).replace("T", " ") })
+      .set({ status: "sent", sentAt: stamp() })
       .where(eq(notifications.id, row.id));
-  } else if (sent.error !== "провайдер не настроен") {
-    await db.update(notifications).set({ error: sent.error }).where(eq(notifications.id, row.id));
+  } else if (!result.error?.includes("не настроен")) {
+    await db.update(notifications).set({ error: result.error }).where(eq(notifications.id, row.id));
   }
+}
+
+/** Приглашение на встречу вложением — «автоматическое формирование приглашений» из ТЗ. */
+export function meetingInvite(params: {
+  slotId: number;
+  startsAt: string;
+  durationMin: number;
+  psyName: string;
+  clientToken: string;
+}): MailAttachment {
+  return {
+    filename: "vstrecha-mipsy.ics",
+    contentType: "text/calendar; charset=utf-8; method=REQUEST",
+    content: buildIcs({
+      uid: `mipsy-slot-${params.slotId}@mipsy.mskacademy.ru`,
+      startsAt: params.startsAt,
+      durationMin: params.durationMin,
+      summary: `Встреча с психологом ${params.psyName} (mipsy)`,
+      description: `Ваша страница на mipsy: ${SITE_URL}/me/${params.clientToken}`,
+      url: `${SITE_URL}/me/${params.clientToken}`,
+    }),
+  };
 }
 
 // Тексты уведомлений собраны здесь, чтобы их было легко вычитать целиком.
 export const messages = {
   clientBooked: (psyName: string, startsAt: string, token: string) =>
-    `mipsy: вы записаны к психологу ${psyName} на ${formatSlot(startsAt)}. Первая встреча бесплатная. Ваша страница: ${SITE_URL}/me/${token}`,
-  clientMatched: (psyName: string, token: string) =>
-    `mipsy: мы подобрали вам психолога — ${psyName}. Выберите удобное время: ${SITE_URL}/me/${token}`,
+    `Вы записаны к психологу ${psyName} на ${formatSlot(startsAt)}. Первая встреча бесплатная.\n\nЕсли планы изменятся, встречу можно перенести или отменить не позднее чем за 24 часа на вашей странице: ${SITE_URL}/me/${token}\n\nКоманда mipsy`,
+  clientMatched: (names: string[], token: string) =>
+    names.length > 1
+      ? `Мы подобрали для вас ${names.length} специалистов: ${names.join(", ")}. Посмотрите профили, выберите того, кто откликнется, и запишитесь на бесплатную первую встречу: ${SITE_URL}/me/${token}`
+      : `Мы подобрали вам психолога — ${names[0]}. Выберите удобное время для бесплатной первой встречи: ${SITE_URL}/me/${token}`,
   clientRescheduled: (psyName: string, startsAt: string, token: string) =>
-    `mipsy: встреча с ${psyName} перенесена на ${formatSlot(startsAt)}. Подробности: ${SITE_URL}/me/${token}`,
+    `Встреча с ${psyName} перенесена на ${formatSlot(startsAt)}. Подробности: ${SITE_URL}/me/${token}`,
   clientCancelled: (psyName: string, startsAt: string, token: string) =>
-    `mipsy: встреча с ${psyName} ${formatSlot(startsAt)} отменена. Выбрать другое время: ${SITE_URL}/me/${token}`,
+    `Встреча с ${psyName} ${formatSlot(startsAt)} отменена. Выбрать другое время: ${SITE_URL}/me/${token}`,
   clientReminder: (psyName: string, startsAt: string) =>
-    `mipsy: напоминаем о встрече с ${psyName} завтра в ${startsAt.split("T")[1]} ${TZ_SHORT}.`,
+    `Напоминаем о встрече с ${psyName} завтра в ${startsAt.split("T")[1]} ${TZ_SHORT}.`,
+  clientReview: (psyName: string, token: string) =>
+    `Как прошла встреча с ${psyName}? Оцените её на своей странице — это помогает другим людям выбрать специалиста: ${SITE_URL}/me/${token}`,
   psyBooked: (clientName: string, startsAt: string, token: string) =>
-    `mipsy: к вам записался клиент ${clientName} на ${formatSlot(startsAt)}. Кабинет: ${SITE_URL}/cab/${token}`,
+    `К вам записался клиент ${clientName} на ${formatSlot(startsAt)}. Кабинет: ${SITE_URL}/cab/${token}`,
   psyRescheduled: (clientName: string, startsAt: string, token: string) =>
-    `mipsy: клиент ${clientName} перенёс встречу на ${formatSlot(startsAt)}. Кабинет: ${SITE_URL}/cab/${token}`,
+    `Клиент ${clientName} перенёс встречу на ${formatSlot(startsAt)}. Кабинет: ${SITE_URL}/cab/${token}`,
   psyCancelled: (clientName: string, startsAt: string) =>
-    `mipsy: клиент ${clientName} отменил встречу ${formatSlot(startsAt)}. Время снова свободно.`,
+    `Клиент ${clientName} отменил встречу ${formatSlot(startsAt)}. Время снова свободно.`,
   psyModerated: (approved: boolean, token: string) =>
     approved
-      ? `mipsy: ваш профиль одобрен и опубликован. Откройте расписание, чтобы клиенты могли записаться: ${SITE_URL}/cab/${token}`
-      : `mipsy: по вашей заявке принято отрицательное решение. Подробности в кабинете: ${SITE_URL}/cab/${token}`,
+      ? `Ваш профиль одобрен и опубликован. Откройте расписание, чтобы клиенты могли записаться: ${SITE_URL}/cab/${token}`
+      : `По вашей заявке принято отрицательное решение. Подробности в кабинете: ${SITE_URL}/cab/${token}`,
+};
+
+export const subjects = {
+  booked: "mipsy: вы записаны на встречу",
+  matched: "mipsy: мы подобрали психолога",
+  rescheduled: "mipsy: встреча перенесена",
+  cancelled: "mipsy: встреча отменена",
+  reminder: "mipsy: напоминание о встрече",
+  review: "mipsy: как прошла встреча?",
+  moderation: "mipsy: решение по вашей заявке",
 };

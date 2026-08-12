@@ -22,7 +22,7 @@ export function ProfileBooking({
 }) {
   const router = useRouter();
   const [slotId, setSlotId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: "", phone: "", note: "", pdConsent: true });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", note: "", pdConsent: true });
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -90,6 +90,15 @@ export function ProfileBooking({
               placeholder="+7 900 000-00-00"
             />
           </div>
+        </div>
+        <div>
+          <Label className="mb-1 block">Email — на него придёт подтверждение и приглашение в календарь</Label>
+          <Input
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            placeholder="ivan@example.com"
+          />
         </div>
         <div>
           <Label className="mb-1 block">Коротко о запросе — необязательно</Label>

@@ -2,7 +2,9 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db, psychologists, slots } from "@/db";
+import { clientRequests, db, psychologists, slots } from "@/db";
+import { isPast } from "@/lib/datetime";
+import { messages, notify, subjects } from "@/lib/notify";
 
 export type ProfileUpdate = {
   photoUrl: string;
@@ -98,6 +100,60 @@ export async function addSlots(
 
   revalidatePath(`/cab/${token}`);
   return { ok: true, added: fresh.length };
+}
+
+/**
+ * Психолог отмечает исход встречи. «Состоялась» открывает клиенту форму отзыва
+ * и попадает в аналитику как доведённая сессия.
+ */
+export async function markSlotOutcome(
+  token: string,
+  slotId: number,
+  outcome: "done" | "no_show",
+): Promise<{ ok: boolean; error?: string }> {
+  const psy = await psyByToken(token);
+  if (!psy) return { ok: false, error: "Кабинет не найден" };
+
+  const [slot] = await db.select().from(slots).where(eq(slots.id, slotId));
+  if (!slot || slot.psychologistId !== psy.id) return { ok: false, error: "Встреча не найдена" };
+  if (slot.status !== "booked") return { ok: false, error: "Эту встречу нельзя отметить" };
+  if (!isPast(slot.startsAt)) return { ok: false, error: "Встреча ещё не прошла" };
+
+  await db.update(slots).set({ status: outcome }).where(eq(slots.id, slotId));
+
+  if (outcome === "done" && slot.clientRequestId) {
+    const [client] = await db
+      .select({
+        name: clientRequests.name,
+        phone: clientRequests.phone,
+        email: clientRequests.email,
+        token: clientRequests.clientToken,
+      })
+      .from(clientRequests)
+      .where(eq(clientRequests.id, slot.clientRequestId));
+    const [psyFull] = await db
+      .select({ name: psychologists.name })
+      .from(psychologists)
+      .where(eq(psychologists.id, psy.id));
+    if (client?.token) {
+      await notify({
+        kind: "review",
+        recipientRole: "client",
+        recipientName: client.name,
+        recipientPhone: client.phone,
+        recipientEmail: client.email,
+        subject: subjects.review,
+        body: messages.clientReview(psyFull.name, client.token),
+        clientRequestId: slot.clientRequestId,
+        psychologistId: psy.id,
+        slotId,
+      });
+    }
+  }
+
+  revalidatePath(`/cab/${token}`);
+  revalidatePath("/op");
+  return { ok: true };
 }
 
 export async function removeSlot(token: string, slotId: number): Promise<{ ok: boolean; error?: string }> {

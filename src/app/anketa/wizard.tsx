@@ -30,6 +30,7 @@ type State = {
   story: string;
   name: string;
   phone: string;
+  email: string;
   pdConsent: boolean;
 };
 
@@ -81,6 +82,7 @@ export function AnketaWizard({ topics }: { topics: Topic[] }) {
     story: "",
     name: "",
     phone: "",
+    email: "",
     pdConsent: true,
   });
   const [stepIdx, setStepIdx] = useState(0);
@@ -147,6 +149,7 @@ export function AnketaWizard({ topics }: { topics: Topic[] }) {
       story: state.story || null,
       name: state.name,
       phone: state.phone,
+      email: state.email || null,
       pdConsent: state.pdConsent,
     };
     startTransition(async () => {
@@ -508,6 +511,17 @@ export function AnketaWizard({ topics }: { topics: Topic[] }) {
             value={state.phone}
             onChange={(e) => set("phone", e.target.value)}
             placeholder="+7 900 000-00-00"
+            className="mt-1"
+          />
+          <Label htmlFor="email" className="mt-4 block">
+            Email — на него придёт подтверждение записи
+          </Label>
+          <Input
+            id="email"
+            type="email"
+            value={state.email}
+            onChange={(e) => set("email", e.target.value)}
+            placeholder="ivan@example.com"
             className="mt-1"
           />
           <div className="mt-4 flex items-start gap-3">

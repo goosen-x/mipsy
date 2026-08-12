@@ -37,6 +37,7 @@ export const clientRequests = sqliteTable("client_requests", {
   story: text("story"),
   name: text("name").notNull(),
   phone: text("phone").notNull(),
+  email: text("email"),
   pdConsent: integer("pd_consent", { mode: "boolean" }).notNull().default(false),
 
   crisisFlag: integer("crisis_flag", { mode: "boolean" }).notNull().default(false),
@@ -101,7 +102,47 @@ export const matches = sqliteTable("matches", {
     .notNull()
     .references(() => psychologists.id),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
+  // Оператор предлагает 2–3 специалистов, клиент выбирает одного из них.
+  chosen: integer("chosen", { mode: "boolean" }).notNull().default(false),
   note: text("note"),
+});
+
+/** Отзыв клиента о состоявшейся встрече. Публикуется после модерации. */
+export const reviews = sqliteTable("reviews", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  psychologistId: integer("psychologist_id")
+    .notNull()
+    .references(() => psychologists.id),
+  clientRequestId: integer("client_request_id")
+    .notNull()
+    .references(() => clientRequests.id),
+  slotId: integer("slot_id").references(() => slots.id),
+  rating: integer("rating").notNull(), // 1–5
+  body: text("body"),
+  authorName: text("author_name").notNull(), // имя клиента, показываем как «Ольга»
+  status: text("status").notNull().default("pending"), // pending | published | rejected
+  moderationNotes: text("moderation_notes"),
+});
+
+/** Обращения в поддержку и жалобы — от клиентов и от психологов. */
+export const supportTickets = sqliteTable("support_tickets", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  fromRole: text("from_role").notNull(), // client | psychologist
+  kind: text("kind").notNull(), // question | complaint
+  name: text("name").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  body: text("body").notNull(),
+  clientRequestId: integer("client_request_id").references(() => clientRequests.id),
+  psychologistId: integer("psychologist_id").references(() => psychologists.id),
+  status: text("status").notNull().default("new"), // new | in_progress | closed
+  operatorNotes: text("operator_notes"),
 });
 
 // Календарь по образцу Zigmund: психолог отмечает свободные интервалы,
@@ -132,10 +173,13 @@ export const notifications = sqliteTable("notifications", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-  kind: text("kind").notNull(), // booked | rescheduled | cancelled | reminder | matched | moderation
+  kind: text("kind").notNull(), // booked | rescheduled | cancelled | reminder | matched | moderation | review
+  channel: text("channel").notNull().default("sms"), // sms | email
   recipientRole: text("recipient_role").notNull(), // client | psychologist
   recipientName: text("recipient_name").notNull(),
   recipientPhone: text("recipient_phone").notNull(),
+  recipientEmail: text("recipient_email"),
+  subject: text("subject"),
   body: text("body").notNull(),
   status: text("status").notNull().default("pending"), // pending | sent | failed
   sentAt: text("sent_at"),

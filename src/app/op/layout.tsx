@@ -38,6 +38,12 @@ export default async function OpLayout({ children }: { children: React.ReactNode
               <Link href="/op/psy" className="text-neutral-600 hover:text-brand-700">
                 Психологи
               </Link>
+              <Link href="/op/reviews" className="text-neutral-600 hover:text-brand-700">
+                Отзывы
+              </Link>
+              <Link href="/op/support" className="text-neutral-600 hover:text-brand-700">
+                Поддержка
+              </Link>
               <Link href="/op/notifications" className="text-neutral-600 hover:text-brand-700">
                 Уведомления
               </Link>

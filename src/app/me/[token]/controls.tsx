@@ -6,7 +6,175 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { BookingCalendar, type CalendarSlot } from "@/components/booking-calendar";
 import { formatSlot } from "@/lib/datetime";
-import { bookSlot, cancelBooking, requestRematch, rescheduleSlot } from "./actions";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import {
+  bookSlot,
+  cancelBooking,
+  choosePsychologist,
+  createTicket,
+  leaveReview,
+  requestRematch,
+  rescheduleSlot,
+} from "./actions";
+
+export function ChoosePsychologist({
+  token,
+  psychologistId,
+}: {
+  token: string;
+  psychologistId: number;
+}) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  return (
+    <div>
+      <Button
+        className="rounded-lg bg-accent-500 hover:bg-accent-600"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            const res = await choosePsychologist(token, psychologistId);
+            if (!res.ok) setError(res.error ?? "Не получилось");
+            else router.refresh();
+          })
+        }
+      >
+        {pending ? "Выбираем…" : "Выбрать этого психолога"}
+      </Button>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+export function ReviewForm({ token, slotId }: { token: string; slotId: number }) {
+  const router = useRouter();
+  const [rating, setRating] = useState(0);
+  const [body, setBody] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <div>
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => setRating(n)}
+            aria-label={`${n} из 5`}
+            className={cn(
+              "text-2xl transition-colors",
+              n <= rating ? "text-accent-500" : "text-neutral-300 hover:text-accent-400",
+            )}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      <Textarea
+        rows={3}
+        className="mt-3"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="Что было полезно? Что стоит знать другим? (необязательно)"
+      />
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      <Button
+        className="mt-3"
+        disabled={pending || rating === 0}
+        onClick={() =>
+          startTransition(async () => {
+            setError(null);
+            const res = await leaveReview(token, slotId, rating, body);
+            if (!res.ok) setError(res.error ?? "Не получилось");
+            else router.refresh();
+          })
+        }
+      >
+        {pending ? "Отправляем…" : "Оставить отзыв"}
+      </Button>
+      <p className="mt-2 text-xs text-neutral-400">
+        Отзыв публикуется после проверки оператором, с вашим именем без фамилии.
+      </p>
+    </div>
+  );
+}
+
+export function SupportForm({ token }: { token: string }) {
+  const router = useRouter();
+  const [kind, setKind] = useState<"question" | "complaint">("question");
+  const [body, setBody] = useState("");
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  if (sent) {
+    return (
+      <p className="rounded-xl bg-brand-50 p-4 text-sm text-brand-800">
+        Обращение принято. Оператор свяжется с вами в течение рабочего дня.
+      </p>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex gap-2">
+        {(
+          [
+            ["question", "Вопрос"],
+            ["complaint", "Жалоба"],
+          ] as const
+        ).map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setKind(v)}
+            className={cn(
+              "rounded-lg border px-3 py-1.5 text-sm",
+              kind === v
+                ? "border-brand-600 bg-brand-50 font-medium text-brand-800"
+                : "border-neutral-200 hover:border-brand-400",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <Label className="mt-3 block text-sm font-normal text-neutral-500">
+        {kind === "complaint"
+          ? "Расскажите, что произошло. Мы разберёмся и ответим."
+          : "О чём вопрос?"}
+      </Label>
+      <Textarea
+        rows={3}
+        className="mt-1"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+      />
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      <Button
+        variant="outline"
+        className="mt-3"
+        disabled={pending || body.trim().length < 5}
+        onClick={() =>
+          startTransition(async () => {
+            setError(null);
+            const res = await createTicket(token, kind, body);
+            if (!res.ok) setError(res.error ?? "Не получилось");
+            else {
+              setSent(true);
+              router.refresh();
+            }
+          })
+        }
+      >
+        {pending ? "Отправляем…" : "Отправить"}
+      </Button>
+    </div>
+  );
+}
 
 export function BookingSection({ token, slots }: { token: string; slots: CalendarSlot[] }) {
   const router = useRouter();

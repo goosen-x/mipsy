@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { asc, eq } from "drizzle-orm";
-import { db, psychologists, topics } from "@/db";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { db, psychologists, reviews, topics } from "@/db";
 import { SiteFooter, SiteHeader } from "@/components/site";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,23 @@ export default async function CatalogPage({
     .from(psychologists)
     .where(eq(psychologists.moderationStatus, "approved"));
   const topicList = await db.select().from(topics).orderBy(asc(topics.sort));
+  const ratings =
+    all.length > 0
+      ? await db
+          .select({
+            psychologistId: reviews.psychologistId,
+            avg: sql<number>`avg(${reviews.rating})`,
+            count: sql<number>`count(*)`,
+          })
+          .from(reviews)
+          .where(
+            and(
+              eq(reviews.status, "published"),
+              inArray(reviews.psychologistId, all.map((p) => p.id)),
+            ),
+          )
+          .groupBy(reviews.psychologistId)
+      : [];
 
   const list = all.filter((p) => {
     if (sp.topic && !(p.topicSlugs ?? []).includes(sp.topic)) return false;
@@ -133,7 +150,17 @@ export default async function CatalogPage({
                       ))}
                     </div>
                     <div className="mt-3 flex items-center justify-between">
-                      <Badge variant="secondary">Первая встреча бесплатно</Badge>
+                      {(() => {
+                        const r = ratings.find((x) => x.psychologistId === p.id);
+                        return r ? (
+                          <span className="text-sm">
+                            <span className="text-accent-500">★</span> {Number(r.avg).toFixed(1)}{" "}
+                            <span className="text-neutral-400">({r.count})</span>
+                          </span>
+                        ) : (
+                          <Badge variant="secondary">Первая встреча бесплатно</Badge>
+                        );
+                      })()}
                       <span className="text-sm font-medium text-accent-600">
                         Выбрать время →
                       </span>

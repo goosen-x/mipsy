@@ -16,11 +16,163 @@ import { REQUEST_STATUS_LABELS } from "@/lib/labels";
 import {
   assignPsychologist,
   bookSlotForClient,
+  dropProposal,
   freeSlot,
   markNotificationSent,
   moderatePsychologist,
+  moderateReview,
+  sendProposals,
   updateRequest,
+  updateTicket,
 } from "./actions";
+
+export function ReviewModeration({ id }: { id: number }) {
+  const router = useRouter();
+  const [notes, setNotes] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  const decide = (decision: "published" | "rejected") =>
+    startTransition(async () => {
+      await moderateReview(id, decision, notes);
+      router.refresh();
+    });
+
+  return (
+    <div>
+      <Input
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Комментарий модерации (необязательно)"
+        className="max-w-lg"
+      />
+      <div className="mt-3 flex gap-3">
+        <Button size="sm" disabled={pending} onClick={() => decide("published")}>
+          Опубликовать
+        </Button>
+        <Button size="sm" variant="destructive" disabled={pending} onClick={() => decide("rejected")}>
+          Отклонить
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function TicketControls({
+  id,
+  status,
+  notes,
+  statusLabels,
+}: {
+  id: number;
+  status: string;
+  notes: string;
+  statusLabels: Record<string, string>;
+}) {
+  const router = useRouter();
+  const [value, setValue] = useState(notes);
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Select
+        value={status}
+        disabled={pending}
+        onValueChange={(v) =>
+          startTransition(async () => {
+            await updateTicket(id, { status: v });
+            router.refresh();
+          })
+        }
+      >
+        <SelectTrigger className="w-40 bg-white">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {Object.entries(statusLabels).map(([v, l]) => (
+            <SelectItem key={v} value={v}>
+              {l}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Что сделали по обращению"
+        className="max-w-md bg-white"
+      />
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            await updateTicket(id, { operatorNotes: value });
+            router.refresh();
+          })
+        }
+      >
+        Сохранить
+      </Button>
+    </div>
+  );
+}
+
+export function SendProposalsButton({ requestId }: { requestId: number }) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [pending, startTransition] = useTransition();
+  return (
+    <div className="flex items-center gap-3">
+      <Button
+        size="sm"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            setError(null);
+            const res = await sendProposals(requestId);
+            if (!res.ok) setError(res.error ?? "Не вышло");
+            else {
+              setSent(true);
+              router.refresh();
+            }
+          })
+        }
+      >
+        {pending ? "Отправляем…" : "Отправить подборку клиенту"}
+      </Button>
+      {sent && <span className="text-sm text-brand-700">Отправлено ✓</span>}
+      {error && <span className="text-sm text-red-600">{error}</span>}
+    </div>
+  );
+}
+
+export function DropProposalButton({
+  requestId,
+  matchId,
+}: {
+  requestId: number;
+  matchId: number;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      disabled={pending}
+      onClick={() =>
+        startTransition(async () => {
+          await dropProposal(requestId, matchId);
+          router.refresh();
+        })
+      }
+    >
+      убрать
+    </Button>
+  );
+}
 
 export function MarkSentButton({ id }: { id: number }) {
   const router = useRouter();

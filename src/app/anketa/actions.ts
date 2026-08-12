@@ -21,6 +21,7 @@ export type AnketaPayload = {
   story: string | null;
   name: string;
   phone: string;
+  email: string | null;
   pdConsent: boolean;
 };
 
@@ -59,6 +60,7 @@ export async function submitAnketa(
     story: payload.story?.trim() || null,
     name,
     phone,
+    email: payload.email?.trim() || null,
     pdConsent: true,
     crisisFlag,
     status: "new",

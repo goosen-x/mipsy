@@ -3,9 +3,9 @@ import { notFound } from "next/navigation";
 import { asc, desc, eq } from "drizzle-orm";
 import { clientRequests, db, matches, psychologists, slots, topics } from "@/db";
 import { Badge } from "@/components/ui/badge";
-import { formatSlot } from "@/lib/datetime";
+import { formatSlot, isPast } from "@/lib/datetime";
 import { ProfileForm } from "./profile-form";
-import { Schedule } from "./schedule";
+import { OutcomeControl, Schedule } from "./schedule";
 
 export const metadata = { title: "Кабинет психолога — mipsy" };
 export const dynamic = "force-dynamic";
@@ -46,7 +46,9 @@ export default async function CabinetPage({ params }: { params: Promise<{ token:
     .leftJoin(clientRequests, eq(slots.clientRequestId, clientRequests.id))
     .where(eq(slots.psychologistId, psy.id))
     .orderBy(asc(slots.startsAt));
+  const now = new Date();
   const booked = mySlots.filter((s) => s.status === "booked");
+  const finished = mySlots.filter((s) => s.status === "done" || s.status === "no_show");
 
   const status = STATUS_LABELS[psy.moderationStatus] ?? STATUS_LABELS.new;
 
@@ -113,12 +115,26 @@ export default async function CabinetPage({ params }: { params: Promise<{ token:
           {booked.length > 0 && (
             <ul className="mt-4 space-y-2 border-t pt-4 text-sm">
               {booked.map((s) => (
-                <li key={s.id} className="flex justify-between gap-3">
-                  <span>{formatSlot(s.startsAt)}</span>
-                  <span className="text-neutral-500">
-                    {s.clientName ?? "клиент"}
-                    {s.isIntroCall && " · знакомство"}
+                <li key={s.id} className="flex flex-wrap items-center justify-between gap-3">
+                  <span>
+                    {formatSlot(s.startsAt)}
+                    <span className="text-neutral-500">
+                      {" · "}
+                      {s.clientName ?? "клиент"}
+                      {s.isIntroCall && " · первая встреча"}
+                    </span>
                   </span>
+                  {isPast(s.startsAt, now) && <OutcomeControl token={token} slotId={s.id} />}
+                </li>
+              ))}
+            </ul>
+          )}
+          {finished.length > 0 && (
+            <ul className="mt-4 space-y-1 border-t pt-4 text-sm text-neutral-500">
+              {finished.map((s) => (
+                <li key={s.id}>
+                  {formatSlot(s.startsAt)} · {s.clientName ?? "клиент"} ·{" "}
+                  {s.status === "done" ? "состоялась" : "клиент не пришёл"}
                 </li>
               ))}
             </ul>

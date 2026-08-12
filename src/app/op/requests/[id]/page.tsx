@@ -18,9 +18,11 @@ import {
 import {
   AssignControl,
   BookSlotControl,
+  DropProposalButton,
   FreeSlotButton,
   RequestNotesControl,
   RequestStatusControl,
+  SendProposalsButton,
 } from "../../controls";
 
 export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -40,6 +42,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     .select({
       id: matches.id,
       active: matches.active,
+      chosen: matches.chosen,
       note: matches.note,
       createdAt: matches.createdAt,
       psyName: psychologists.name,
@@ -49,10 +52,18 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     .where(eq(matches.clientRequestId, req.id))
     .orderBy(desc(matches.createdAt));
 
+  const activeProposals = reqMatches.filter((m) => m.active).length;
+
   const [activeMatch] = await db
     .select({ psychologistId: matches.psychologistId })
     .from(matches)
-    .where(and(eq(matches.clientRequestId, req.id), eq(matches.active, true)));
+    .where(
+      and(
+        eq(matches.clientRequestId, req.id),
+        eq(matches.active, true),
+        eq(matches.chosen, true),
+      ),
+    );
 
   const bookedSlots = await db
     .select()
@@ -162,17 +173,28 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
         {reqMatches.length > 0 && (
           <ul className="mt-3 space-y-2">
             {reqMatches.map((m) => (
-              <li key={m.id} className="flex items-center justify-between rounded-xl border p-3 text-sm">
+              <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 text-sm">
                 <span>
                   {m.psyName}
                   {m.note && <span className="text-neutral-500"> — {m.note}</span>}
                 </span>
-                <Badge variant={m.active ? "default" : "secondary"}>
-                  {m.active ? "активен" : "переподобран"}
-                </Badge>
+                <span className="flex items-center gap-2">
+                  <Badge variant={m.chosen ? "default" : m.active ? "secondary" : "outline"}>
+                    {m.chosen ? "выбран клиентом" : m.active ? "предложен" : "снят"}
+                  </Badge>
+                  {m.active && !m.chosen && <DropProposalButton requestId={req.id} matchId={m.id} />}
+                </span>
               </li>
             ))}
           </ul>
+        )}
+        {activeProposals > 0 && (
+          <div className="mt-4">
+            <SendProposalsButton requestId={req.id} />
+            <p className="mt-1 text-xs text-neutral-500">
+              Клиент увидит {activeProposals === 1 ? "одного специалиста" : `${activeProposals} специалистов`} на своей странице и выберет сам. Оптимально — 2–3 варианта.
+            </p>
+          </div>
         )}
         <div className="mt-4">
           <AssignControl requestId={req.id} candidates={candidates} />
