@@ -59,6 +59,20 @@ export function cleanCode(code: string | null | undefined): string {
   return String(code ?? "").replace(/\D/g, "");
 }
 
+/**
+ * Можно ли пускать в кабинет без кода после анкеты, заявки или брони.
+ * Да — только если адрес нам незнаком (аккаунт создан прямо сейчас) или это
+ * и есть текущая сессия. Иначе достаточно было бы вписать чужую почту, чтобы
+ * попасть в чужой кабинет.
+ */
+export function mayAdoptSession(params: {
+  created: boolean;
+  accountId: number;
+  sessionAccountId: number | null;
+}): boolean {
+  return params.created || params.sessionAccountId === params.accountId;
+}
+
 /** Показываем в интерфейсе, куда ушёл код, не раскрывая адрес целиком. */
 export function maskEmail(email: string): string {
   const [name, domain] = normalizeEmail(email).split("@");

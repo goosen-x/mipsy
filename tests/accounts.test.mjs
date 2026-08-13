@@ -11,6 +11,7 @@ import Database from "better-sqlite3";
 import {
   codeIsFresh,
   isEmail,
+  mayAdoptSession,
   nowDbTime,
   readSession,
   signSession,
@@ -40,6 +41,18 @@ test("адрес почты проверяется до записи в базу
   for (const bad of ["", "ivan", "ivan@", "@example.com", "ivan example.com"]) {
     assert.equal(isEmail(bad), false, `принял мусор: ${bad}`);
   }
+});
+
+test("чужой почтой нельзя забрать чужой кабинет", () => {
+  // Анкета, заявка психолога и бронь заводят аккаунт по введённому адресу.
+  // Пускать внутрь без кода можно только владельца.
+  const rule = (created, sessionAccountId) =>
+    mayAdoptSession({ created, accountId: 7, sessionAccountId });
+
+  assert.equal(rule(true, null), true, "новый адрес — впускаем сразу");
+  assert.equal(rule(false, 7), true, "это и есть текущая сессия");
+  assert.equal(rule(false, null), false, "почта занята, а мы никто — только код");
+  assert.equal(rule(false, 8), false, "вошли под другим аккаунтом — только код");
 });
 
 // --- перенос существующей базы на аккаунты ---

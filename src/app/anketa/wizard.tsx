@@ -87,6 +87,7 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
+  const [needsLogin, setNeedsLogin] = useState(false);
 
   // Кризисный экран вставляется в маршрут сразу после вопроса о самоповреждении,
   // если ответ — не «никогда».
@@ -151,7 +152,10 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
     };
     startTransition(async () => {
       const res = await submitAnketa(payload);
-      if (res.ok) setDone(true);
+      if (res.ok) {
+        setNeedsLogin(res.needsLogin);
+        setDone(true);
+      }
       else setError(res.error ?? "Что-то пошло не так, попробуйте ещё раз");
     });
   }
@@ -166,16 +170,31 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
           подбор психолога. Обычно это занимает не больше одного рабочего дня.
         </p>
         <div className="mt-6 rounded-2xl bg-brand-50 p-5">
-          <div className="font-semibold text-brand-800">Личный кабинет уже открыт</div>
+          <div className="font-semibold text-brand-800">
+            {needsLogin ? "На эту почту уже есть кабинет" : "Личный кабинет уже открыт"}
+          </div>
           <p className="mt-1 text-sm text-neutral-600">
-            Здесь будет виден подобранный психолог и свободное время для записи. На этом устройстве
-            вы уже вошли; с другого — впустим по адресу{" "}
-            <span className="font-medium text-neutral-900">{state.email}</span> и коду из письма.
+            {needsLogin ? (
+              <>
+                Анкета сохранена. Чтобы увидеть подбор, войдите по коду с адреса{" "}
+                <span className="font-medium text-neutral-900">{state.email}</span> — так мы
+                убеждаемся, что кабинет открывается его владельцу.
+              </>
+            ) : (
+              <>
+                Здесь будет виден подобранный психолог и свободное время для записи. На этом
+                устройстве вы уже вошли; с другого — впустим по адресу{" "}
+                <span className="font-medium text-neutral-900">{state.email}</span> и коду из
+                письма.
+              </>
+            )}
           </p>
         </div>
         <div className="mt-6 flex gap-3">
           <Button asChild>
-            <Link href="/me">Перейти в кабинет</Link>
+            <Link href={needsLogin ? "/login?next=%2Fme" : "/me"}>
+              {needsLogin ? "Войти по коду" : "Перейти в кабинет"}
+            </Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/">На главную</Link>

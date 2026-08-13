@@ -60,7 +60,8 @@ export async function updateRequest(
       .from(clientRequests)
       .where(eq(clientRequests.id, id));
     if (!req) return { ok: false, error: "Заявка не найдена" };
-    accountId = await linkAccount({ email, name: req.name, phone: req.phone });
+    const linked = await linkAccount({ email, name: req.name, phone: req.phone });
+    accountId = linked?.id ?? null;
     if (accountId) {
       await db
         .update(clientRequests)

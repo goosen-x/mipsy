@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, psychologists } from "@/db";
-import { linkAccount, signIn } from "@/lib/auth";
+import { adoptSession, linkAccount } from "@/lib/auth";
 import { isEmail, normalizeEmail } from "@/lib/auth-core";
 
 export type PsyApplication = {
@@ -19,7 +19,7 @@ export type PsyApplication = {
 
 export async function submitPsyApplication(
   payload: PsyApplication,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true; needsLogin: boolean } | { ok: false; error: string }> {
   const name = payload.name?.trim();
   const phone = payload.phone?.replace(/[^\d+]/g, "") ?? "";
   const email = normalizeEmail(payload.email);
@@ -28,22 +28,24 @@ export async function submitPsyApplication(
   if (!isEmail(email)) return { ok: false, error: "Проверьте адрес почты — по нему вы будете входить в кабинет" };
   if (!payload.education?.trim()) return { ok: false, error: "Расскажите об образовании" };
 
-  const accountId = await linkAccount({ email, name, phone });
-  if (!accountId) return { ok: false, error: "Проверьте адрес почты" };
+  const account = await linkAccount({ email, name, phone });
+  if (!account) return { ok: false, error: "Проверьте адрес почты" };
 
   const [existing] = await db
     .select({ id: psychologists.id })
     .from(psychologists)
-    .where(eq(psychologists.accountId, accountId));
+    .where(eq(psychologists.accountId, account.id));
   if (existing) {
-    await signIn(accountId);
-    return { ok: false, error: "На эту почту уже есть заявка — войдите в кабинет" };
+    return {
+      ok: false,
+      error: "На эту почту уже есть заявка. Войдите в кабинет по коду с почты — /login",
+    };
   }
 
   const token = randomUUID();
   await db.insert(psychologists).values({
     cabinetToken: token,
-    accountId,
+    accountId: account.id,
     name,
     phone,
     email,
@@ -55,6 +57,6 @@ export async function submitPsyApplication(
     moderationStatus: "new",
   });
 
-  await signIn(accountId);
-  return { ok: true };
+  const signedIn = await adoptSession(account);
+  return { ok: true, needsLogin: !signedIn };
 }

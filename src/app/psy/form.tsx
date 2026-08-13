@@ -21,6 +21,7 @@ export function PsyApplicationForm() {
   });
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [needsLogin, setNeedsLogin] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function set(key: keyof typeof form, value: string) {
@@ -40,7 +41,10 @@ export function PsyApplicationForm() {
         supervision: form.supervision,
         personalTherapy: form.personalTherapy,
       });
-      if (res.ok) setSent(true);
+      if (res.ok) {
+        setNeedsLogin(res.needsLogin);
+        setSent(true);
+      }
       else setError(res.error);
     });
   }
@@ -55,15 +59,16 @@ export function PsyApplicationForm() {
         </p>
         <p className="mt-4">
           <Link
-            href="/cab"
+            href={needsLogin ? "/login?next=%2Fcab" : "/cab"}
             className="inline-block rounded-lg bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700"
           >
-            Перейти в кабинет
+            {needsLogin ? "Войти по коду" : "Перейти в кабинет"}
           </Link>
         </p>
         <p className="mt-3 text-sm text-neutral-500">
-          С другого устройства вход по адресу <span className="font-medium">{form.email}</span> —
-          пришлём код на почту.
+          {needsLogin
+            ? "На эту почту уже есть кабинет — впустим по коду из письма."
+            : "С другого устройства вход по адресу " + form.email + " — пришлём код на почту."}
         </p>
       </div>
     );

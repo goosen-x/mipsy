@@ -8,6 +8,7 @@ import {
   cleanCode,
   codeIsFresh,
   isEmail,
+  mayAdoptSession,
   normalizeEmail,
   nowDbTime,
   readSession,
@@ -68,11 +69,13 @@ export async function currentAccount(): Promise<Account | null> {
  * Аккаунт заводится в момент первого обращения — отдельной регистрации нет:
  * анкета, заявка психолога и запись из каталога и есть регистрация.
  */
+export type LinkedAccount = { id: number; created: boolean };
+
 export async function linkAccount(person: {
   email: string;
   name: string;
   phone?: string | null;
-}): Promise<number | null> {
+}): Promise<LinkedAccount | null> {
   const email = normalizeEmail(person.email);
   if (!isEmail(email)) return null;
 
@@ -90,14 +93,28 @@ export async function linkAccount(person: {
     if (Object.keys(patch).length > 0) {
       await db.update(accounts).set(patch).where(eq(accounts.id, existing.id));
     }
-    return existing.id;
+    return { id: existing.id, created: false };
   }
 
   const [created] = await db
     .insert(accounts)
     .values({ email, name: person.name.trim(), phone: person.phone ?? null })
     .returning({ id: accounts.id });
-  return created.id;
+  return { id: created.id, created: true };
+}
+
+/**
+ * Выдаёт сессию после анкеты, заявки или брони — но только тому, кто имеет на
+ * неё право. Если почта чужая и уже занята, человек увидит просьбу войти по коду.
+ */
+export async function adoptSession(link: LinkedAccount): Promise<boolean> {
+  const allowed = mayAdoptSession({
+    created: link.created,
+    accountId: link.id,
+    sessionAccountId: await currentAccountId(),
+  });
+  if (allowed) await signIn(link.id);
+  return allowed;
 }
 
 export async function accountExists(rawEmail: string): Promise<boolean> {
@@ -225,9 +242,9 @@ export async function verifySignupCode(
   }
 
   await db.delete(emailCodes).where(eq(emailCodes.email, email));
-  const accountId = await linkAccount({ email, name: email.split("@")[0] });
-  if (!accountId) return { ...wrong, error: "Не получилось открыть кабинет" };
-  return { ok: true, accountId };
+  const link = await linkAccount({ email, name: email.split("@")[0] });
+  if (!link) return { ...wrong, error: "Не получилось открыть кабинет" };
+  return { ok: true, accountId: link.id };
 }
 
 export type VerifyReason = "wrong_code" | "expired" | "blocked";

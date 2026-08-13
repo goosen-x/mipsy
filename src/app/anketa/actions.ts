@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { db, clientRequests } from "@/db";
-import { linkAccount, signIn } from "@/lib/auth";
+import { adoptSession, linkAccount } from "@/lib/auth";
 import { isEmail, normalizeEmail } from "@/lib/auth-core";
 
 export type AnketaPayload = {
@@ -30,7 +30,7 @@ const FREQ = ["never", "seldom", "monthly", "weekly", "daily"];
 
 export async function submitAnketa(
   payload: AnketaPayload,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true; needsLogin: boolean } | { ok: false; error: string }> {
   const name = payload.name?.trim();
   const email = normalizeEmail(payload.email);
 
@@ -39,8 +39,8 @@ export async function submitAnketa(
   if (!isEmail(email)) return { ok: false, error: "Проверьте адрес почты — по нему вы будете входить в кабинет" };
   if (!payload.pdConsent) return { ok: false, error: "Нужно согласие на обработку данных" };
 
-  const accountId = await linkAccount({ email, name });
-  if (!accountId) return { ok: false, error: "Проверьте адрес почты" };
+  const account = await linkAccount({ email, name });
+  if (!account) return { ok: false, error: "Проверьте адрес почты" };
 
   const crisisFlag =
     !!payload.freqSelfHarm && FREQ.indexOf(payload.freqSelfHarm) >= FREQ.indexOf("monthly");
@@ -48,7 +48,7 @@ export async function submitAnketa(
 
   await db.insert(clientRequests).values({
     clientToken: token,
-    accountId,
+    accountId: account.id,
     forWhom: "self",
     gender: payload.gender,
     age: payload.age,
@@ -71,6 +71,8 @@ export async function submitAnketa(
     status: "new",
   });
 
-  await signIn(accountId);
-  return { ok: true };
+  // Сессию выдаём, только если почта наша или ничья: иначе чужой анкетой
+  // можно было бы забрать чужой кабинет.
+  const signedIn = await adoptSession(account);
+  return { ok: true, needsLogin: !signedIn };
 }

@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { clientRequests, db, matches, psychologists, slots } from "@/db";
-import { linkAccount, signIn } from "@/lib/auth";
+import { adoptSession, linkAccount } from "@/lib/auth";
 import { isEmail, normalizeEmail } from "@/lib/auth-core";
 import { isPast } from "@/lib/datetime";
 import { meetingInvite, messages, notify, subjects } from "@/lib/notify";
@@ -25,15 +25,15 @@ export async function bookFirstSession(
   slug: string,
   slotId: number,
   data: DirectBooking,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true; needsLogin: boolean } | { ok: false; error: string }> {
   const name = data.name?.trim();
   const email = normalizeEmail(data.email);
   if (!name) return { ok: false, error: "Укажите имя" };
   if (!isEmail(email)) return { ok: false, error: "Проверьте адрес почты — по нему вы будете входить в кабинет" };
   if (!data.pdConsent) return { ok: false, error: "Нужно согласие на обработку данных" };
 
-  const accountId = await linkAccount({ email, name });
-  if (!accountId) return { ok: false, error: "Проверьте адрес почты" };
+  const account = await linkAccount({ email, name });
+  if (!account) return { ok: false, error: "Проверьте адрес почты" };
 
   const [psy] = await db
     .select({
@@ -57,7 +57,7 @@ export async function bookFirstSession(
     .insert(clientRequests)
     .values({
       forWhom: "self",
-      accountId,
+      accountId: account.id,
       name,
       email,
       story: data.note?.trim() || null,
@@ -120,8 +120,8 @@ export async function bookFirstSession(
     slotId,
   });
 
-  await signIn(accountId);
+  const signedIn = await adoptSession(account);
   revalidatePath(`/p/${slug}`);
   revalidatePath("/op");
-  return { ok: true };
+  return { ok: true, needsLogin: !signedIn };
 }

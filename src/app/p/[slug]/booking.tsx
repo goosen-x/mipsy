@@ -125,7 +125,7 @@ export function ProfileBooking({
               setError(null);
               const res = await bookFirstSession(slug, chosen.id, form);
               if (!res.ok) setError(res.error);
-              else router.push("/me");
+              else router.push(res.needsLogin ? "/login?next=%2Fme" : "/me");
             })
           }
         >
