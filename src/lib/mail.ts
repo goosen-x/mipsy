@@ -7,6 +7,14 @@ export function mailConfigured(): boolean {
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD);
 }
 
+/** Адрес отправителя без имени — показываем тому, кто ищет письмо в спаме. */
+export function senderAddress(): string | null {
+  const from = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+  if (!from) return null;
+  const match = from.match(/<([^>]+)>/);
+  return (match ? match[1] : from).trim();
+}
+
 /**
  * Отправка письма через SMTP (nodemailer). Пока переменные не заданы,
  * письма копятся в очереди уведомлений и оператор отправляет их вручную.

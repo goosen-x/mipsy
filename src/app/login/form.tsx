@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { confirmLoginCode, requestLoginCode } from "./actions";
 
 /** Вход по почте: письмо с кодом, дальше сессия на этом устройстве. */
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, sender }: { next?: string; sender?: string | null }) {
   const router = useRouter();
   const [stage, setStage] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
@@ -77,9 +77,7 @@ export function LoginForm({ next }: { next?: string }) {
         <>
           <p className="mt-2 text-sm text-neutral-600">
             Если такая почта у нас есть, код уже отправлен на {sentTo}. Введите шесть цифр — код
-            действует 15 минут. Письмо приходит только на адрес, который вы указывали в анкете или
-            в заявке психолога: если его нет ни в почте, ни в спаме — скорее всего, обращение было
-            с другого адреса.
+            действует 15 минут.
           </p>
           <Input
             inputMode="numeric"
@@ -99,32 +97,48 @@ export function LoginForm({ next }: { next?: string }) {
           >
             {pending ? "Проверяем…" : "Войти"}
           </Button>
-          <button
-            type="button"
-            onClick={() => {
-              setStage("email");
-              setError(null);
-            }}
-            className="mt-3 w-full text-sm text-neutral-500 hover:text-brand-700"
-          >
-            Ввести другую почту или получить код заново
-          </button>
+          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+          {/*
+            Письма может не быть вовсе — например, если этой почты у нас нет.
+            Прямо сказать об этом нельзя (иначе перебором адресов подтвердим,
+            кто обращался к психологам), поэтому даём выход, а не намёк.
+          */}
+          <div className="mt-6 rounded-xl bg-brand-50 p-4 text-sm">
+            <div className="font-semibold text-brand-800">Письмо не пришло?</div>
+            <ul className="mt-2 space-y-1.5 text-neutral-700">
+              <li>
+                Загляните в «Спам»{sender ? <> — письмо приходит с адреса {sender}</> : null}.
+              </li>
+              <li>
+                Проверьте адрес: код уходит только на ту почту, которую вы указывали в анкете или в
+                заявке психолога.
+              </li>
+              <li>Если обращения ещё не было, кабинета пока нет — он появится после анкеты.</li>
+            </ul>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setStage("email");
+                  setError(null);
+                }}
+              >
+                Другая почта
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/anketa">Пройти анкету</Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/psy">Я психолог</Link>
+              </Button>
+            </div>
+          </div>
         </>
       )}
 
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-
-      <p className="mt-6 border-t pt-4 text-xs text-neutral-400">
-        Ещё не обращались к нам?{" "}
-        <Link href="/anketa" className="text-brand-700 underline">
-          Пройдите анкету
-        </Link>{" "}
-        — кабинет создастся сам. Психологам —{" "}
-        <Link href="/psy" className="text-brand-700 underline">
-          заявка на модерацию
-        </Link>
-        . Если код не приходит, позвоните оператору.
-      </p>
+      {stage === "email" && error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </div>
   );
 }
