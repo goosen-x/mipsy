@@ -95,23 +95,28 @@ flowchart LR
 ## 5. Вход в личный кабинет
 
 ```mermaid
-flowchart LR
+flowchart TD
   ENTER["«Войти» в шапке<br/>или /me, /cab без сессии"] --> LOGIN["/login: ввод почты"]
-  LOGIN --> ISSUE["issueLoginCode()<br/>6 цифр в accounts, живут 15 минут"]
-  ISSUE --> MAIL["Письмо с кодом<br/>(SMTP; ответ одинаков,<br/>есть такая почта или нет)"]
-  MAIL --> CHECK["confirmLoginCode()<br/>5 неверных попыток — блок кода"]
-  CHECK --> SESS["signIn(): HMAC-кука<br/>на 60 дней"]
-  SESS --> WHERE{"Есть профиль психолога?"}
+  OLD["Старая ссылка /me/token<br/>из прежних писем"] --> LOGIN
+  LOGIN --> LIMIT{"Не больше 5 писем<br/>на адрес в час?"}
+  LIMIT -->|превышено| WAIT["«Подождите час»<br/>login_log: throttled"]
+  LIMIT -->|да| KNOWN{"Аккаунт есть?"}
+  KNOWN -->|да| C1["issueLoginCode()<br/>код в accounts"]
+  KNOWN -->|нет| C2["issueSignupCode()<br/>код в email_codes"]
+  C1 --> MAIL["Письмо с кодом<br/>экран для обоих случаев одинаковый"]
+  C2 --> MAIL
+  MAIL --> CHECK["confirmLoginCode()<br/>15 минут, 5 попыток"]
+  CHECK --> FORK{"Развилка — только<br/>после подтверждения почты"}
+  FORK -->|"аккаунт был"| WHERE{"Есть профиль психолога?"}
   WHERE -->|да| CAB["/cab"]
   WHERE -->|нет| ME["/me"]
-  FIRST["Только что прошёл анкету,<br/>подал заявку или записался"] --> SESS
-  OLD["Старая ссылка /me/token<br/>из прежних писем"] --> LOGIN
-  MAIL -.->|"письмо не дошло"| OPR["Оператор видит код<br/>в /op/notifications<br/>и диктует по телефону"]
-  ISSUE --> LOG["login_log: адрес, время, исход<br/>(отправлен / нет аккаунта /<br/>не ушло / просрочен / вошёл)"]
-  CHECK --> LOG
+  FORK -->|"аккаунта не было"| NEW["Заводим аккаунт<br/>→ /anketa с подтверждённой почтой"]
+  FIRST["Только что прошёл анкету,<br/>подал заявку или записался"] --> ME
+  MAIL -.->|"письмо не дошло"| OPR["Оператор видит код<br/>в /op/notifications"]
+  CHECK --> LOG["login_log: адрес, время, исход"]
 ```
 
-Каждая попытка входа попадает в журнал `login_log` — оператор видит его в `/op/notifications`. Без него случай «такой почты у нас нет» не оставляет следа вообще: письмо не отправляется, в очереди пусто, и на вопрос «почему не приходит код» ответить нечем.
+Вход и регистрация — один шаг: код уходит и на знакомый адрес, и на незнакомый, поэтому по экрану нельзя понять, обращался человек к психологам или нет. Решение принимается после того, как он доказал, что почта его, — это стандартный sign-in-or-up (так устроены Supabase, Firebase и Clerk). Каждая попытка попадает в `login_log`, оператор видит её в `/op/notifications`.
 
 Пароля нет намеренно: хранить нечего, и человеку в тяжёлом состоянии не надо ничего придумывать. Почта — обязательное поле в анкете, в заявке психолога и при записи из каталога; у заявок, заведённых до аккаунтов, её вписывает оператор.
 
@@ -120,7 +125,7 @@ flowchart LR
 | Слой | Чем сделано |
 |---|---|
 | Страницы и логика | Next.js 16 (App Router, серверные компоненты и server actions), React 19, TypeScript, Tailwind 4, shadcn/ui на Radix, иконки Tabler |
-| Данные | SQLite через better-sqlite3 + Drizzle ORM; таблицы `accounts`, `topics`, `client_requests`, `psychologists`, `matches`, `slots`, `reviews`, `support_tickets`, `notifications`, `login_log`, `error_log`, `admin_log` |
+| Данные | SQLite через better-sqlite3 + Drizzle ORM; таблицы `accounts`, `topics`, `client_requests`, `psychologists`, `matches`, `slots`, `reviews`, `support_tickets`, `notifications`, `email_codes`, `login_log`, `error_log`, `admin_log` |
 | Миграции | drizzle-kit генерирует SQL в `drizzle/`, `scripts/migrate.mjs` применяет их при старте контейнера и сидит справочник тем |
 | Почта | nodemailer поверх SMTP (`SMTP_*`); приглашение — свой генератор `.ics` (`src/lib/ics.ts`) вложением к письму |
 | SMS | smsc.ru через `SMS_LOGIN`/`SMS_PASSWORD`; код написан, ключи не подключены |
@@ -148,7 +153,7 @@ flowchart LR
 | Переподбор | `/me` | `requestRematch` | `client_requests`, `matches`, `slots` | — |
 | Поддержка и жалобы | `/me`, `/cab` | `createTicket`, `updateTicket` | `support_tickets` | — |
 | Модерация психолога | `/op/psy/[id]` | `moderatePsychologist` | `psychologists`, `notifications` | SMTP |
-| Вход в кабинет | `/login` | `requestLoginCode`, `confirmLoginCode` | `accounts`, `notifications`, `login_log` | SMTP |
+| Вход в кабинет | `/login` | `requestLoginCode`, `confirmLoginCode` | `accounts`, `email_codes`, `notifications`, `login_log` | SMTP |
 
 ## 8. Что в этой схеме делается руками и чего нет
 

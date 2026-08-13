@@ -1,8 +1,8 @@
 import "server-only";
 import { randomInt } from "node:crypto";
 import { cookies } from "next/headers";
-import { desc, eq } from "drizzle-orm";
-import { accounts, clientRequests, db, psychologists } from "@/db";
+import { and, desc, eq, gt, inArray, lt, sql } from "drizzle-orm";
+import { accounts, clientRequests, db, emailCodes, loginLog, psychologists } from "@/db";
 import {
   MAX_CODE_ATTEMPTS,
   cleanCode,
@@ -77,13 +77,18 @@ export async function linkAccount(person: {
   if (!isEmail(email)) return null;
 
   const [existing] = await db
-    .select({ id: accounts.id, phone: accounts.phone })
+    .select({ id: accounts.id, name: accounts.name, phone: accounts.phone })
     .from(accounts)
     .where(eq(accounts.email, email));
 
   if (existing) {
-    if (!existing.phone && person.phone) {
-      await db.update(accounts).set({ phone: person.phone }).where(eq(accounts.id, existing.id));
+    // Имя могло быть временным (часть адреса до @) — анкета или заявка его уточняют.
+    const name = person.name.trim();
+    const patch: { phone?: string; name?: string } = {};
+    if (!existing.phone && person.phone) patch.phone = person.phone;
+    if (name && name !== existing.name) patch.name = name;
+    if (Object.keys(patch).length > 0) {
+      await db.update(accounts).set(patch).where(eq(accounts.id, existing.id));
     }
     return existing.id;
   }
@@ -95,6 +100,14 @@ export async function linkAccount(person: {
   return created.id;
 }
 
+export async function accountExists(rawEmail: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(accounts.email, normalizeEmail(rawEmail)));
+  return Boolean(row);
+}
+
 /** Куда вести после входа: у кого есть профиль психолога — в кабинет специалиста. */
 export async function homePathFor(accountId: number): Promise<"/cab" | "/me"> {
   const [psy] = await db
@@ -102,6 +115,30 @@ export async function homePathFor(accountId: number): Promise<"/cab" | "/me"> {
     .from(psychologists)
     .where(eq(psychologists.accountId, accountId));
   return psy ? "/cab" : "/me";
+}
+
+/** Сколько писем с кодом можно отправить на один адрес за час. */
+const CODES_PER_HOUR = 5;
+
+/**
+ * Защита чужого почтового ящика: кто угодно может ввести чужой адрес, поэтому
+ * ограничиваем частоту писем на адрес. Считаем по журналу входов.
+ */
+export async function codeRequestsThrottled(email: string): Promise<boolean> {
+  const hourAgo = nowDbTime(new Date(Date.now() - 60 * 60 * 1000));
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(loginLog)
+    .where(
+      and(
+        eq(loginLog.email, email),
+        gt(loginLog.createdAt, hourAgo),
+        // Считаем именно запросы: если письмо не ушло из-за сбоя SMTP,
+        // это не повод разрешить ещё сотню попыток.
+        inArray(loginLog.outcome, ["sent", "sent_unknown", "delivery_failed"]),
+      ),
+    );
+  return (row?.count ?? 0) >= CODES_PER_HOUR;
 }
 
 export type IssuedCode = {
@@ -132,9 +169,72 @@ export async function issueLoginCode(rawEmail: string): Promise<IssuedCode | nul
   return { accountId: account.id, email, name: account.name, phone: account.phone, code };
 }
 
+/**
+ * Код для адреса, которого у нас нет. Отправляем его так же, как обычный, —
+ * снаружи два случая неразличимы (паттерн sign-in-or-up: сначала человек
+ * подтверждает владение почтой, и только потом решается, вход это или анкета).
+ */
+export async function issueSignupCode(rawEmail: string): Promise<string | null> {
+  const email = normalizeEmail(rawEmail);
+  if (!isEmail(email)) return null;
+
+  const code = String(randomInt(100000, 1000000));
+  await db
+    .insert(emailCodes)
+    .values({ email, code, sentAt: nowDbTime(), attempts: 0 })
+    .onConflictDoUpdate({
+      target: emailCodes.email,
+      set: { code, sentAt: nowDbTime(), attempts: 0 },
+    });
+  // Просроченные коды не храним.
+  await db.delete(emailCodes).where(lt(emailCodes.sentAt, nowDbTime(new Date(Date.now() - 86400000))));
+  return code;
+}
+
+/**
+ * Проверка кода для нового человека. При успехе заводим аккаунт: имя пока
+ * неизвестно, его перезапишет анкета или заявка психолога.
+ */
+export async function verifySignupCode(
+  rawEmail: string,
+  rawCode: string,
+): Promise<{ ok: true; accountId: number } | { ok: false; error: string; reason: VerifyReason }> {
+  const email = normalizeEmail(rawEmail);
+  const code = cleanCode(rawCode);
+  const wrong = {
+    ok: false,
+    error: "Неверный код — проверьте и попробуйте ещё раз",
+    reason: "wrong_code",
+  } as const;
+
+  const [pending] = await db.select().from(emailCodes).where(eq(emailCodes.email, email));
+  if (!pending || code.length !== 6) return wrong;
+
+  if (pending.attempts >= MAX_CODE_ATTEMPTS) {
+    return { ok: false, error: "Слишком много попыток. Запросите новый код.", reason: "blocked" };
+  }
+  if (!codeIsFresh(pending.sentAt)) {
+    return { ok: false, error: "Код устарел — запросите новый.", reason: "expired" };
+  }
+  if (pending.code !== code) {
+    await db
+      .update(emailCodes)
+      .set({ attempts: pending.attempts + 1 })
+      .where(eq(emailCodes.email, email));
+    return wrong;
+  }
+
+  await db.delete(emailCodes).where(eq(emailCodes.email, email));
+  const accountId = await linkAccount({ email, name: email.split("@")[0] });
+  if (!accountId) return { ...wrong, error: "Не получилось открыть кабинет" };
+  return { ok: true, accountId };
+}
+
+export type VerifyReason = "wrong_code" | "expired" | "blocked";
+
 export type VerifyResult =
   | { ok: true; accountId: number }
-  | { ok: false; error: string; reason: "wrong_code" | "expired" | "blocked" };
+  | { ok: false; error: string; reason: VerifyReason };
 
 export async function verifyLoginCode(rawEmail: string, rawCode: string): Promise<VerifyResult> {
   const email = normalizeEmail(rawEmail);

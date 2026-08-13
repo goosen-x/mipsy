@@ -19,6 +19,9 @@ const KIND_LABELS: Record<string, string> = {
 // Журнал входов: что именно случилось, когда человек просил код.
 const LOGIN_OUTCOMES: Record<string, { label: string; tone: string }> = {
   sent: { label: "код отправлен", tone: "bg-brand-100 text-brand-800" },
+  sent_unknown: { label: "код отправлен, аккаунта ещё нет", tone: "bg-brand-100 text-brand-800" },
+  verified_new: { label: "почту подтвердил, ушёл в анкету", tone: "bg-emerald-100 text-emerald-800" },
+  throttled: { label: "слишком часто просит код", tone: "bg-amber-100 text-amber-900" },
   signed_in: { label: "вошёл", tone: "bg-emerald-100 text-emerald-800" },
   no_account: { label: "такой почты у нас нет", tone: "bg-amber-100 text-amber-900" },
   bad_email: { label: "адрес введён с ошибкой", tone: "bg-amber-100 text-amber-900" },
@@ -113,8 +116,8 @@ export default async function NotificationsPage() {
 
       <h2 className="mt-10 text-lg font-bold">Попытки входа</h2>
       <p className="mt-1 text-sm text-neutral-500">
-        Сюда смотрим, когда человек говорит «код не приходит». Видно, что именно случилось: письма
-        могло не быть вовсе — например, если такой почты у нас нет.
+        Сюда смотрим, когда человек говорит «код не приходит». Код уходит на любой корректный адрес —
+        и знакомый, и новый, — поэтому здесь же видно, кто дошёл до анкеты, а кто застрял.
         {!mailConfigured && " Внимание: SMTP не настроен, письма с кодом не уходят вообще."}
       </p>
       {logins.length === 0 ? (

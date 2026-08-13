@@ -51,8 +51,8 @@ export function LoginForm({ next, sender }: { next?: string; sender?: string | n
       {stage === "email" ? (
         <>
           <p className="mt-2 text-sm text-neutral-600">
-            Введите почту, которую указывали в анкете или в заявке психолога. Мы отправим на неё
-            короткий код — пароль придумывать не нужно.
+            Введите почту — пришлём короткий код. Пароль придумывать не нужно, и неважно, были вы у
+            нас раньше или заходите впервые.
           </p>
           <Label htmlFor="email" className="mt-6 block">
             Email
@@ -76,8 +76,8 @@ export function LoginForm({ next, sender }: { next?: string; sender?: string | n
       ) : (
         <>
           <p className="mt-2 text-sm text-neutral-600">
-            Если такая почта у нас есть, код уже отправлен на {sentTo}. Введите шесть цифр — код
-            действует 15 минут.
+            Код отправлен на {sentTo}. Введите шесть цифр — код действует 15 минут. Если вы у нас
+            впервые, ничего страшного: код в письме тот же, а дальше предложим анкету.
           </p>
           <Input
             inputMode="numeric"
@@ -114,7 +114,7 @@ export function LoginForm({ next, sender }: { next?: string; sender?: string | n
                 Проверьте адрес: код уходит только на ту почту, которую вы указывали в анкете или в
                 заявке психолога.
               </li>
-              <li>Если обращения ещё не было, кабинета пока нет — он появится после анкеты.</li>
+              <li>Письмо приходит и тем, кто у нас впервые, — отдельно регистрироваться не нужно.</li>
             </ul>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button
@@ -126,9 +126,6 @@ export function LoginForm({ next, sender }: { next?: string; sender?: string | n
                 }}
               >
                 Другая почта
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/anketa">Пройти анкету</Link>
               </Button>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/psy">Я психолог</Link>

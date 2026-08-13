@@ -64,7 +64,7 @@ function countWords(s: string) {
   return s.trim().split(/\s+/).filter(Boolean).length;
 }
 
-export function AnketaWizard({ topics }: { topics: Topic[] }) {
+export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; knownEmail?: string }) {
   const [state, setState] = useState<State>({
     gender: null,
     age: "",
@@ -82,7 +82,7 @@ export function AnketaWizard({ topics }: { topics: Topic[] }) {
     story: "",
     name: "",
     phone: "",
-    email: "",
+    email: knownEmail,
     pdConsent: true,
   });
   const [stepIdx, setStepIdx] = useState(0);
@@ -509,7 +509,7 @@ export function AnketaWizard({ topics }: { topics: Topic[] }) {
             className="mt-1"
           />
           <Label htmlFor="email" className="mt-4 block">
-            Email — вход в личный кабинет и письма о встречах
+            {knownEmail ? "Email — почта подтверждена, кабинет уже ваш" : "Email — вход в личный кабинет и письма о встречах"}
           </Label>
           <Input
             id="email"

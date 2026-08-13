@@ -147,6 +147,16 @@ test("журнал входов заведён — «код не пришёл» 
   assert.deepEqual(columns, ["id", "created_at", "email", "outcome", "detail"]);
 });
 
+test("коды для новых адресов лежат отдельно от аккаунтов", () => {
+  // Аккаунт заводится только после подтверждения почты, поэтому код для
+  // незнакомого адреса хранится в своей таблице, а не в accounts.
+  const columns = db
+    .prepare("SELECT name FROM pragma_table_info('email_codes')")
+    .all()
+    .map((c) => c.name);
+  assert.deepEqual(columns, ["email", "code", "sent_at", "attempts"]);
+});
+
 test("секретные коды доступа из старой схемы удалены", () => {
   const columns = db
     .prepare("SELECT name FROM pragma_table_info('client_requests')")
