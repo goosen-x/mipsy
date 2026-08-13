@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { formatDay, groupByDate } from "@/lib/datetime";
+import { toast } from "sonner";
 import { addSlots, markSlotOutcome, removeSlot } from "./actions";
 
 /** Отметка исхода прошедшей встречи. */
@@ -20,7 +21,14 @@ export function OutcomeControl({ slotId }: { slotId: number }) {
     startTransition(async () => {
       const res = await markSlotOutcome(slotId, outcome);
       if (!res.ok) setError(res.error ?? "Не вышло");
-      else router.refresh();
+      else {
+        toast.success(
+          outcome === "done"
+            ? "Встреча отмечена — клиент получит просьбу оценить её"
+            : "Отмечено: клиент не пришёл",
+        );
+        router.refresh();
+      }
     });
 
   return (
@@ -75,7 +83,11 @@ export function Schedule({ slots }: { slots: Slot[] }) {
       });
       if (!res.ok) setError(res.error ?? "Не получилось");
       else {
-        setInfo(res.added === 0 ? "Такое время уже открыто" : `Добавлено окон: ${res.added}`);
+        const message =
+          res.added === 0 ? "Такое время уже открыто" : `Добавлено окон: ${res.added}`;
+        setInfo(message);
+        if (res.added === 0) toast.info(message);
+        else toast.success(message);
         setTimes([]);
         router.refresh();
       }
@@ -202,7 +214,10 @@ function SlotChip({ slot }: { slot: Slot }) {
             startTransition(async () => {
               const res = await removeSlot(slot.id);
               if (!res.ok) setError(res.error ?? "Не вышло");
-              else router.refresh();
+              else {
+                toast.success("Окно убрано");
+                router.refresh();
+              }
             })
           }
           className="text-neutral-400 hover:text-red-600"

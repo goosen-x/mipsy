@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Mulish } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { Toaster } from "@/components/ui/sonner";
 
 const mulish = Mulish({ subsets: ["latin", "cyrillic"], variable: "--font-sans" });
 
@@ -14,7 +15,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru" className={cn("font-sans", mulish.variable)}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Toaster position="top-center" />
+      </body>
     </html>
   );
 }

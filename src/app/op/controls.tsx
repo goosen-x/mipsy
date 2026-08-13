@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,6 +39,7 @@ export function MarkErrorsSeen() {
       onClick={() =>
         startTransition(async () => {
           await markErrorsSeen();
+          toast.success("Ошибки отмечены просмотренными");
           router.refresh();
         })
       }
@@ -55,6 +57,7 @@ export function ReviewModeration({ id }: { id: number }) {
   const decide = (decision: "published" | "rejected") =>
     startTransition(async () => {
       await moderateReview(id, decision, notes);
+      toast.success(decision === "published" ? "Отзыв опубликован" : "Отзыв отклонён");
       router.refresh();
     });
 
@@ -156,6 +159,7 @@ export function SendProposalsButton({ requestId }: { requestId: number }) {
             if (!res.ok) setError(res.error ?? "Не вышло");
             else {
               setSent(true);
+              toast.success("Подборка ушла клиенту");
               router.refresh();
             }
           })
@@ -206,6 +210,7 @@ export function MarkSentButton({ id }: { id: number }) {
       onClick={() =>
         startTransition(async () => {
           await markNotificationSent(id);
+          toast.success("Отмечено отправленным");
           router.refresh();
         })
       }
@@ -267,6 +272,7 @@ export function RequestNotesControl({ id, notes }: { id: number; notes: string }
             startTransition(async () => {
               await updateRequest(id, { operatorNotes: value });
               setSaved(true);
+              toast.success("Пометки сохранены");
             })
           }
         >
@@ -302,7 +308,10 @@ export function RequestEmailControl({ id }: { id: number }) {
             setError(null);
             const res = await updateRequest(id, { email: value });
             if (!res.ok) setError(res.error ?? "Не получилось");
-            else router.refresh();
+            else {
+              toast.success("Почта записана — теперь клиент сможет войти в кабинет");
+              router.refresh();
+            }
           })
         }
       >
@@ -452,6 +461,11 @@ export function ModerationControl({ psyId, status }: { psyId: number; status: st
   function decide(decision: "approved" | "rejected") {
     startTransition(async () => {
       await moderatePsychologist(psyId, decision, notes);
+      toast.success(
+        decision === "approved"
+          ? "Психолог одобрен — профиль опубликован, письмо ушло"
+          : "Заявка отклонена, письмо с причиной ушло",
+      );
       router.refresh();
     });
   }

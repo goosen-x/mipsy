@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { BookingCalendar, type CalendarSlot } from "@/components/booking-calendar";
@@ -31,7 +32,10 @@ export function ChoosePsychologist({ psychologistId }: { psychologistId: number 
           startTransition(async () => {
             const res = await choosePsychologist(psychologistId);
             if (!res.ok) setError(res.error ?? "Не получилось");
-            else router.refresh();
+            else {
+              toast.success("Специалист выбран — осталось выбрать время");
+              router.refresh();
+            }
           })
         }
       >
@@ -83,7 +87,10 @@ export function ReviewForm({ slotId }: { slotId: number }) {
             setError(null);
             const res = await leaveReview(slotId, rating, body);
             if (!res.ok) setError(res.error ?? "Не получилось");
-            else router.refresh();
+            else {
+              toast.success("Спасибо! Отзыв уйдёт в профиль после проверки");
+              router.refresh();
+            }
           })
         }
       >
@@ -154,6 +161,7 @@ export function SupportForm() {
             if (!res.ok) setError(res.error ?? "Не получилось");
             else {
               setSent(true);
+              toast.success("Обращение принято — оператор ответит в течение рабочего дня");
               router.refresh();
             }
           })
@@ -172,7 +180,10 @@ export function BookingSection({ slots }: { slots: CalendarSlot[] }) {
       slots={slots}
       onBook={async (slotId) => {
         const res = await bookSlot(slotId);
-        if (res.ok) router.refresh();
+        if (res.ok) {
+          toast.success("Вы записаны. Подтверждение и приглашение в календарь ушли на почту");
+          router.refresh();
+        }
         return res;
       }}
     />
@@ -227,6 +238,7 @@ export function BookingActions({
               const res = await rescheduleSlot(slotId, toId);
               if (res.ok) {
                 setMode("idle");
+                toast.success("Встреча перенесена — психолог уже знает");
                 router.refresh();
               }
               return res;
@@ -251,7 +263,10 @@ export function BookingActions({
             startTransition(async () => {
               const res = await cancelBooking(slotId);
               if (!res.ok) setError(res.error ?? "Не получилось");
-              else router.refresh();
+              else {
+                toast.success("Встреча отменена");
+                router.refresh();
+              }
             })
           }
         >
@@ -291,6 +306,7 @@ export function RematchControl() {
           onClick={() =>
             startTransition(async () => {
               await requestRematch(reason);
+              toast.success("Запрос принят — оператор подберёт другого специалиста");
               router.refresh();
             })
           }

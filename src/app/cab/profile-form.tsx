@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { updateProfile, type ProfileUpdate } from "./actions";
 import { uploadPhoto } from "./upload";
 
@@ -52,8 +53,12 @@ export function ProfileForm({
     }
     startTransition(async () => {
       const res = await updateProfile(form);
-      if (res.ok) setSaved(true);
-      else setError(res.error ?? "Не получилось сохранить");
+      if (res.ok) {
+        setSaved(true);
+        toast.success("Профиль сохранён");
+      } else {
+        setError(res.error ?? "Не получилось сохранить");
+      }
     });
   }
 
