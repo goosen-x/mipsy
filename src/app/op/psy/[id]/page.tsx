@@ -32,11 +32,18 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
           {psy.email && <> · {psy.email}</>}
         </p>
         <p className="mt-2 text-sm text-neutral-500">
-          Кабинет: <Link href={`/cab/${psy.cabinetToken}`} className="break-all text-brand-700 underline">/cab/{psy.cabinetToken}</Link>
-          {psy.accessCode && (
+          {psy.email ? (
             <>
-              {" · "}код для входа: <span className="font-mono font-medium text-neutral-900">{psy.accessCode}</span>
+              Кабинет: вход на mipsy…/login по адресу{" "}
+              <span className="font-medium text-neutral-900">{psy.email}</span>, код приходит
+              письмом — при сбое он виден в{" "}
+              <Link href="/op/notifications" className="underline">
+                очереди уведомлений
+              </Link>
+              .
             </>
+          ) : (
+            <>Почты нет — специалист не сможет войти в кабинет. Спросите адрес при созвоне.</>
           )}
         </p>
       </div>

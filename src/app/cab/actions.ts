@@ -3,8 +3,11 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { clientRequests, db, psychologists, slots } from "@/db";
+import { currentAccountId } from "@/lib/auth";
 import { isPast } from "@/lib/datetime";
 import { messages, notify, subjects } from "@/lib/notify";
+
+const NO_SESSION = { ok: false, error: "Войдите в кабинет заново" } as const;
 
 export type ProfileUpdate = {
   meetingUrl: string;
@@ -20,18 +23,10 @@ export type ProfileUpdate = {
 };
 
 export async function updateProfile(
-  token: string,
   data: ProfileUpdate,
 ): Promise<{ ok: boolean; error?: string }> {
-  const [psy] = await db
-    .select({
-      id: psychologists.id,
-      slug: psychologists.slug,
-      moderationStatus: psychologists.moderationStatus,
-    })
-    .from(psychologists)
-    .where(eq(psychologists.cabinetToken, token));
-  if (!psy) return { ok: false, error: "Кабинет не найден" };
+  const psy = await me();
+  if (!psy) return NO_SESSION;
 
   await db
     .update(psychologists)
@@ -51,27 +46,33 @@ export async function updateProfile(
     })
     .where(eq(psychologists.id, psy.id));
 
-  revalidatePath(`/cab/${token}`);
+  revalidatePath("/cab");
   if (psy.slug) revalidatePath(`/p/${psy.slug}`);
   return { ok: true };
 }
 
-async function psyByToken(token: string) {
+/** Профиль психолога, который вошёл в кабинет. */
+async function me() {
+  const accountId = await currentAccountId();
+  if (!accountId) return null;
   const [psy] = await db
-    .select({ id: psychologists.id })
+    .select({
+      id: psychologists.id,
+      slug: psychologists.slug,
+      moderationStatus: psychologists.moderationStatus,
+    })
     .from(psychologists)
-    .where(eq(psychologists.cabinetToken, token));
+    .where(eq(psychologists.accountId, accountId));
   return psy ?? null;
 }
 
 // Психолог открывает свободные интервалы: одна дата, набор времён,
 // опционально повтор на несколько недель вперёд (как у Zigmund).
 export async function addSlots(
-  token: string,
   data: { date: string; times: string[]; durationMin: number; isIntroCall: boolean; repeatWeeks: number },
 ): Promise<{ ok: boolean; error?: string; added?: number }> {
-  const psy = await psyByToken(token);
-  if (!psy) return { ok: false, error: "Кабинет не найден" };
+  const psy = await me();
+  if (!psy) return NO_SESSION;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date)) return { ok: false, error: "Проверьте дату" };
   const times = (data.times ?? []).filter((t) => /^\d{2}:\d{2}$/.test(t));
   if (times.length === 0) return { ok: false, error: "Добавьте хотя бы одно время" };
@@ -100,7 +101,7 @@ export async function addSlots(
   const fresh = rows.filter((r) => !taken.has(r.startsAt));
   if (fresh.length > 0) await db.insert(slots).values(fresh);
 
-  revalidatePath(`/cab/${token}`);
+  revalidatePath("/cab");
   return { ok: true, added: fresh.length };
 }
 
@@ -109,12 +110,11 @@ export async function addSlots(
  * и попадает в аналитику как доведённая сессия.
  */
 export async function markSlotOutcome(
-  token: string,
   slotId: number,
   outcome: "done" | "no_show",
 ): Promise<{ ok: boolean; error?: string }> {
-  const psy = await psyByToken(token);
-  if (!psy) return { ok: false, error: "Кабинет не найден" };
+  const psy = await me();
+  if (!psy) return NO_SESSION;
 
   const [slot] = await db.select().from(slots).where(eq(slots.id, slotId));
   if (!slot || slot.psychologistId !== psy.id) return { ok: false, error: "Встреча не найдена" };
@@ -129,7 +129,6 @@ export async function markSlotOutcome(
         name: clientRequests.name,
         phone: clientRequests.phone,
         email: clientRequests.email,
-        token: clientRequests.clientToken,
       })
       .from(clientRequests)
       .where(eq(clientRequests.id, slot.clientRequestId));
@@ -137,7 +136,7 @@ export async function markSlotOutcome(
       .select({ name: psychologists.name })
       .from(psychologists)
       .where(eq(psychologists.id, psy.id));
-    if (client?.token) {
+    if (client) {
       await notify({
         kind: "review",
         recipientRole: "client",
@@ -145,7 +144,7 @@ export async function markSlotOutcome(
         recipientPhone: client.phone,
         recipientEmail: client.email,
         subject: subjects.review,
-        body: messages.clientReview(psyFull.name, client.token),
+        body: messages.clientReview(psyFull.name),
         clientRequestId: slot.clientRequestId,
         psychologistId: psy.id,
         slotId,
@@ -153,14 +152,14 @@ export async function markSlotOutcome(
     }
   }
 
-  revalidatePath(`/cab/${token}`);
+  revalidatePath("/cab");
   revalidatePath("/op");
   return { ok: true };
 }
 
-export async function removeSlot(token: string, slotId: number): Promise<{ ok: boolean; error?: string }> {
-  const psy = await psyByToken(token);
-  if (!psy) return { ok: false, error: "Кабинет не найден" };
+export async function removeSlot(slotId: number): Promise<{ ok: boolean; error?: string }> {
+  const psy = await me();
+  if (!psy) return NO_SESSION;
 
   const [slot] = await db.select().from(slots).where(eq(slots.id, slotId));
   if (!slot || slot.psychologistId !== psy.id) return { ok: false, error: "Слот не найден" };
@@ -169,6 +168,6 @@ export async function removeSlot(token: string, slotId: number): Promise<{ ok: b
   }
 
   await db.delete(slots).where(and(eq(slots.id, slotId), eq(slots.psychologistId, psy.id)));
-  revalidatePath(`/cab/${token}`);
+  revalidatePath("/cab");
   return { ok: true };
 }

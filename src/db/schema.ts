@@ -1,6 +1,26 @@
 import { sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
+/**
+ * Аккаунт — сам человек, отдельно от его обращений. Вход на сайте по email:
+ * запрашиваем код, отправляем письмом, дальше живёт сессия. Пароля нет намеренно —
+ * хранить нечего, а человеку в тяжёлом состоянии не нужно ничего придумывать.
+ */
+export const accounts = sqliteTable("accounts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  email: text("email").notNull().unique(), // всегда в нижнем регистре
+  name: text("name").notNull(),
+  phone: text("phone"),
+
+  loginCode: text("login_code"), // шесть цифр, живут 15 минут
+  loginCodeSentAt: text("login_code_sent_at"),
+  loginAttempts: integer("login_attempts").notNull().default(0),
+  lastLoginAt: text("last_login_at"),
+});
+
 // Справочник тем — общий для анкеты, профилей психологов и лендинга.
 export const topics = sqliteTable("topics", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -15,6 +35,8 @@ export const clientRequests = sqliteTable("client_requests", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
+  // Чей это запрос. У старых заявок, заведённых до личных кабинетов, аккаунта нет.
+  accountId: integer("account_id").references(() => accounts.id),
 
   forWhom: text("for_whom").notNull(), // self | pair | child (pair/child — «скоро»)
   gender: text("gender"), // female | male | skip
@@ -44,10 +66,9 @@ export const clientRequests = sqliteTable("client_requests", {
   status: text("status").notNull().default("new"), // new | called | matched | rematch | rejected
   operatorNotes: text("operator_notes"),
 
-  // Личный кабинет клиента открывается по секретной ссылке (SMS от оператора).
+  // Старые письма ведут на /me/<token>; ссылка сама доступа не даёт, только редирект на вход.
   clientToken: text("client_token").unique(),
   rematchReason: text("rematch_reason"), // почему предыдущий специалист не подошёл
-  accessCode: text("access_code"), // код подтверждения входа в кабинет
 });
 
 // Психолог: заявка на модерацию и, после одобрения, публичный профиль.
@@ -57,8 +78,9 @@ export const psychologists = sqliteTable("psychologists", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-  cabinetToken: text("cabinet_token").notNull().unique(), // доступ в кабинет по секретной ссылке
+  cabinetToken: text("cabinet_token").notNull().unique(), // старые ссылки /cab/<token>: редирект на вход
   slug: text("slug").unique(), // адрес публичной страницы, назначается при одобрении
+  accountId: integer("account_id").references(() => accounts.id),
 
   name: text("name").notNull(),
   phone: text("phone").notNull(),
@@ -91,8 +113,6 @@ export const psychologists = sqliteTable("psychologists", {
 
   // Постоянная ссылка на видеовстречу (Телемост, Zoom и т.п.) — своего видеомодуля не делаем.
   meetingUrl: text("meeting_url"),
-  // Код подтверждения входа в кабинет с нового устройства.
-  accessCode: text("access_code"),
 });
 
 // Привязка клиент↔психолог; переподбор = деактивация старой и новая запись.
@@ -179,7 +199,7 @@ export const notifications = sqliteTable("notifications", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-  kind: text("kind").notNull(), // booked | rescheduled | cancelled | reminder | matched | moderation | review
+  kind: text("kind").notNull(), // booked | rescheduled | cancelled | reminder | matched | moderation | review | login
   channel: text("channel").notNull().default("sms"), // sms | email
   recipientRole: text("recipient_role").notNull(), // client | psychologist
   recipientName: text("recipient_name").notNull(),

@@ -20,7 +20,7 @@ export function PsyApplicationForm() {
     personalTherapy: "",
   });
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function set(key: keyof typeof form, value: string) {
@@ -40,26 +40,30 @@ export function PsyApplicationForm() {
         supervision: form.supervision,
         personalTherapy: form.personalTherapy,
       });
-      if (res.ok) setToken(res.token);
+      if (res.ok) setSent(true);
       else setError(res.error);
     });
   }
 
-  if (token) {
+  if (sent) {
     return (
       <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6">
         <h3 className="text-xl font-semibold text-brand-800">Заявка отправлена!</h3>
         <p className="mt-2 text-neutral-700">
-          Мы изучим её и позвоним вам. Ваш личный кабинет уже доступен по ссылке ниже —{" "}
-          <span className="font-medium">сохраните её</span>, это ваш единственный способ входа:
+          Мы изучим её и позвоним вам. Кабинет уже открыт — в нём можно заполнить профиль, после
+          одобрения он станет публичным.
         </p>
-        <p className="mt-4 break-all rounded-xl bg-white p-4 font-mono text-sm">
-          <Link href={`/cab/${token}`} className="text-brand-700 underline">
-            {typeof window !== "undefined" ? window.location.origin : ""}/cab/{token}
+        <p className="mt-4">
+          <Link
+            href="/cab"
+            className="inline-block rounded-lg bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700"
+          >
+            Перейти в кабинет
           </Link>
         </p>
         <p className="mt-3 text-sm text-neutral-500">
-          В кабинете можно уже сейчас заполнить профиль — после одобрения он станет публичным.
+          С другого устройства вход по адресу <span className="font-medium">{form.email}</span> —
+          пришлём код на почту.
         </p>
       </div>
     );
@@ -79,7 +83,7 @@ export function PsyApplicationForm() {
             placeholder="+7 900 000-00-00"
           />
         </Field>
-        <Field label="Email">
+        <Field label="Email" required hint="Вход в кабинет и письма о записях">
           <Input
             type="email"
             value={form.email}

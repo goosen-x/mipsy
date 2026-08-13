@@ -2,7 +2,8 @@
 
 import { randomUUID } from "node:crypto";
 import { db, clientRequests } from "@/db";
-import { grantAccess } from "@/lib/access";
+import { linkAccount, signIn } from "@/lib/auth";
+import { isEmail, normalizeEmail } from "@/lib/auth-core";
 
 export type AnketaPayload = {
   forWhom: "self";
@@ -30,13 +31,19 @@ const FREQ = ["never", "seldom", "monthly", "weekly", "daily"];
 
 export async function submitAnketa(
   payload: AnketaPayload,
-): Promise<{ ok: true; token: string } | { ok: false; error: string }> {
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const name = payload.name?.trim();
   const phone = payload.phone?.replace(/[^\d+]/g, "") ?? "";
+  const email = normalizeEmail(payload.email);
 
   if (!name) return { ok: false, error: "Укажите имя" };
   if (phone.replace(/\D/g, "").length < 10) return { ok: false, error: "Проверьте номер телефона" };
+  // Почта обязательна: это вход в личный кабинет и адрес для писем о встречах.
+  if (!isEmail(email)) return { ok: false, error: "Проверьте адрес почты — по нему вы будете входить в кабинет" };
   if (!payload.pdConsent) return { ok: false, error: "Нужно согласие на обработку данных" };
+
+  const accountId = await linkAccount({ email, name, phone });
+  if (!accountId) return { ok: false, error: "Проверьте адрес почты" };
 
   const crisisFlag =
     !!payload.freqSelfHarm && FREQ.indexOf(payload.freqSelfHarm) >= FREQ.indexOf("monthly");
@@ -44,6 +51,7 @@ export async function submitAnketa(
 
   await db.insert(clientRequests).values({
     clientToken: token,
+    accountId,
     forWhom: "self",
     gender: payload.gender,
     age: payload.age,
@@ -61,12 +69,12 @@ export async function submitAnketa(
     story: payload.story?.trim() || null,
     name,
     phone,
-    email: payload.email?.trim() || null,
+    email,
     pdConsent: true,
     crisisFlag,
     status: "new",
   });
 
-  await grantAccess("me", token);
-  return { ok: true, token };
+  await signIn(accountId);
+  return { ok: true };
 }

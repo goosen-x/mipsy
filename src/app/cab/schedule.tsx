@@ -11,14 +11,14 @@ import { formatDay, groupByDate } from "@/lib/datetime";
 import { addSlots, markSlotOutcome, removeSlot } from "./actions";
 
 /** Отметка исхода прошедшей встречи. */
-export function OutcomeControl({ token, slotId }: { token: string; slotId: number }) {
+export function OutcomeControl({ slotId }: { slotId: number }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const mark = (outcome: "done" | "no_show") =>
     startTransition(async () => {
-      const res = await markSlotOutcome(token, slotId, outcome);
+      const res = await markSlotOutcome(slotId, outcome);
       if (!res.ok) setError(res.error ?? "Не вышло");
       else router.refresh();
     });
@@ -50,7 +50,7 @@ const TIME_OPTIONS = [
   "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00",
 ];
 
-export function Schedule({ token, slots }: { token: string; slots: Slot[] }) {
+export function Schedule({ slots }: { slots: Slot[] }) {
   const router = useRouter();
   const [date, setDate] = useState("");
   const [times, setTimes] = useState<string[]>([]);
@@ -66,7 +66,7 @@ export function Schedule({ token, slots }: { token: string; slots: Slot[] }) {
     setError(null);
     setInfo(null);
     startTransition(async () => {
-      const res = await addSlots(token, {
+      const res = await addSlots({
         date,
         times,
         durationMin: Number(duration) || 50,
@@ -165,7 +165,7 @@ export function Schedule({ token, slots }: { token: string; slots: Slot[] }) {
               <div className="text-sm font-medium text-neutral-500">{formatDay(day)}</div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {daySlots.map((s) => (
-                  <SlotChip key={s.id} token={token} slot={s} />
+                  <SlotChip key={s.id} slot={s} />
                 ))}
               </div>
             </div>
@@ -176,7 +176,7 @@ export function Schedule({ token, slots }: { token: string; slots: Slot[] }) {
   );
 }
 
-function SlotChip({ token, slot }: { token: string; slot: Slot }) {
+function SlotChip({ slot }: { slot: Slot }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -200,7 +200,7 @@ function SlotChip({ token, slot }: { token: string; slot: Slot }) {
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
-              const res = await removeSlot(token, slot.id);
+              const res = await removeSlot(slot.id);
               if (!res.ok) setError(res.error ?? "Не вышло");
               else router.refresh();
             })

@@ -18,13 +18,7 @@ import {
   rescheduleSlot,
 } from "./actions";
 
-export function ChoosePsychologist({
-  token,
-  psychologistId,
-}: {
-  token: string;
-  psychologistId: number;
-}) {
+export function ChoosePsychologist({ psychologistId }: { psychologistId: number }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -35,7 +29,7 @@ export function ChoosePsychologist({
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            const res = await choosePsychologist(token, psychologistId);
+            const res = await choosePsychologist(psychologistId);
             if (!res.ok) setError(res.error ?? "Не получилось");
             else router.refresh();
           })
@@ -48,7 +42,7 @@ export function ChoosePsychologist({
   );
 }
 
-export function ReviewForm({ token, slotId }: { token: string; slotId: number }) {
+export function ReviewForm({ slotId }: { slotId: number }) {
   const router = useRouter();
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState("");
@@ -87,7 +81,7 @@ export function ReviewForm({ token, slotId }: { token: string; slotId: number })
         onClick={() =>
           startTransition(async () => {
             setError(null);
-            const res = await leaveReview(token, slotId, rating, body);
+            const res = await leaveReview(slotId, rating, body);
             if (!res.ok) setError(res.error ?? "Не получилось");
             else router.refresh();
           })
@@ -102,7 +96,7 @@ export function ReviewForm({ token, slotId }: { token: string; slotId: number })
   );
 }
 
-export function SupportForm({ token }: { token: string }) {
+export function SupportForm() {
   const router = useRouter();
   const [kind, setKind] = useState<"question" | "complaint">("question");
   const [body, setBody] = useState("");
@@ -147,12 +141,7 @@ export function SupportForm({ token }: { token: string }) {
           ? "Расскажите, что произошло. Мы разберёмся и ответим."
           : "О чём вопрос?"}
       </Label>
-      <Textarea
-        rows={3}
-        className="mt-1"
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-      />
+      <Textarea rows={3} className="mt-1" value={body} onChange={(e) => setBody(e.target.value)} />
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       <Button
         variant="outline"
@@ -161,7 +150,7 @@ export function SupportForm({ token }: { token: string }) {
         onClick={() =>
           startTransition(async () => {
             setError(null);
-            const res = await createTicket(token, kind, body);
+            const res = await createTicket(kind, body);
             if (!res.ok) setError(res.error ?? "Не получилось");
             else {
               setSent(true);
@@ -176,13 +165,13 @@ export function SupportForm({ token }: { token: string }) {
   );
 }
 
-export function BookingSection({ token, slots }: { token: string; slots: CalendarSlot[] }) {
+export function BookingSection({ slots }: { slots: CalendarSlot[] }) {
   const router = useRouter();
   return (
     <BookingCalendar
       slots={slots}
       onBook={async (slotId) => {
-        const res = await bookSlot(token, slotId);
+        const res = await bookSlot(slotId);
         if (res.ok) router.refresh();
         return res;
       }}
@@ -192,13 +181,11 @@ export function BookingSection({ token, slots }: { token: string; slots: Calenda
 
 /** Управление записью: перенос в свободное окно и отмена. */
 export function BookingActions({
-  token,
   slotId,
   startsAt,
   freeSlots,
   canChange,
 }: {
-  token: string;
   slotId: number;
   startsAt: string;
   freeSlots: CalendarSlot[];
@@ -237,7 +224,7 @@ export function BookingActions({
             slots={freeSlots}
             submitLabel="Перенести встречу"
             onBook={async (toId) => {
-              const res = await rescheduleSlot(token, slotId, toId);
+              const res = await rescheduleSlot(slotId, toId);
               if (res.ok) {
                 setMode("idle");
                 router.refresh();
@@ -262,7 +249,7 @@ export function BookingActions({
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
-              const res = await cancelBooking(token, slotId);
+              const res = await cancelBooking(slotId);
               if (!res.ok) setError(res.error ?? "Не получилось");
               else router.refresh();
             })
@@ -276,7 +263,7 @@ export function BookingActions({
   );
 }
 
-export function RematchControl({ token }: { token: string }) {
+export function RematchControl() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -303,7 +290,7 @@ export function RematchControl({ token }: { token: string }) {
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
-              await requestRematch(token, reason);
+              await requestRematch(reason);
               router.refresh();
             })
           }

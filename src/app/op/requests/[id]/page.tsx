@@ -20,6 +20,7 @@ import {
   BookSlotControl,
   DropProposalButton,
   FreeSlotButton,
+  RequestEmailControl,
   RequestNotesControl,
   RequestStatusControl,
   SendProposalsButton,
@@ -121,24 +122,30 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      {req.clientToken && (
-        <div className="rounded-2xl bg-white p-4 text-sm shadow-sm">
-          <span className="text-neutral-500">Личная страница клиента: </span>
-          <Link href={`/me/${req.clientToken}`} className="break-all text-brand-700 underline">
-            /me/{req.clientToken}
-          </Link>
-          <p className="mt-1 text-xs text-neutral-400">
-            Отправьте ссылку клиенту — там он выберет время и сможет попросить переподбор. С нового
-            устройства страница попросит код подтверждения; он придёт клиенту сам, а при
-            необходимости виден здесь.
-            {req.accessCode && (
-              <>
-                {" "}Текущий код: <span className="font-mono font-medium text-neutral-700">{req.accessCode}</span>
-              </>
-            )}
-          </p>
-        </div>
-      )}
+      <div className="rounded-2xl bg-white p-4 text-sm shadow-sm">
+        {req.email ? (
+          <>
+            <span className="text-neutral-500">Личный кабинет: </span>
+            <span className="font-medium text-neutral-900">{req.email}</span>
+            <p className="mt-1 text-xs text-neutral-400">
+              Клиент входит на mipsy…/login по этому адресу — код приходит письмом. В кабинете он
+              выбирает время и может попросить переподбор. Если письмо не дошло, код виден в{" "}
+              <Link href="/op/notifications" className="underline">
+                очереди уведомлений
+              </Link>
+              .
+            </p>
+          </>
+        ) : (
+          <>
+            <span className="text-neutral-500">Почты нет — клиент не сможет войти в кабинет.</span>
+            <p className="mt-1 text-xs text-neutral-400">
+              Спросите адрес по телефону и впишите: заявка привяжется к кабинету.
+            </p>
+            <RequestEmailControl id={req.id} />
+          </>
+        )}
+      </div>
 
       {req.crisisFlag && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">

@@ -15,7 +15,8 @@ export type NotifyKind =
   | "reminder"
   | "matched"
   | "moderation"
-  | "review";
+  | "review"
+  | "login";
 
 type NotifyInput = {
   kind: NotifyKind;
@@ -113,7 +114,6 @@ export function meetingInvite(params: {
   startsAt: string;
   durationMin: number;
   psyName: string;
-  clientToken: string;
   meetingLink?: string | null;
 }): MailAttachment {
   return {
@@ -125,39 +125,42 @@ export function meetingInvite(params: {
       durationMin: params.durationMin,
       summary: `Встреча с психологом ${params.psyName} (mipsy)`,
       description: params.meetingLink
-        ? `Ссылка на встречу: ${params.meetingLink}\nВаша страница на mipsy: ${SITE_URL}/me/${params.clientToken}`
-        : `Ваша страница на mipsy: ${SITE_URL}/me/${params.clientToken}`,
-      url: params.meetingLink ?? `${SITE_URL}/me/${params.clientToken}`,
+        ? `Ссылка на встречу: ${params.meetingLink}\nВаш кабинет на mipsy: ${SITE_URL}/me`
+        : `Ваш кабинет на mipsy: ${SITE_URL}/me`,
+      url: params.meetingLink ?? `${SITE_URL}/me`,
     }),
   };
 }
 
 // Тексты уведомлений собраны здесь, чтобы их было легко вычитать целиком.
+// Ссылки ведут в кабинет: человек входит по почте и коду, секрета в адресе нет.
 export const messages = {
-  clientBooked: (psyName: string, startsAt: string, token: string, meetingLink?: string | null) =>
-    `Вы записаны к психологу ${psyName} на ${formatSlot(startsAt)}. Первая встреча бесплатная.${meetingLink ? `\n\nСсылка на встречу: ${meetingLink}` : ""}\n\nЕсли планы изменятся, встречу можно перенести или отменить не позднее чем за 24 часа на вашей странице: ${SITE_URL}/me/${token}\n\nКоманда mipsy`,
-  clientMatched: (names: string[], token: string) =>
+  clientBooked: (psyName: string, startsAt: string, meetingLink?: string | null) =>
+    `Вы записаны к психологу ${psyName} на ${formatSlot(startsAt)}. Первая встреча бесплатная.${meetingLink ? `\n\nСсылка на встречу: ${meetingLink}` : ""}\n\nЕсли планы изменятся, встречу можно перенести или отменить не позднее чем за 24 часа в личном кабинете: ${SITE_URL}/me\n\nКоманда mipsy`,
+  clientMatched: (names: string[]) =>
     names.length > 1
-      ? `Мы подобрали для вас ${names.length} специалистов: ${names.join(", ")}. Посмотрите профили, выберите того, кто откликнется, и запишитесь на бесплатную первую встречу: ${SITE_URL}/me/${token}`
-      : `Мы подобрали вам психолога — ${names[0]}. Выберите удобное время для бесплатной первой встречи: ${SITE_URL}/me/${token}`,
-  clientRescheduled: (psyName: string, startsAt: string, token: string) =>
-    `Встреча с ${psyName} перенесена на ${formatSlot(startsAt)}. Подробности: ${SITE_URL}/me/${token}`,
-  clientCancelled: (psyName: string, startsAt: string, token: string) =>
-    `Встреча с ${psyName} ${formatSlot(startsAt)} отменена. Выбрать другое время: ${SITE_URL}/me/${token}`,
+      ? `Мы подобрали для вас ${names.length} специалистов: ${names.join(", ")}. Посмотрите профили, выберите того, кто откликнется, и запишитесь на бесплатную первую встречу: ${SITE_URL}/me`
+      : `Мы подобрали вам психолога — ${names[0]}. Выберите удобное время для бесплатной первой встречи: ${SITE_URL}/me`,
+  clientRescheduled: (psyName: string, startsAt: string) =>
+    `Встреча с ${psyName} перенесена на ${formatSlot(startsAt)}. Подробности в кабинете: ${SITE_URL}/me`,
+  clientCancelled: (psyName: string, startsAt: string) =>
+    `Встреча с ${psyName} ${formatSlot(startsAt)} отменена. Выбрать другое время: ${SITE_URL}/me`,
   clientReminder: (psyName: string, startsAt: string) =>
     `Напоминаем о встрече с ${psyName} завтра в ${startsAt.split("T")[1]} ${TZ_SHORT}.`,
-  clientReview: (psyName: string, token: string) =>
-    `Как прошла встреча с ${psyName}? Оцените её на своей странице — это помогает другим людям выбрать специалиста: ${SITE_URL}/me/${token}`,
-  psyBooked: (clientName: string, startsAt: string, token: string) =>
-    `К вам записался клиент ${clientName} на ${formatSlot(startsAt)}. Кабинет: ${SITE_URL}/cab/${token}`,
-  psyRescheduled: (clientName: string, startsAt: string, token: string) =>
-    `Клиент ${clientName} перенёс встречу на ${formatSlot(startsAt)}. Кабинет: ${SITE_URL}/cab/${token}`,
+  clientReview: (psyName: string) =>
+    `Как прошла встреча с ${psyName}? Оцените её в личном кабинете — это помогает другим людям выбрать специалиста: ${SITE_URL}/me`,
+  psyBooked: (clientName: string, startsAt: string) =>
+    `К вам записался клиент ${clientName} на ${formatSlot(startsAt)}. Кабинет: ${SITE_URL}/cab`,
+  psyRescheduled: (clientName: string, startsAt: string) =>
+    `Клиент ${clientName} перенёс встречу на ${formatSlot(startsAt)}. Кабинет: ${SITE_URL}/cab`,
   psyCancelled: (clientName: string, startsAt: string) =>
     `Клиент ${clientName} отменил встречу ${formatSlot(startsAt)}. Время снова свободно.`,
-  psyModerated: (approved: boolean, token: string) =>
+  psyModerated: (approved: boolean) =>
     approved
-      ? `Ваш профиль одобрен и опубликован. Откройте расписание, чтобы клиенты могли записаться: ${SITE_URL}/cab/${token}`
-      : `По вашей заявке принято отрицательное решение. Подробности в кабинете: ${SITE_URL}/cab/${token}`,
+      ? `Ваш профиль одобрен и опубликован. Откройте расписание, чтобы клиенты могли записаться: ${SITE_URL}/cab`
+      : `По вашей заявке принято отрицательное решение. Подробности в кабинете: ${SITE_URL}/cab`,
+  loginCode: (code: string) =>
+    `Код для входа в личный кабинет mipsy: ${code}\n\nКод действует 15 минут. Если вы его не запрашивали — просто не вводите, доступ никто не получит.`,
 };
 
 export const subjects = {
@@ -168,4 +171,5 @@ export const subjects = {
   reminder: "mipsy: напоминание о встрече",
   review: "mipsy: как прошла встреча?",
   moderation: "mipsy: решение по вашей заявке",
+  login: "mipsy: код для входа",
 };

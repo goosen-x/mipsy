@@ -92,7 +92,9 @@ export function ProfileBooking({
           </div>
         </div>
         <div>
-          <Label className="mb-1 block">Email — на него придёт подтверждение и приглашение в календарь</Label>
+          <Label className="mb-1 block">
+            Email — вход в личный кабинет, подтверждение и приглашение в календарь
+          </Label>
           <Input
             type="email"
             value={form.email}
@@ -124,13 +126,15 @@ export function ProfileBooking({
         <Button
           size="lg"
           className="rounded-lg bg-accent-500 px-8 hover:bg-accent-600"
-          disabled={pending || !form.name.trim() || !form.phone.trim() || !form.pdConsent}
+          disabled={
+            pending || !form.name.trim() || !form.phone.trim() || !form.email.trim() || !form.pdConsent
+          }
           onClick={() =>
             startTransition(async () => {
               setError(null);
               const res = await bookFirstSession(slug, chosen.id, form);
               if (!res.ok) setError(res.error);
-              else router.push(`/me/${res.token}`);
+              else router.push("/me");
             })
           }
         >

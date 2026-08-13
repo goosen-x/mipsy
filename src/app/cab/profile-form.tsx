@@ -22,11 +22,9 @@ const FORMATS = [
 const CONTACT_RE = /(\+?\d[\d\s\-()]{8,})|@\w{2,}|(t\.me|wa\.me|vk\.com|instagram\.com)/i;
 
 export function ProfileForm({
-  token,
   topics,
   initial,
 }: {
-  token: string;
   topics: Topic[];
   initial: ProfileUpdate;
 }) {
@@ -53,7 +51,7 @@ export function ProfileForm({
       return;
     }
     startTransition(async () => {
-      const res = await updateProfile(token, form);
+      const res = await updateProfile(form);
       if (res.ok) setSaved(true);
       else setError(res.error ?? "Не получилось сохранить");
     });
@@ -88,7 +86,7 @@ export function ProfileForm({
                 setSaved(false);
                 setError(null);
                 startTransition(async () => {
-                  const res = await uploadPhoto(token, fd);
+                  const res = await uploadPhoto(fd);
                   if (res.ok) set("photoUrl", res.url);
                   else setError(res.error);
                 });

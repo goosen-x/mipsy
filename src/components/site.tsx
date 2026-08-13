@@ -1,6 +1,11 @@
 import Link from "next/link";
+import { currentAccountId, homePathFor } from "@/lib/auth";
+import { signOutAction } from "@/app/logout/actions";
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  const accountId = await currentAccountId();
+  const cabinet = accountId ? await homePathFor(accountId) : null;
+
   return (
     <header className="border-b border-neutral-100">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
@@ -14,6 +19,15 @@ export function SiteHeader() {
           <Link href="/psy" className="text-neutral-600 hover:text-brand-700">
             Психологам
           </Link>
+          {cabinet ? (
+            <Link href={cabinet} className="font-medium text-brand-700 hover:text-brand-800">
+              Мой кабинет
+            </Link>
+          ) : (
+            <Link href="/login" className="text-neutral-600 hover:text-brand-700">
+              Войти
+            </Link>
+          )}
           <Link
             href="/anketa"
             className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
@@ -21,6 +35,29 @@ export function SiteHeader() {
             Подобрать психолога
           </Link>
         </nav>
+      </div>
+    </header>
+  );
+}
+
+/** Шапка кабинета: имя владельца и выход. */
+export function CabinetHeader({ title, wide }: { title: string; wide?: boolean }) {
+  return (
+    <header className="border-b bg-white">
+      <div
+        className={`mx-auto flex ${wide ? "max-w-4xl" : "max-w-3xl"} items-center justify-between px-4 py-4`}
+      >
+        <Link href="/" className="text-xl font-bold text-brand-700">
+          mipsy
+        </Link>
+        <div className="flex items-center gap-4 text-sm text-neutral-500">
+          <span>{title}</span>
+          <form action={signOutAction}>
+            <button type="submit" className="text-neutral-500 underline hover:text-brand-700">
+              Выйти
+            </button>
+          </form>
+        </div>
       </div>
     </header>
   );

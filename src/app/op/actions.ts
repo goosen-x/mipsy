@@ -14,6 +14,8 @@ import {
   supportTickets,
 } from "@/db";
 import { isOperator, OP_COOKIE, opPasswordHash } from "@/lib/op-auth";
+import { linkAccount } from "@/lib/auth";
+import { isEmail, normalizeEmail } from "@/lib/auth-core";
 import { messages, notify, subjects } from "@/lib/notify";
 import { logAdmin } from "@/lib/logs";
 import { errorLog } from "@/db";
@@ -43,20 +45,48 @@ async function guard() {
 
 export async function updateRequest(
   id: number,
-  data: { status?: string; operatorNotes?: string },
-): Promise<{ ok: boolean }> {
+  data: { status?: string; operatorNotes?: string; email?: string },
+): Promise<{ ok: boolean; error?: string }> {
   await guard();
-  await db
-    .update(clientRequests)
-    .set({
-      ...(data.status !== undefined ? { status: data.status } : {}),
-      ...(data.operatorNotes !== undefined ? { operatorNotes: data.operatorNotes } : {}),
-    })
-    .where(eq(clientRequests.id, id));
+
+  // Заявкам, заведённым до личных кабинетов, оператор может дописать почту —
+  // без неё человек не сможет войти.
+  let accountId: number | null = null;
+  if (data.email !== undefined && data.email.trim()) {
+    const email = normalizeEmail(data.email);
+    if (!isEmail(email)) return { ok: false, error: "Проверьте адрес почты" };
+    const [req] = await db
+      .select({ name: clientRequests.name, phone: clientRequests.phone })
+      .from(clientRequests)
+      .where(eq(clientRequests.id, id));
+    if (!req) return { ok: false, error: "Заявка не найдена" };
+    accountId = await linkAccount({ email, name: req.name, phone: req.phone });
+    if (accountId) {
+      await db
+        .update(clientRequests)
+        .set({ email, accountId })
+        .where(eq(clientRequests.id, id));
+    }
+  }
+
+  // Пустой set() drizzle не примет — обновляем, только если есть что менять.
+  if (data.status !== undefined || data.operatorNotes !== undefined) {
+    await db
+      .update(clientRequests)
+      .set({
+        ...(data.status !== undefined ? { status: data.status } : {}),
+        ...(data.operatorNotes !== undefined ? { operatorNotes: data.operatorNotes } : {}),
+      })
+      .where(eq(clientRequests.id, id));
+  }
   await logAdmin("изменил заявку", {
     type: "request",
     id,
-    detail: [data.status && `статус → ${data.status}`, data.operatorNotes !== undefined && "пометки"]
+    detail: [
+      data.status && `статус → ${data.status}`,
+      data.operatorNotes !== undefined && "пометки",
+      accountId && "почта для входа",
+    ]
       .filter(Boolean)
       .join(", "),
   });
@@ -115,11 +145,14 @@ export async function sendProposals(requestId: number): Promise<{ ok: boolean; e
       name: clientRequests.name,
       phone: clientRequests.phone,
       email: clientRequests.email,
-      token: clientRequests.clientToken,
+      accountId: clientRequests.accountId,
     })
     .from(clientRequests)
     .where(eq(clientRequests.id, requestId));
-  if (!client?.token) return { ok: false, error: "У заявки нет личной страницы" };
+  if (!client) return { ok: false, error: "Заявка не найдена" };
+  if (!client.accountId) {
+    return { ok: false, error: "У заявки нет почты — впишите адрес, чтобы клиент смог войти" };
+  }
 
   const proposed = await db
     .select({ name: psychologists.name })
@@ -135,10 +168,7 @@ export async function sendProposals(requestId: number): Promise<{ ok: boolean; e
     recipientPhone: client.phone,
     recipientEmail: client.email,
     subject: subjects.matched,
-    body: messages.clientMatched(
-      proposed.map((p) => p.name),
-      client.token,
-    ),
+    body: messages.clientMatched(proposed.map((p) => p.name)),
     clientRequestId: requestId,
   });
 
@@ -285,7 +315,6 @@ export async function moderatePsychologist(
       name: psychologists.name,
       phone: psychologists.phone,
       email: psychologists.email,
-      token: psychologists.cabinetToken,
     })
     .from(psychologists)
     .where(eq(psychologists.id, id));
@@ -296,7 +325,7 @@ export async function moderatePsychologist(
     recipientPhone: full.phone,
     recipientEmail: full.email,
     subject: subjects.moderation,
-    body: messages.psyModerated(decision === "approved", full.token),
+    body: messages.psyModerated(decision === "approved"),
     psychologistId: id,
   });
   await logAdmin(decision === "approved" ? "одобрил психолога" : "отклонил психолога", {

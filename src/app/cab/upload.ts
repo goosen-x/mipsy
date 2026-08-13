@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, psychologists } from "@/db";
+import { currentAccountId } from "@/lib/auth";
 import { putObject } from "@/lib/storage";
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -24,14 +25,16 @@ function looksLikeImage(bytes: Buffer): boolean {
 }
 
 export async function uploadPhoto(
-  token: string,
   formData: FormData,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  const [psy] = await db
-    .select({ id: psychologists.id, slug: psychologists.slug })
-    .from(psychologists)
-    .where(eq(psychologists.cabinetToken, token));
-  if (!psy) return { ok: false, error: "Кабинет не найден" };
+  const accountId = await currentAccountId();
+  const [psy] = accountId
+    ? await db
+        .select({ id: psychologists.id, slug: psychologists.slug })
+        .from(psychologists)
+        .where(eq(psychologists.accountId, accountId))
+    : [];
+  if (!psy) return { ok: false, error: "Войдите в кабинет заново" };
 
   const file = formData.get("photo");
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: "Выберите файл" };
@@ -46,7 +49,7 @@ export async function uploadPhoto(
   const { url } = await putObject(`${randomUUID()}.${ext}`, bytes);
   await db.update(psychologists).set({ photoUrl: url }).where(eq(psychologists.id, psy.id));
 
-  revalidatePath(`/cab/${token}`);
+  revalidatePath("/cab");
   if (psy.slug) revalidatePath(`/p/${psy.slug}`);
   return { ok: true, url };
 }

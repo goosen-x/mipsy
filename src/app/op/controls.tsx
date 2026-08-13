@@ -278,6 +278,41 @@ export function RequestNotesControl({ id, notes }: { id: number; notes: string }
   );
 }
 
+/** У старых заявок почты нет — без неё человек не войдёт в кабинет. */
+export function RequestEmailControl({ id }: { id: number }) {
+  const router = useRouter();
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <Input
+        type="email"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="почта клиента"
+        className="max-w-xs"
+      />
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={pending || !value.trim()}
+        onClick={() =>
+          startTransition(async () => {
+            setError(null);
+            const res = await updateRequest(id, { email: value });
+            if (!res.ok) setError(res.error ?? "Не получилось");
+            else router.refresh();
+          })
+        }
+      >
+        {pending ? "Сохраняем…" : "Открыть доступ"}
+      </Button>
+      {error && <span className="text-sm text-red-600">{error}</span>}
+    </div>
+  );
+}
+
 export function AssignControl({
   requestId,
   candidates,
