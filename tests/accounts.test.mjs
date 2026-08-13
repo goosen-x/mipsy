@@ -139,6 +139,14 @@ test("старые заявки и профили привязаны к акка
   assert.ok(psy.account_id, "у психолога тоже есть аккаунт");
 });
 
+test("журнал входов заведён — «код не пришёл» будет чем объяснить", () => {
+  const columns = db
+    .prepare("SELECT name FROM pragma_table_info('login_log')")
+    .all()
+    .map((c) => c.name);
+  assert.deepEqual(columns, ["id", "created_at", "email", "outcome", "detail"]);
+});
+
 test("секретные коды доступа из старой схемы удалены", () => {
   const columns = db
     .prepare("SELECT name FROM pragma_table_info('client_requests')")

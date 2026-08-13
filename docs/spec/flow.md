@@ -83,7 +83,7 @@ flowchart LR
   IN --> PSY["/op/psy — модерация психологов"]
   IN --> RVW["/op/reviews — модерация отзывов"]
   IN --> SUP["/op/support — вопросы и жалобы"]
-  IN --> NTF["/op/notifications — очередь;<br/>непосланное с готовым текстом"]
+  IN --> NTF["/op/notifications — очередь<br/>и журнал попыток входа"]
   IN --> ERR["/op/errors — журнал ошибок приложения"]
   IN --> AUD["/op/audit — журнал действий оператора"]
   IN --> ST["/op/stats — воронка и загрузка расписания"]
@@ -107,7 +107,11 @@ flowchart LR
   FIRST["Только что прошёл анкету,<br/>подал заявку или записался"] --> SESS
   OLD["Старая ссылка /me/token<br/>из прежних писем"] --> LOGIN
   MAIL -.->|"письмо не дошло"| OPR["Оператор видит код<br/>в /op/notifications<br/>и диктует по телефону"]
+  ISSUE --> LOG["login_log: адрес, время, исход<br/>(отправлен / нет аккаунта /<br/>не ушло / просрочен / вошёл)"]
+  CHECK --> LOG
 ```
+
+Каждая попытка входа попадает в журнал `login_log` — оператор видит его в `/op/notifications`. Без него случай «такой почты у нас нет» не оставляет следа вообще: письмо не отправляется, в очереди пусто, и на вопрос «почему не приходит код» ответить нечем.
 
 Пароля нет намеренно: хранить нечего, и человеку в тяжёлом состоянии не надо ничего придумывать. Почта — обязательное поле в анкете, в заявке психолога и при записи из каталога; у заявок, заведённых до аккаунтов, её вписывает оператор.
 
@@ -116,7 +120,7 @@ flowchart LR
 | Слой | Чем сделано |
 |---|---|
 | Страницы и логика | Next.js 16 (App Router, серверные компоненты и server actions), React 19, TypeScript, Tailwind 4, shadcn/ui на Radix, иконки Tabler |
-| Данные | SQLite через better-sqlite3 + Drizzle ORM; таблицы `accounts`, `topics`, `client_requests`, `psychologists`, `matches`, `slots`, `reviews`, `support_tickets`, `notifications`, `error_log`, `admin_log` |
+| Данные | SQLite через better-sqlite3 + Drizzle ORM; таблицы `accounts`, `topics`, `client_requests`, `psychologists`, `matches`, `slots`, `reviews`, `support_tickets`, `notifications`, `login_log`, `error_log`, `admin_log` |
 | Миграции | drizzle-kit генерирует SQL в `drizzle/`, `scripts/migrate.mjs` применяет их при старте контейнера и сидит справочник тем |
 | Почта | nodemailer поверх SMTP (`SMTP_*`); приглашение — свой генератор `.ics` (`src/lib/ics.ts`) вложением к письму |
 | SMS | smsc.ru через `SMS_LOGIN`/`SMS_PASSWORD`; код написан, ключи не подключены |
@@ -144,7 +148,7 @@ flowchart LR
 | Переподбор | `/me` | `requestRematch` | `client_requests`, `matches`, `slots` | — |
 | Поддержка и жалобы | `/me`, `/cab` | `createTicket`, `updateTicket` | `support_tickets` | — |
 | Модерация психолога | `/op/psy/[id]` | `moderatePsychologist` | `psychologists`, `notifications` | SMTP |
-| Вход в кабинет | `/login` | `requestLoginCode`, `confirmLoginCode` | `accounts`, `notifications` | SMTP |
+| Вход в кабинет | `/login` | `requestLoginCode`, `confirmLoginCode` | `accounts`, `notifications`, `login_log` | SMTP |
 
 ## 8. Что в этой схеме делается руками и чего нет
 

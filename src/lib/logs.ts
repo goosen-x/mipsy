@@ -1,5 +1,6 @@
 import "server-only";
-import { adminLog, db, errorLog } from "@/db";
+import { lt } from "drizzle-orm";
+import { adminLog, db, errorLog, loginLog } from "@/db";
 
 /** Журнал ошибок приложения — читается в админке, чтобы не лезть в docker logs. */
 export async function logError(params: {
@@ -24,6 +25,42 @@ export async function logError(params: {
   } catch {
     // Журнал не должен ронять запрос, который и так уже сломался.
   }
+}
+
+export type LoginOutcome =
+  | "bad_email"
+  | "no_account"
+  | "sent"
+  | "delivery_failed"
+  | "wrong_code"
+  | "expired"
+  | "blocked"
+  | "signed_in";
+
+/**
+ * Журнал попыток входа. Хранит введённый адрес — иначе на вопрос «почему мне
+ * не приходит код» ответить нечем. Записи старше 30 дней удаляем: для разбора
+ * обращений этого хватает, а лишние адреса копить незачем.
+ */
+export async function logLogin(
+  email: string,
+  outcome: LoginOutcome,
+  detail?: string,
+): Promise<void> {
+  try {
+    await db.insert(loginLog).values({
+      email: email.slice(0, 200),
+      outcome,
+      detail: detail?.slice(0, 500) ?? null,
+    });
+    await db.delete(loginLog).where(lt(loginLog.createdAt, sqlDaysAgo(30)));
+  } catch {
+    // Журнал не должен мешать человеку войти.
+  }
+}
+
+function sqlDaysAgo(days: number): string {
+  return new Date(Date.now() - days * 86400000).toISOString().slice(0, 19).replace("T", " ");
 }
 
 /** Журнал действий администратора: что оператор делал с данными людей. */

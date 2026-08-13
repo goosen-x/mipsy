@@ -215,6 +215,23 @@ export const notifications = sqliteTable("notifications", {
   slotId: integer("slot_id").references(() => slots.id),
 });
 
+/**
+ * Журнал попыток входа. Нужен ровно для одного разговора: «мне не пришёл код».
+ * Без него случай «такой почты у нас нет» не оставляет следа вообще — письмо
+ * не отправляется, в очереди уведомлений пусто, и оператору нечего сказать.
+ * Не в error_log: это не ошибка приложения, а по нему считаются алерты.
+ */
+export const loginLog = sqliteTable("login_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  email: text("email").notNull(), // ровно то, что человек ввёл, в нижнем регистре
+  outcome: text("outcome").notNull(),
+  // bad_email | no_account | sent | delivery_failed | wrong_code | expired | blocked | signed_in
+  detail: text("detail"),
+});
+
 /** Журнал ошибок приложения: видно в админке, не нужно лезть в docker logs. */
 export const errorLog = sqliteTable("error_log", {
   id: integer("id").primaryKey({ autoIncrement: true }),

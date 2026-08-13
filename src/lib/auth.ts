@@ -132,13 +132,18 @@ export async function issueLoginCode(rawEmail: string): Promise<IssuedCode | nul
   return { accountId: account.id, email, name: account.name, phone: account.phone, code };
 }
 
-export async function verifyLoginCode(
-  rawEmail: string,
-  rawCode: string,
-): Promise<{ ok: true; accountId: number } | { ok: false; error: string }> {
+export type VerifyResult =
+  | { ok: true; accountId: number }
+  | { ok: false; error: string; reason: "wrong_code" | "expired" | "blocked" };
+
+export async function verifyLoginCode(rawEmail: string, rawCode: string): Promise<VerifyResult> {
   const email = normalizeEmail(rawEmail);
   const code = cleanCode(rawCode);
-  const wrong = { ok: false, error: "Неверный код — проверьте и попробуйте ещё раз" } as const;
+  const wrong = {
+    ok: false,
+    error: "Неверный код — проверьте и попробуйте ещё раз",
+    reason: "wrong_code",
+  } as const;
 
   const [account] = await db
     .select({
@@ -152,10 +157,10 @@ export async function verifyLoginCode(
   if (!account || code.length !== 6) return wrong;
 
   if (account.loginAttempts >= MAX_CODE_ATTEMPTS) {
-    return { ok: false, error: "Слишком много попыток. Запросите новый код." };
+    return { ok: false, error: "Слишком много попыток. Запросите новый код.", reason: "blocked" };
   }
   if (!account.loginCode || !codeIsFresh(account.loginCodeSentAt)) {
-    return { ok: false, error: "Код устарел — запросите новый." };
+    return { ok: false, error: "Код устарел — запросите новый.", reason: "expired" };
   }
   if (account.loginCode !== code) {
     await db

@@ -61,9 +61,12 @@ const stamp = () => new Date().toISOString().slice(0, 16).replace("T", " ");
 /**
  * Кладёт уведомление в очередь и пробует отправить. Письмо уходит, если задан
  * SMTP и известен адрес; иначе остаётся SMS. Неотправленное видно оператору
- * в админке с готовым текстом.
+ * в админке с готовым текстом. Возвращает результат — вызывающему коду бывает
+ * нужно знать, дошло ли (например, чтобы записать это в журнал входов).
  */
-export async function notify(input: NotifyInput): Promise<void> {
+export async function notify(
+  input: NotifyInput,
+): Promise<{ ok: boolean; channel: "email" | "sms"; error?: string }> {
   const useEmail = Boolean(input.recipientEmail) && mailConfigured();
   const channel = useEmail ? "email" : "sms";
 
@@ -106,6 +109,8 @@ export async function notify(input: NotifyInput): Promise<void> {
       detail: `${input.kind} → ${input.recipientName}: ${result.error}`,
     });
   }
+
+  return { ok: result.ok, channel, error: result.error };
 }
 
 /** Приглашение на встречу вложением — «автоматическое формирование приглашений» из ТЗ. */
