@@ -58,7 +58,9 @@ export const clientRequests = sqliteTable("client_requests", {
 
   story: text("story"),
   name: text("name").notNull(),
-  phone: text("phone").notNull(),
+  // Телефон больше не спрашиваем: связь с клиентом идёт почтой. У прежних
+  // заявок номер сохранён, у новых его нет.
+  phone: text("phone"),
   email: text("email"),
   pdConsent: integer("pd_consent", { mode: "boolean" }).notNull().default(false),
 

@@ -11,7 +11,6 @@ import { meetingInvite, messages, notify, subjects } from "@/lib/notify";
 
 export type DirectBooking = {
   name: string;
-  phone: string;
   email: string;
   note: string;
   pdConsent: boolean;
@@ -28,14 +27,12 @@ export async function bookFirstSession(
   data: DirectBooking,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const name = data.name?.trim();
-  const phone = data.phone?.replace(/[^\d+]/g, "") ?? "";
   const email = normalizeEmail(data.email);
   if (!name) return { ok: false, error: "Укажите имя" };
-  if (phone.replace(/\D/g, "").length < 10) return { ok: false, error: "Проверьте номер телефона" };
   if (!isEmail(email)) return { ok: false, error: "Проверьте адрес почты — по нему вы будете входить в кабинет" };
   if (!data.pdConsent) return { ok: false, error: "Нужно согласие на обработку данных" };
 
-  const accountId = await linkAccount({ email, name, phone });
+  const accountId = await linkAccount({ email, name });
   if (!accountId) return { ok: false, error: "Проверьте адрес почты" };
 
   const [psy] = await db
@@ -62,7 +59,6 @@ export async function bookFirstSession(
       forWhom: "self",
       accountId,
       name,
-      phone,
       email,
       story: data.note?.trim() || null,
       pdConsent: true,
@@ -95,7 +91,6 @@ export async function bookFirstSession(
     kind: "booked",
     recipientRole: "client",
     recipientName: name,
-    recipientPhone: phone,
     recipientEmail: email,
     subject: subjects.booked,
     body: messages.clientBooked(psy.name, slot.startsAt, psy.meetingUrl),

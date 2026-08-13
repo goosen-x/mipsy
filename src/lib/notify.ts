@@ -22,7 +22,7 @@ type NotifyInput = {
   kind: NotifyKind;
   recipientRole: "client" | "psychologist";
   recipientName: string;
-  recipientPhone: string;
+  recipientPhone?: string | null;
   recipientEmail?: string | null;
   subject?: string;
   body: string;
@@ -77,7 +77,7 @@ export async function notify(
       channel,
       recipientRole: input.recipientRole,
       recipientName: input.recipientName,
-      recipientPhone: input.recipientPhone,
+      recipientPhone: input.recipientPhone ?? "",
       recipientEmail: input.recipientEmail ?? null,
       subject: input.subject ?? null,
       body: input.body,
@@ -94,7 +94,9 @@ export async function notify(
         text: input.body,
         attachments: input.attachments,
       })
-    : await sendSms(input.recipientPhone, input.body);
+    : input.recipientPhone
+      ? await sendSms(input.recipientPhone, input.body)
+      : { ok: false, error: "нет ни почты, ни телефона" };
 
   if (result.ok) {
     await db

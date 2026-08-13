@@ -110,7 +110,19 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
           <RequestStatusControl id={req.id} status={req.status} />
         </div>
         <p className="mt-1 text-neutral-500">
-          {req.createdAt.slice(0, 16)} · тел. <span className="font-medium text-neutral-900">{req.phone}</span>
+          {req.createdAt.slice(0, 16)}
+          {req.email && (
+            <>
+              {" · "}
+              <span className="font-medium text-neutral-900">{req.email}</span>
+            </>
+          )}
+          {req.phone && (
+            <>
+              {" · тел. "}
+              <span className="font-medium text-neutral-900">{req.phone}</span>
+            </>
+          )}
         </p>
       </div>
 

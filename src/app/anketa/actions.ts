@@ -22,7 +22,6 @@ export type AnketaPayload = {
   preferredTime: string[];
   story: string | null;
   name: string;
-  phone: string;
   email: string | null;
   pdConsent: boolean;
 };
@@ -33,16 +32,14 @@ export async function submitAnketa(
   payload: AnketaPayload,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const name = payload.name?.trim();
-  const phone = payload.phone?.replace(/[^\d+]/g, "") ?? "";
   const email = normalizeEmail(payload.email);
 
   if (!name) return { ok: false, error: "Укажите имя" };
-  if (phone.replace(/\D/g, "").length < 10) return { ok: false, error: "Проверьте номер телефона" };
   // Почта обязательна: это вход в личный кабинет и адрес для писем о встречах.
   if (!isEmail(email)) return { ok: false, error: "Проверьте адрес почты — по нему вы будете входить в кабинет" };
   if (!payload.pdConsent) return { ok: false, error: "Нужно согласие на обработку данных" };
 
-  const accountId = await linkAccount({ email, name, phone });
+  const accountId = await linkAccount({ email, name });
   if (!accountId) return { ok: false, error: "Проверьте адрес почты" };
 
   const crisisFlag =
@@ -68,7 +65,6 @@ export async function submitAnketa(
     preferredTime: payload.preferredTime ?? [],
     story: payload.story?.trim() || null,
     name,
-    phone,
     email,
     pdConsent: true,
     crisisFlag,

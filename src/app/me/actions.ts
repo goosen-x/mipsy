@@ -7,7 +7,7 @@ import { accountRequestIds, currentAccountId } from "@/lib/auth";
 import { canClientChange, isPast } from "@/lib/datetime";
 import { meetingInvite, messages, notify, subjects } from "@/lib/notify";
 
-type Client = { id: number; name: string; phone: string; email: string | null };
+type Client = { id: number; name: string; phone: string | null; email: string | null };
 type Psy = {
   id: number;
   name: string;
@@ -188,7 +188,7 @@ export async function rescheduleSlot(
   if (!canClientChange(from.startsAt)) {
     return {
       ok: false,
-      error: "До встречи меньше 24 часов — перенос согласуйте с оператором по телефону.",
+      error: "До встречи меньше 24 часов — перенос согласуйте с оператором через поддержку.",
     };
   }
 
@@ -265,7 +265,7 @@ export async function cancelBooking(slotId: number): Promise<{ ok: boolean; erro
   if (!canClientChange(slot.startsAt)) {
     return {
       ok: false,
-      error: "До встречи меньше 24 часов — отмену согласуйте с оператором по телефону.",
+      error: "До встречи меньше 24 часов — отмену согласуйте с оператором через поддержку.",
     };
   }
 

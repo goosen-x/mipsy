@@ -29,7 +29,6 @@ type State = {
   preferredTime: string[];
   story: string;
   name: string;
-  phone: string;
   email: string;
   pdConsent: boolean;
 };
@@ -81,7 +80,6 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
     preferredTime: [],
     story: "",
     name: "",
-    phone: "",
     email: knownEmail,
     pdConsent: true,
   });
@@ -148,7 +146,6 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
       preferredTime: state.preferredTime,
       story: state.story || null,
       name: state.name,
-      phone: state.phone,
       email: state.email || null,
       pdConsent: state.pdConsent,
     };
@@ -164,8 +161,8 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
       <Shell progress={100} onBack={null}>
         <h1 className="text-3xl font-bold">Спасибо, {state.name}!</h1>
         <p className="mt-4 text-lg text-neutral-600">
-          Анкета у нас. Оператор изучит её и позвонит вам по номеру{" "}
-          <span className="font-medium text-neutral-900">{state.phone}</span>, чтобы обсудить
+          Анкета у нас. Оператор изучит её и напишет вам на{" "}
+          <span className="font-medium text-neutral-900">{state.email}</span>, чтобы обсудить
           подбор психолога. Обычно это занимает не больше одного рабочего дня.
         </p>
         <div className="mt-6 rounded-2xl bg-brand-50 p-5">
@@ -486,8 +483,8 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
 
       {step === "contact" && (
         <Question
-          title="Куда позвонить оператору?"
-          subtitle="Оператор mipsy свяжется с вами, чтобы обсудить подбор. Никакой рассылки и спама."
+          title="Как с вами связаться?"
+          subtitle="Оператор mipsy напишет вам, чтобы обсудить подбор. Никакой рассылки и спама."
         >
           <Label htmlFor="name">Ваше имя</Label>
           <Input
@@ -497,28 +494,29 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
             placeholder="Как к вам обращаться"
             className="mt-1"
           />
-          <Label htmlFor="phone" className="mt-4 block">
-            Телефон
-          </Label>
-          <Input
-            id="phone"
-            type="tel"
-            value={state.phone}
-            onChange={(e) => set("phone", e.target.value)}
-            placeholder="+7 900 000-00-00"
-            className="mt-1"
-          />
-          <Label htmlFor="email" className="mt-4 block">
-            {knownEmail ? "Email — почта подтверждена, кабинет уже ваш" : "Email — вход в личный кабинет и письма о встречах"}
-          </Label>
-          <Input
-            id="email"
-            type="email"
-            value={state.email}
-            onChange={(e) => set("email", e.target.value)}
-            placeholder="ivan@example.com"
-            className="mt-1"
-          />
+          {knownEmail ? (
+            <div className="mt-4 rounded-xl bg-brand-50 p-3 text-sm">
+              <span className="text-neutral-600">Почта подтверждена: </span>
+              <span className="font-medium text-brand-800">{knownEmail}</span>
+              <div className="mt-0.5 text-xs text-neutral-500">
+                На неё придут подбор и подтверждение записи.
+              </div>
+            </div>
+          ) : (
+            <>
+              <Label htmlFor="email" className="mt-4 block">
+                Email — вход в личный кабинет и письма о встречах
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={state.email}
+                onChange={(e) => set("email", e.target.value)}
+                placeholder="ivan@example.com"
+                className="mt-1"
+              />
+            </>
+          )}
           <div className="mt-4 flex items-start gap-3">
             <Checkbox
               id="pd"
@@ -534,13 +532,7 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
           <Button
             className="mt-5 w-full"
             size="lg"
-            disabled={
-              pending ||
-              !state.name.trim() ||
-              !state.phone.trim() ||
-              !state.email.trim() ||
-              !state.pdConsent
-            }
+            disabled={pending || !state.name.trim() || !state.email.trim() || !state.pdConsent}
             onClick={submit}
           >
             {pending ? "Отправляем…" : "Отправить анкету"}

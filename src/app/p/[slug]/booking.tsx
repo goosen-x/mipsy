@@ -22,7 +22,7 @@ export function ProfileBooking({
 }) {
   const router = useRouter();
   const [slotId, setSlotId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", note: "", pdConsent: true });
+  const [form, setForm] = useState({ name: "", email: "", note: "", pdConsent: true });
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -82,13 +82,6 @@ export function ProfileBooking({
             />
           </div>
           <div>
-            <Label className="mb-1 block">Телефон</Label>
-            <Input
-              type="tel"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              placeholder="+7 900 000-00-00"
-            />
           </div>
         </div>
         <div>
@@ -126,9 +119,7 @@ export function ProfileBooking({
         <Button
           size="lg"
           className="rounded-lg bg-accent-500 px-8 hover:bg-accent-600"
-          disabled={
-            pending || !form.name.trim() || !form.phone.trim() || !form.email.trim() || !form.pdConsent
-          }
+          disabled={pending || !form.name.trim() || !form.email.trim() || !form.pdConsent}
           onClick={() =>
             startTransition(async () => {
               setError(null);

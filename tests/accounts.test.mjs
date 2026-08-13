@@ -97,6 +97,18 @@ before(() => {
       "INSERT INTO client_requests (for_whom, name, phone, pd_consent, client_token) VALUES ('self','Безымянный','+70000000003',1,'c3')",
     )
     .run();
+  // Записи, которые ссылаются на заявку: перестройка client_requests в 0008
+  // не должна их порвать (на боевой базе именно они и ломали миграцию).
+  old
+    .prepare(
+      "INSERT INTO matches (client_request_id, psychologist_id) VALUES ((SELECT id FROM client_requests WHERE client_token = 'c1'), 1)",
+    )
+    .run();
+  old
+    .prepare(
+      "INSERT INTO slots (psychologist_id, starts_at, status, client_request_id) VALUES (1, '2026-09-01T10:00', 'booked', (SELECT id FROM client_requests WHERE client_token = 'c1'))",
+    )
+    .run();
   old.close();
 
   execFileSync("node", ["scripts/migrate.mjs"], {
@@ -145,6 +157,21 @@ test("журнал входов заведён — «код не пришёл» 
     .all()
     .map((c) => c.name);
   assert.deepEqual(columns, ["id", "created_at", "email", "outcome", "detail"]);
+});
+
+test("телефон стал необязательным, а связи с заявкой уцелели", () => {
+  const phone = db
+    .prepare("SELECT \"notnull\" AS required FROM pragma_table_info('client_requests') WHERE name = 'phone'")
+    .get();
+  assert.equal(phone.required, 0, "телефон больше не обязателен");
+
+  assert.equal(db.prepare("SELECT count(*) c FROM client_requests").get().c, 3);
+  assert.equal(db.prepare("SELECT count(*) c FROM matches").get().c, 1);
+  assert.equal(
+    db.prepare("SELECT count(*) c FROM slots WHERE client_request_id IS NOT NULL").get().c,
+    1,
+  );
+  assert.equal(db.pragma("foreign_key_check").length, 0, "ссылки между таблицами целы");
 });
 
 test("коды для новых адресов лежат отдельно от аккаунтов", () => {

@@ -35,7 +35,7 @@ export default async function OpRequestsPage() {
                 <TableHead>№</TableHead>
                 <TableHead>Дата</TableHead>
                 <TableHead>Имя</TableHead>
-                <TableHead>Телефон</TableHead>
+                <TableHead>Контакт</TableHead>
                 <TableHead>Проблема</TableHead>
                 <TableHead>Статус</TableHead>
               </TableRow>
@@ -51,7 +51,7 @@ export default async function OpRequestsPage() {
                   </TableCell>
                   <TableCell className="text-neutral-500">{r.createdAt.slice(0, 16)}</TableCell>
                   <TableCell>{r.name}</TableCell>
-                  <TableCell>{r.phone}</TableCell>
+                  <TableCell>{r.email ?? r.phone ?? "—"}</TableCell>
                   <TableCell>{label(PROBLEM_LABELS, r.mainProblem)}</TableCell>
                   <TableCell>
                     <Badge variant={STATUS_TONE[r.status] ?? "default"}>

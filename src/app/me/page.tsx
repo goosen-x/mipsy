@@ -37,8 +37,8 @@ export default async function ClientCabinetPage() {
           <section className="rounded-2xl bg-white p-8 shadow-sm">
             <h1 className="text-2xl font-bold">Здравствуйте, {account.name}!</h1>
             <p className="mt-3 text-neutral-600">
-              У вас пока нет обращений. Заполните анкету — оператор позвонит и подберёт
-              специалистов, а можно выбрать психолога самостоятельно в каталоге.
+              У вас пока нет обращений. Заполните анкету — оператор изучит её и напишет вам,
+              а можно выбрать психолога самостоятельно в каталоге.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
@@ -118,8 +118,8 @@ export default async function ClientCabinetPage() {
           <h1 className="text-2xl font-bold">Здравствуйте, {req.name}!</h1>
           {req.status === "new" && (
             <p className="mt-3 text-neutral-600">
-              Ваша анкета у оператора. Мы позвоним на {req.phone} в течение рабочего дня, чтобы
-              уточнить детали и подобрать специалистов.
+              Ваша анкета у оператора. Мы напишем на {req.email ?? account.email} в течение
+              рабочего дня, чтобы уточнить детали и подобрать специалистов.
             </p>
           )}
           {req.status === "called" && (
@@ -395,8 +395,8 @@ export default async function ClientCabinetPage() {
         <section className="rounded-2xl bg-white p-6 shadow-sm">
           <h2 className="text-lg font-bold">Поддержка</h2>
           <p className="mt-2 text-sm text-neutral-600">
-            Есть вопрос или что-то пошло не так? Напишите нам — оператор ответит по телефону{" "}
-            {req.phone}.
+            Есть вопрос или что-то пошло не так? Напишите нам — оператор ответит на{" "}
+            {req.email ?? account.email}.
           </p>
           <div className="mt-4">
             <SupportForm />

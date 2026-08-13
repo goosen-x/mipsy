@@ -7,6 +7,11 @@ import path from "node:path";
 const dbPath = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "mipsy.db");
 const sqlite = new Database(dbPath);
 sqlite.pragma("journal_mode = WAL");
+// Перестройка таблицы (12-шаговая процедура SQLite: создать новую → скопировать →
+// удалить старую → переименовать) невозможна при включённой проверке ссылок,
+// а better-sqlite3 включает её по умолчанию. Выключаем на время миграций и
+// проверяем целостность до того, как отдать базу приложению.
+sqlite.pragma("foreign_keys = OFF");
 
 sqlite.exec("CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TEXT DEFAULT (datetime('now')))");
 
@@ -27,6 +32,13 @@ for (const file of files) {
   })();
   console.log(`migrate: применена ${file} (${statements.length} statements)`);
 }
+
+const violations = sqlite.pragma("foreign_key_check");
+if (violations.length > 0) {
+  console.error("migrate: миграции сломали ссылки между таблицами", violations.slice(0, 5));
+  process.exit(1);
+}
+sqlite.pragma("foreign_keys = ON");
 
 // Старым заявкам, созданным до появления кабинета клиента, выдаём токен.
 const needToken = sqlite.prepare("SELECT id FROM client_requests WHERE client_token IS NULL").all();
