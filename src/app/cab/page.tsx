@@ -6,8 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { CabinetHeader } from "@/components/site";
 import { formatSlot, isPast } from "@/lib/datetime";
 import { currentAccount } from "@/lib/auth";
+import { CalendarFeed } from "./calendar";
 import { ProfileForm } from "./profile-form";
 import { OutcomeControl, Schedule } from "./schedule";
+
+const SITE_URL = process.env.SITE_URL ?? "https://mipsy.mskacademy.ru";
 
 export const metadata = { title: "Кабинет психолога — mipsy" };
 export const dynamic = "force-dynamic";
@@ -181,6 +184,19 @@ export default async function CabinetPage() {
             <Schedule slots={mySlots} />
           </div>
         </section>
+
+        {psy.calendarToken && (
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-bold">Ваш календарь</h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              Подпишитесь на эту ссылку в Google, Яндекс или Apple Календаре — записи клиентов
+              будут появляться там сами, ничего подгружать не нужно.
+            </p>
+            <div className="mt-4">
+              <CalendarFeed url={`${SITE_URL}/api/calendar/${psy.calendarToken}`} />
+            </div>
+          </section>
+        )}
 
         <section className="rounded-2xl bg-white p-6 shadow-sm">
           <h2 className="text-xl font-bold">Ваш профиль</h2>

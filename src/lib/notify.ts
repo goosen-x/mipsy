@@ -139,6 +139,30 @@ export function meetingInvite(params: {
   };
 }
 
+/** То же приглашение глазами психолога: в его календаре событие — «сессия с клиентом». */
+export function psyMeetingInvite(params: {
+  slotId: number;
+  startsAt: string;
+  durationMin: number;
+  clientName: string;
+  meetingLink?: string | null;
+}): MailAttachment {
+  return {
+    filename: "sessiya-mipsy.ics",
+    contentType: "text/calendar; charset=utf-8; method=REQUEST",
+    content: buildIcs({
+      uid: `mipsy-slot-${params.slotId}@mipsy.mskacademy.ru`,
+      startsAt: params.startsAt,
+      durationMin: params.durationMin,
+      summary: `Сессия: ${params.clientName} (mipsy)`,
+      description: params.meetingLink
+        ? `Ссылка на встречу: ${params.meetingLink}\nКабинет: ${SITE_URL}/cab`
+        : `Кабинет: ${SITE_URL}/cab`,
+      url: params.meetingLink ?? `${SITE_URL}/cab`,
+    }),
+  };
+}
+
 // Тексты уведомлений собраны здесь, чтобы их было легко вычитать целиком.
 // Ссылки ведут в кабинет: человек входит по почте и коду, секрета в адресе нет.
 export const messages = {

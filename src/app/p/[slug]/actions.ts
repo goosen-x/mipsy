@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { clientRequests, db, matches, psychologists } from "@/db";
 import { currentAccount, linkAccount } from "@/lib/auth";
 import { takeSlot } from "@/lib/booking";
-import { meetingInvite, messages, notify, subjects } from "@/lib/notify";
+import { meetingInvite, messages, notify, psyMeetingInvite, subjects } from "@/lib/notify";
 
 export type DirectBooking = {
   name: string;
@@ -110,6 +110,15 @@ export async function bookFirstSession(
     recipientEmail: psy.email,
     subject: subjects.booked,
     body: messages.psyBooked(name, slot.startsAt),
+    attachments: [
+      psyMeetingInvite({
+        slotId,
+        startsAt: slot.startsAt,
+        durationMin: slot.durationMin,
+        clientName: name,
+        meetingLink: psy.meetingUrl,
+      }),
+    ],
     clientRequestId: req.id,
     psychologistId: psy.id,
     slotId,

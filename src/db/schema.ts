@@ -84,6 +84,8 @@ export const psychologists = sqliteTable("psychologists", {
     .notNull()
     .default(sql`(datetime('now'))`),
   cabinetToken: text("cabinet_token").notNull().unique(), // старые ссылки /cab/<token>: редирект на вход
+  // Секрет ICS-фида /api/calendar/<token> — подписка на брони из внешнего календаря.
+  calendarToken: text("calendar_token").unique(),
   slug: text("slug").unique(), // адрес публичной страницы, назначается при одобрении
   accountId: integer("account_id").references(() => accounts.id),
 

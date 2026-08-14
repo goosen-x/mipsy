@@ -1,6 +1,6 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, psychologists } from "@/db";
 import { currentAccount, linkAccount } from "@/lib/auth";
@@ -53,6 +53,7 @@ export async function submitPsyApplication(
   const token = randomUUID();
   await db.insert(psychologists).values({
     cabinetToken: token,
+    calendarToken: randomBytes(16).toString("hex"),
     accountId: account.id,
     name,
     gender: payload.gender,

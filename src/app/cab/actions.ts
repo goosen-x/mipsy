@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { clientRequests, db, psychologists } from "@/db";
@@ -129,6 +130,19 @@ export async function markSlotOutcome(
 
   revalidatePath("/cab");
   revalidatePath("/admin");
+  return { ok: true };
+}
+
+/** Перевыпуск ссылки календаря: старый фид перестаёт открываться сразу. */
+export async function rotateCalendarToken(): Promise<{ ok: boolean; error?: string }> {
+  const psy = await me();
+  if (!psy) return NO_SESSION;
+
+  await db
+    .update(psychologists)
+    .set({ calendarToken: randomBytes(16).toString("hex") })
+    .where(eq(psychologists.id, psy.id));
+  revalidatePath("/cab");
   return { ok: true };
 }
 

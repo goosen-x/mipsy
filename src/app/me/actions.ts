@@ -12,7 +12,7 @@ import {
   rescheduleClientBooking,
   takeSlot,
 } from "@/lib/booking";
-import { meetingInvite, messages, notify, subjects } from "@/lib/notify";
+import { meetingInvite, messages, notify, psyMeetingInvite, subjects } from "@/lib/notify";
 
 type Client = { id: number; name: string; phone: string | null; email: string | null };
 
@@ -110,6 +110,15 @@ export async function bookSlot(slotId: number): Promise<{ ok: boolean; error?: s
     recipientEmail: psy.email,
     subject: subjects.booked,
     body: messages.psyBooked(c.name, slot.startsAt),
+    attachments: [
+      psyMeetingInvite({
+        slotId,
+        startsAt: slot.startsAt,
+        durationMin: slot.durationMin,
+        clientName: c.name,
+        meetingLink: psy.meetingUrl,
+      }),
+    ],
     clientRequestId: c.id,
     psychologistId: psy.id,
     slotId,
@@ -163,6 +172,15 @@ export async function rescheduleSlot(
     recipientEmail: psy.email,
     subject: subjects.rescheduled,
     body: messages.psyRescheduled(c.name, to.startsAt),
+    attachments: [
+      psyMeetingInvite({
+        slotId: toSlotId,
+        startsAt: to.startsAt,
+        durationMin: to.durationMin,
+        clientName: c.name,
+        meetingLink: psy.meetingUrl,
+      }),
+    ],
     clientRequestId: c.id,
     psychologistId: psy.id,
     slotId: toSlotId,

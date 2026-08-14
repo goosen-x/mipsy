@@ -262,6 +262,18 @@ test("роль админа на аккаунте, журнал действий
   assert.ok(actorCol, "admin_log записывает, кто именно действовал");
 });
 
+test("у каждого психолога есть секрет ICS-фида", () => {
+  const rows = db.prepare("SELECT calendar_token FROM psychologists").all();
+  assert.ok(rows.length > 0);
+  for (const r of rows) {
+    assert.match(r.calendar_token ?? "", /^[0-9a-f]{32}$/, "токен выдан миграцией");
+  }
+  const uniq = db
+    .prepare("SELECT count(*) c FROM pragma_index_list('psychologists') WHERE \"unique\" = 1")
+    .get();
+  assert.ok(uniq.c >= 1, "токен под уникальным индексом");
+});
+
 test("секретные коды доступа из старой схемы удалены", () => {
   const columns = db
     .prepare("SELECT name FROM pragma_table_info('client_requests')")
