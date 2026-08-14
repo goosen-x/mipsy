@@ -24,20 +24,20 @@ export async function SiteHeader() {
             Психологам
           </Link>
           {cabinet ? (
-            <Link href={cabinet} className="font-medium text-brand-700 hover:text-brand-800">
+            <Link
+              href={cabinet}
+              className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
+            >
               Мой кабинет
             </Link>
           ) : (
-            <Link href="/login" className="text-neutral-600 hover:text-brand-700">
+            <Link
+              href="/login"
+              className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
+            >
               Войти
             </Link>
           )}
-          <Link
-            href="/login"
-            className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
-          >
-            Подобрать психолога
-          </Link>
         </nav>
       </div>
     </header>

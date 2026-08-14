@@ -88,7 +88,7 @@ export default async function Home() {
               size="lg"
               className="mt-8 rounded-lg bg-accent-500 px-8 py-6 text-lg hover:bg-accent-600"
             >
-              <Link href="/login">Подобрать психолога</Link>
+              <Link href="/login">Создать личный кабинет</Link>
             </Button>
             <p className="mt-3 text-sm text-neutral-500">
               ≈ 5 минут · первая встреча с психологом бесплатна
@@ -219,7 +219,7 @@ export default async function Home() {
             size="lg"
             className="mt-6 rounded-lg bg-accent-500 px-8 py-6 text-lg hover:bg-accent-600"
           >
-            <Link href="/login">Начать подбор</Link>
+            <Link href="/login">Создать личный кабинет</Link>
           </Button>
         </section>
       </main>
