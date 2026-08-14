@@ -1,11 +1,12 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { clientRequests, db, psychologists, slots } from "@/db";
+import { clientRequests, db, psychologists } from "@/db";
 import { currentAccountId } from "@/lib/auth";
-import { isPast } from "@/lib/datetime";
+import { markOutcome, openSlots, removePsySlot } from "@/lib/booking";
 import { messages, notify, subjects } from "@/lib/notify";
+import { CONTACTS_ERROR, containsContacts, publicProfileText } from "@/lib/rules";
 
 const NO_SESSION = { ok: false, error: "Войдите в кабинет заново" } as const;
 
@@ -27,6 +28,9 @@ export async function updateProfile(
 ): Promise<{ ok: boolean; error?: string }> {
   const psy = await me();
   if (!psy) return NO_SESSION;
+
+  // Ту же проверку делает форма, но форма — не защита: экшен можно вызвать напрямую.
+  if (containsContacts(publicProfileText(data))) return { ok: false, error: CONTACTS_ERROR };
 
   await db
     .update(psychologists)
@@ -73,36 +77,10 @@ export async function addSlots(
 ): Promise<{ ok: boolean; error?: string; added?: number }> {
   const psy = await me();
   if (!psy) return NO_SESSION;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date)) return { ok: false, error: "Проверьте дату" };
-  const times = (data.times ?? []).filter((t) => /^\d{2}:\d{2}$/.test(t));
-  if (times.length === 0) return { ok: false, error: "Добавьте хотя бы одно время" };
 
-  const weeks = Math.min(Math.max(data.repeatWeeks || 1, 1), 8);
-  const base = new Date(`${data.date}T00:00:00Z`);
-  const rows: { psychologistId: number; startsAt: string; durationMin: number; isIntroCall: boolean }[] = [];
-
-  for (let w = 0; w < weeks; w++) {
-    const day = new Date(base.getTime() + w * 7 * 86400000).toISOString().slice(0, 10);
-    for (const time of times) {
-      rows.push({
-        psychologistId: psy.id,
-        startsAt: `${day}T${time}`,
-        durationMin: data.durationMin || 50,
-        isIntroCall: data.isIntroCall,
-      });
-    }
-  }
-
-  const existing = await db
-    .select({ startsAt: slots.startsAt })
-    .from(slots)
-    .where(eq(slots.psychologistId, psy.id));
-  const taken = new Set(existing.map((s) => s.startsAt));
-  const fresh = rows.filter((r) => !taken.has(r.startsAt));
-  if (fresh.length > 0) await db.insert(slots).values(fresh);
-
-  revalidatePath("/cab");
-  return { ok: true, added: fresh.length };
+  const result = await openSlots(db, { psychologistId: psy.id, ...data });
+  if (result.ok) revalidatePath("/cab");
+  return result;
 }
 
 /**
@@ -116,12 +94,9 @@ export async function markSlotOutcome(
   const psy = await me();
   if (!psy) return NO_SESSION;
 
-  const [slot] = await db.select().from(slots).where(eq(slots.id, slotId));
-  if (!slot || slot.psychologistId !== psy.id) return { ok: false, error: "Встреча не найдена" };
-  if (slot.status !== "booked") return { ok: false, error: "Эту встречу нельзя отметить" };
-  if (!isPast(slot.startsAt)) return { ok: false, error: "Встреча ещё не прошла" };
-
-  await db.update(slots).set({ status: outcome }).where(eq(slots.id, slotId));
+  const result = await markOutcome(db, { slotId, psychologistId: psy.id, outcome });
+  if (!result.ok) return result;
+  const slot = result.slot;
 
   if (outcome === "done" && slot.clientRequestId) {
     const [client] = await db
@@ -153,7 +128,7 @@ export async function markSlotOutcome(
   }
 
   revalidatePath("/cab");
-  revalidatePath("/op");
+  revalidatePath("/admin");
   return { ok: true };
 }
 
@@ -161,13 +136,7 @@ export async function removeSlot(slotId: number): Promise<{ ok: boolean; error?:
   const psy = await me();
   if (!psy) return NO_SESSION;
 
-  const [slot] = await db.select().from(slots).where(eq(slots.id, slotId));
-  if (!slot || slot.psychologistId !== psy.id) return { ok: false, error: "Слот не найден" };
-  if (slot.status === "booked") {
-    return { ok: false, error: "На это время записан клиент — отмену согласуйте с оператором" };
-  }
-
-  await db.delete(slots).where(and(eq(slots.id, slotId), eq(slots.psychologistId, psy.id)));
-  revalidatePath("/cab");
-  return { ok: true };
+  const result = await removePsySlot(db, { slotId, psychologistId: psy.id });
+  if (result.ok) revalidatePath("/cab");
+  return result;
 }

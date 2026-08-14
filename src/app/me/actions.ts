@@ -1,20 +1,20 @@
 "use server";
 
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { clientRequests, db, matches, psychologists, reviews, slots, supportTickets } from "@/db";
+import { clientRequests, db, matches, reviews, supportTickets } from "@/db";
 import { accountRequestIds, currentAccountId } from "@/lib/auth";
-import { canClientChange, isPast } from "@/lib/datetime";
+import {
+  cancelClientBooking,
+  chosenPsychologist,
+  clientSlot,
+  freeBookedSlotsOf,
+  rescheduleClientBooking,
+  takeSlot,
+} from "@/lib/booking";
 import { meetingInvite, messages, notify, subjects } from "@/lib/notify";
 
 type Client = { id: number; name: string; phone: string | null; email: string | null };
-type Psy = {
-  id: number;
-  name: string;
-  phone: string;
-  email: string | null;
-  meetingUrl: string | null;
-};
 
 const NO_SESSION = { ok: false, error: "Войдите в кабинет заново" } as const;
 
@@ -40,53 +40,6 @@ async function client(): Promise<Client | null> {
 async function myRequestIds(): Promise<number[]> {
   const accountId = await currentAccountId();
   return accountId ? accountRequestIds(accountId) : [];
-}
-
-async function psyById(id: number): Promise<Psy | null> {
-  const [row] = await db
-    .select({
-      id: psychologists.id,
-      name: psychologists.name,
-      phone: psychologists.phone,
-      email: psychologists.email,
-      meetingUrl: psychologists.meetingUrl,
-    })
-    .from(psychologists)
-    .where(eq(psychologists.id, id));
-  return row ?? null;
-}
-
-/** Психолог, которого клиент выбрал из предложенных. */
-async function chosenPsy(clientRequestId: number): Promise<Psy | null> {
-  const [row] = await db
-    .select({
-      id: psychologists.id,
-      name: psychologists.name,
-      phone: psychologists.phone,
-      email: psychologists.email,
-      meetingUrl: psychologists.meetingUrl,
-    })
-    .from(matches)
-    .innerJoin(psychologists, eq(matches.psychologistId, psychologists.id))
-    .where(
-      and(
-        eq(matches.clientRequestId, clientRequestId),
-        eq(matches.active, true),
-        eq(matches.chosen, true),
-      ),
-    );
-  return row ?? null;
-}
-
-/** Запись принадлежит вошедшему человеку — по любому из его обращений. */
-async function myBooking(slotId: number) {
-  const ids = await myRequestIds();
-  if (ids.length === 0) return null;
-  const [slot] = await db
-    .select()
-    .from(slots)
-    .where(and(eq(slots.id, slotId), inArray(slots.clientRequestId, ids)));
-  return slot ?? null;
 }
 
 /** Клиент выбирает одного из предложенных специалистов. */
@@ -121,21 +74,12 @@ export async function choosePsychologist(
 export async function bookSlot(slotId: number): Promise<{ ok: boolean; error?: string }> {
   const c = await client();
   if (!c) return NO_SESSION;
-  const psy = await chosenPsy(c.id);
+  const psy = await chosenPsychologist(db, c.id);
   if (!psy) return { ok: false, error: "Сначала выберите специалиста" };
 
-  const [slot] = await db.select().from(slots).where(eq(slots.id, slotId));
-  if (!slot || slot.psychologistId !== psy.id) return { ok: false, error: "Это время недоступно" };
-  if (slot.status !== "free") return { ok: false, error: "Это время уже заняли" };
-  if (isPast(slot.startsAt)) return { ok: false, error: "Это время уже прошло" };
-
-  const res = await db
-    .update(slots)
-    .set({ status: "booked", clientRequestId: c.id, meetingLink: psy.meetingUrl })
-    .where(and(eq(slots.id, slotId), eq(slots.status, "free")));
-  if ((res as unknown as { changes: number }).changes === 0) {
-    return { ok: false, error: "Это время только что заняли" };
-  }
+  const taken = await takeSlot(db, { slotId, psychologist: psy, clientRequestId: c.id });
+  if (!taken.ok) return taken;
+  const slot = taken.slot;
 
   await notify({
     kind: "booked",
@@ -175,7 +119,6 @@ export async function bookSlot(slotId: number): Promise<{ ok: boolean; error?: s
   return { ok: true };
 }
 
-/** Перенос: занимаем новое окно и только потом освобождаем старое. */
 export async function rescheduleSlot(
   fromSlotId: number,
   toSlotId: number,
@@ -183,40 +126,13 @@ export async function rescheduleSlot(
   const c = await client();
   if (!c) return NO_SESSION;
 
-  const from = await myBooking(fromSlotId);
-  if (!from) return { ok: false, error: "Запись не найдена" };
-  if (!canClientChange(from.startsAt)) {
-    return {
-      ok: false,
-      error: "До встречи меньше 24 часов — перенос согласуйте с оператором через поддержку.",
-    };
-  }
-
-  const psy = await psyById(from.psychologistId);
-  if (!psy) return { ok: false, error: "Специалист не найден" };
-
-  const [to] = await db.select().from(slots).where(eq(slots.id, toSlotId));
-  if (!to || to.psychologistId !== psy.id || to.status !== "free") {
-    return { ok: false, error: "Новое время недоступно" };
-  }
-  if (isPast(to.startsAt)) return { ok: false, error: "Это время уже прошло" };
-
-  const taken = await db
-    .update(slots)
-    .set({
-      status: "booked",
-      clientRequestId: from.clientRequestId,
-      isIntroCall: from.isIntroCall,
-      meetingLink: psy.meetingUrl,
-    })
-    .where(and(eq(slots.id, toSlotId), eq(slots.status, "free")));
-  if ((taken as unknown as { changes: number }).changes === 0) {
-    return { ok: false, error: "Это время только что заняли" };
-  }
-  await db
-    .update(slots)
-    .set({ status: "free", clientRequestId: null, isIntroCall: false })
-    .where(eq(slots.id, fromSlotId));
+  const moved = await rescheduleClientBooking(db, {
+    fromSlotId,
+    toSlotId,
+    requestIds: await myRequestIds(),
+  });
+  if (!moved.ok) return moved;
+  const { to, psy } = moved;
 
   await notify({
     kind: "rescheduled",
@@ -260,22 +176,11 @@ export async function cancelBooking(slotId: number): Promise<{ ok: boolean; erro
   const c = await client();
   if (!c) return NO_SESSION;
 
-  const slot = await myBooking(slotId);
-  if (!slot) return { ok: false, error: "Запись не найдена" };
-  if (!canClientChange(slot.startsAt)) {
-    return {
-      ok: false,
-      error: "До встречи меньше 24 часов — отмену согласуйте с оператором через поддержку.",
-    };
-  }
+  const cancelled = await cancelClientBooking(db, { slotId, requestIds: await myRequestIds() });
+  if (!cancelled.ok) return cancelled;
 
-  await db
-    .update(slots)
-    .set({ status: "free", clientRequestId: null, isIntroCall: false })
-    .where(eq(slots.id, slotId));
-
-  const psy = await psyById(slot.psychologistId);
-  if (psy) {
+  if (cancelled.psy) {
+    const psy = cancelled.psy;
     await notify({
       kind: "cancelled",
       recipientRole: "psychologist",
@@ -283,7 +188,7 @@ export async function cancelBooking(slotId: number): Promise<{ ok: boolean; erro
       recipientPhone: psy.phone,
       recipientEmail: psy.email,
       subject: subjects.cancelled,
-      body: messages.psyCancelled(c.name, slot.startsAt),
+      body: messages.psyCancelled(c.name, cancelled.slot.startsAt),
       clientRequestId: c.id,
       psychologistId: psy.id,
       slotId,
@@ -302,13 +207,26 @@ export async function requestRematch(reason: string): Promise<{ ok: boolean; err
     .update(clientRequests)
     .set({ status: "rematch", rematchReason: String(reason ?? "").trim() || null })
     .where(eq(clientRequests.id, c.id));
-  await db
-    .update(slots)
-    .set({ status: "free", clientRequestId: null, isIntroCall: false })
-    .where(and(eq(slots.clientRequestId, c.id), eq(slots.status, "booked")));
+
+  // Брони снимаются — психолог должен узнать, что время снова свободно.
+  for (const freed of await freeBookedSlotsOf(db, c.id)) {
+    if (!freed.psy) continue;
+    await notify({
+      kind: "cancelled",
+      recipientRole: "psychologist",
+      recipientName: freed.psy.name,
+      recipientPhone: freed.psy.phone,
+      recipientEmail: freed.psy.email,
+      subject: subjects.cancelled,
+      body: messages.psyCancelled(c.name, freed.slot.startsAt),
+      clientRequestId: c.id,
+      psychologistId: freed.psy.id,
+      slotId: freed.slot.id,
+    });
+  }
 
   revalidatePath("/me");
-  revalidatePath("/op");
+  revalidatePath("/admin");
   return { ok: true };
 }
 
@@ -322,7 +240,7 @@ export async function leaveReview(
   if (!c) return NO_SESSION;
   if (!(rating >= 1 && rating <= 5)) return { ok: false, error: "Поставьте оценку от 1 до 5" };
 
-  const slot = await myBooking(slotId);
+  const slot = await clientSlot(db, slotId, await myRequestIds());
   if (!slot) return { ok: false, error: "Встреча не найдена" };
   if (slot.status !== "done") {
     return { ok: false, error: "Отзыв можно оставить после состоявшейся встречи" };
@@ -344,7 +262,7 @@ export async function leaveReview(
   });
 
   revalidatePath("/me");
-  revalidatePath("/op/reviews");
+  revalidatePath("/admin/reviews");
   return { ok: true };
 }
 
@@ -358,7 +276,7 @@ export async function createTicket(
   const text = String(body ?? "").trim();
   if (text.length < 5) return { ok: false, error: "Опишите, что случилось" };
 
-  const psy = await chosenPsy(c.id);
+  const psy = await chosenPsychologist(db, c.id);
   await db.insert(supportTickets).values({
     fromRole: "client",
     kind,
@@ -371,6 +289,6 @@ export async function createTicket(
   });
 
   revalidatePath("/me");
-  revalidatePath("/op/support");
+  revalidatePath("/admin/support");
   return { ok: true };
 }

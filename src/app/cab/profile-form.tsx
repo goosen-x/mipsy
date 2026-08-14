@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { CONTACTS_ERROR, containsContacts, publicProfileText } from "@/lib/rules";
 import { toast } from "sonner";
 import { updateProfile, type ProfileUpdate } from "./actions";
 import { uploadPhoto } from "./upload";
@@ -18,9 +19,6 @@ const FORMATS = [
   ["offline", "Очно"],
   ["both", "Онлайн и очно"],
 ] as const;
-
-// Простая проверка: в публичных полях профиля не должно быть контактов.
-const CONTACT_RE = /(\+?\d[\d\s\-()]{8,})|@\w{2,}|(t\.me|wa\.me|vk\.com|instagram\.com)/i;
 
 export function ProfileForm({
   topics,
@@ -44,11 +42,8 @@ export function ProfileForm({
 
   function submit() {
     setError(null);
-    const publicText = [form.about, form.howSessions, form.approach, ...form.faq.flatMap((f) => [f.q, f.a])].join(" ");
-    if (CONTACT_RE.test(publicText)) {
-      setError(
-        "Похоже, в тексте профиля есть телефон, ссылка или @-контакт. Уберите их, пожалуйста — вся связь с клиентами идёт через платформу.",
-      );
+    if (containsContacts(publicProfileText(form))) {
+      setError(CONTACTS_ERROR);
       return;
     }
     startTransition(async () => {
