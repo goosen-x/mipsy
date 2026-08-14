@@ -19,6 +19,7 @@ import {
   releaseSlot,
   removePsySlot,
   rescheduleClientBooking,
+  setSlotPaid,
   takeSlot,
 } from "../src/lib/booking.ts";
 
@@ -192,16 +193,37 @@ test("бронь оператором тоже даёт клиенту ссыл�
 
 // --- освобождение ---
 
-test("releaseSlot стирает всё клиентское, включая ссылку", async () => {
+test("releaseSlot стирает всё клиентское, включая ссылку и оплату", async () => {
   const slotId = addSlot(psy1, FUTURE, {
     status: "booked", clientRequestId: 1, isIntroCall: 1, meetingLink: "https://telemost.example/anna",
   });
+  await setSlotPaid(db, { slotId, psychologistId: psy1, paid: true, now: NOW });
   await releaseSlot(db, slotId);
   const row = slotById(slotId);
   assert.equal(row.status, "free");
   assert.equal(row.client_request_id, null);
   assert.equal(row.is_intro_call, 0);
   assert.equal(row.meeting_link, null, "чужая ссылка не достанется следующему");
+  assert.equal(row.paid_at, null, "чужая оплата не достанется следующему");
+});
+
+test("оплату отмечает только свой психолог и только у записи", async () => {
+  const slotId = addSlot(psy1, FUTURE, { status: "booked", clientRequestId: 1 });
+
+  const foreign = await setSlotPaid(db, { slotId, psychologistId: psy2, paid: true, now: NOW });
+  assert.equal(foreign.ok, false, "чужая встреча не видна");
+
+  const ok = await setSlotPaid(db, { slotId, psychologistId: psy1, paid: true, now: NOW });
+  assert.equal(ok.ok, true);
+  assert.ok(slotById(slotId).paid_at, "отметка стоит");
+
+  const unmark = await setSlotPaid(db, { slotId, psychologistId: psy1, paid: false, now: NOW });
+  assert.equal(unmark.ok, true);
+  assert.equal(slotById(slotId).paid_at, null, "отметку можно снять");
+
+  const free = addSlot(psy1, FUTURE2);
+  const notBooked = await setSlotPaid(db, { slotId: free, psychologistId: psy1, paid: true, now: NOW });
+  assert.equal(notBooked.ok, false, "у свободного окна оплаты не бывает");
 });
 
 // --- отмена клиентом ---
@@ -241,10 +263,11 @@ test("состоявшуюся встречу отменить нельзя", as
 
 // --- перенос ---
 
-test("перенос: новое окно занято, старое вычищено", async () => {
+test("перенос: новое окно занято, старое вычищено, оплата едет следом", async () => {
   const from = addSlot(psy1, FUTURE, {
     status: "booked", clientRequestId: 1, isIntroCall: 1, meetingLink: "https://telemost.example/anna",
   });
+  await setSlotPaid(db, { slotId: from, psychologistId: psy1, paid: true, now: NOW });
   const to = addSlot(psy1, FUTURE2);
 
   const res = await rescheduleClientBooking(db, { fromSlotId: from, toSlotId: to, requestIds: [1], now: NOW });
@@ -255,6 +278,7 @@ test("перенос: новое окно занято, старое вычищ�
   assert.equal(moved.client_request_id, 1);
   assert.equal(moved.is_intro_call, 1, "первая встреча осталась первой");
   assert.equal(moved.meeting_link, "https://telemost.example/anna");
+  assert.ok(moved.paid_at, "оплаченная сессия осталась оплаченной после переноса");
 
   const old = slotById(from);
   assert.equal(old.status, "free");

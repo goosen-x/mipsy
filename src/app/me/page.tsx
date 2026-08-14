@@ -81,6 +81,7 @@ export default async function ClientCabinetPage() {
       durationMin: slots.durationMin,
       status: slots.status,
       meetingLink: slots.meetingLink,
+      paidAt: slots.paidAt,
       psyName: psychologists.name,
     })
     .from(slots)
@@ -295,7 +296,18 @@ export default async function ClientCabinetPage() {
                 <li key={s.id} className="rounded-xl border p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <div className="font-medium">{formatSlot(s.startsAt)}</div>
+                      <div className="flex flex-wrap items-center gap-2 font-medium">
+                        {formatSlot(s.startsAt)}
+                        {s.paidAt ? (
+                          <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-800">
+                            оплачена
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-900">
+                            не оплачена
+                          </span>
+                        )}
+                      </div>
                       <div className="text-sm text-neutral-500">
                         с {s.psyName} · {s.durationMin} минут
                       </div>

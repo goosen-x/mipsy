@@ -9,7 +9,39 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { formatDay, groupByDate } from "@/lib/datetime";
 import { toast } from "sonner";
-import { addSlots, markSlotOutcome, removeSlot } from "./actions";
+import { addSlots, markSlotOutcome, markSlotPaid, removeSlot } from "./actions";
+
+/** Переключатель «сессия оплачена»: деньги приходят психологу напрямую. */
+export function PaidControl({ slotId, paid }: { slotId: number; paid: boolean }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() =>
+        startTransition(async () => {
+          const res = await markSlotPaid(slotId, !paid);
+          if (!res.ok) toast.error(res.error ?? "Не вышло");
+          else {
+            toast.success(paid ? "Отметка оплаты снята" : "Отмечено: сессия оплачена");
+            router.refresh();
+          }
+        })
+      }
+      className={cn(
+        "rounded-full border px-2.5 py-0.5 text-xs",
+        paid
+          ? "border-brand-300 bg-brand-50 text-brand-800"
+          : "border-amber-300 bg-amber-50 text-amber-900 hover:border-amber-400",
+      )}
+      title={paid ? "Нажмите, чтобы снять отметку" : "Нажмите, когда клиент оплатит"}
+    >
+      {paid ? "оплачена ✓" : "не оплачена — отметить"}
+    </button>
+  );
+}
 
 /** Отметка исхода прошедшей встречи. */
 export function OutcomeControl({ slotId }: { slotId: number }) {

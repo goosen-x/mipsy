@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { clientRequests, db, psychologists } from "@/db";
 import { currentAccountId } from "@/lib/auth";
-import { markOutcome, openSlots, removePsySlot } from "@/lib/booking";
+import { markOutcome, openSlots, removePsySlot, setSlotPaid } from "@/lib/booking";
 import { messages, notify, subjects } from "@/lib/notify";
 import { CONTACTS_ERROR, containsContacts, publicProfileText } from "@/lib/rules";
 
@@ -129,6 +129,22 @@ export async function markSlotOutcome(
   revalidatePath("/cab");
   revalidatePath("/admin");
   return { ok: true };
+}
+
+/** Психолог отмечает, оплатил ли клиент сессию, — клиент видит статус у себя. */
+export async function markSlotPaid(
+  slotId: number,
+  paid: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  const psy = await me();
+  if (!psy) return NO_SESSION;
+
+  const result = await setSlotPaid(db, { slotId, psychologistId: psy.id, paid });
+  if (result.ok) {
+    revalidatePath("/cab");
+    revalidatePath("/me");
+  }
+  return result;
 }
 
 /** Перевыпуск ссылки календаря: старый фид перестаёт открываться сразу. */

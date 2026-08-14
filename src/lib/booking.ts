@@ -123,13 +123,46 @@ export async function bookSlotForRequest(
 
 /**
  * Вернуть окно в свободные. Стирает всё клиентское: заявку, пометку первой
- * встречи и ссылку — иначе следующая бронь могла показать чужую.
+ * встречи, ссылку и отметку оплаты — иначе следующая бронь унаследует чужое.
  */
 export async function releaseSlot(db: Db, slotId: number): Promise<void> {
   await db
     .update(slots)
-    .set({ status: "free", clientRequestId: null, isIntroCall: false, meetingLink: null })
+    .set({
+      status: "free",
+      clientRequestId: null,
+      isIntroCall: false,
+      meetingLink: null,
+      paidAt: null,
+    })
     .where(eq(slots.id, slotId));
+}
+
+/**
+ * Отметка «сессия оплачена». Ставит и снимает её психолог — деньги приходят
+ * ему напрямую, платформа лишь показывает статус клиенту.
+ */
+export async function setSlotPaid(
+  db: Db,
+  params: { slotId: number; psychologistId: number; paid: boolean; now?: Date },
+): Promise<{ ok: boolean; error?: string }> {
+  const [slot] = await db.select().from(slots).where(eq(slots.id, params.slotId));
+  if (!slot || slot.psychologistId !== params.psychologistId) {
+    return { ok: false, error: "Встреча не найдена" };
+  }
+  if (slot.status !== "booked" && slot.status !== "done") {
+    return { ok: false, error: "Отметить оплату можно только у записи" };
+  }
+
+  await db
+    .update(slots)
+    .set({
+      paidAt: params.paid
+        ? (params.now ?? new Date()).toISOString().slice(0, 16).replace("T", " ")
+        : null,
+    })
+    .where(eq(slots.id, params.slotId));
+  return { ok: true };
 }
 
 export type CancelResult =
@@ -205,6 +238,10 @@ export async function rescheduleClientBooking(
   });
   if (!taken.ok) return taken;
 
+  // Оплата привязана к сессии, а не к окну: при переносе она едет следом.
+  if (from.paidAt) {
+    await db.update(slots).set({ paidAt: from.paidAt }).where(eq(slots.id, taken.slot.id));
+  }
   await releaseSlot(db, from.id);
   return { ok: true, from, to: taken.slot, psy, late };
 }

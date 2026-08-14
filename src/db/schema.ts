@@ -201,6 +201,8 @@ export const slots = sqliteTable("slots", {
   clientRequestId: integer("client_request_id").references(() => clientRequests.id),
   isIntroCall: integer("is_intro_call", { mode: "boolean" }).notNull().default(false),
   meetingLink: text("meeting_link"),
+  // Когда психолог отметил сессию оплаченной (деньги идут ему напрямую).
+  paidAt: text("paid_at"),
 });
 
 /**

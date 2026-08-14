@@ -9,7 +9,7 @@ import { currentAccount } from "@/lib/auth";
 import { gradePriceLabel, gradeTitle } from "@/lib/grades";
 import { CalendarFeed } from "./calendar";
 import { ProfileForm } from "./profile-form";
-import { OutcomeControl, Schedule } from "./schedule";
+import { OutcomeControl, PaidControl, Schedule } from "./schedule";
 
 const SITE_URL = process.env.SITE_URL ?? "https://mipsy.mskacademy.ru";
 
@@ -81,6 +81,7 @@ export default async function CabinetPage() {
       durationMin: slots.durationMin,
       status: slots.status,
       isIntroCall: slots.isIntroCall,
+      paidAt: slots.paidAt,
       clientName: clientRequests.name,
     })
     .from(slots)
@@ -165,9 +166,12 @@ export default async function CabinetPage() {
               <h3 className="text-sm font-semibold text-neutral-700">Предстоящие встречи</h3>
               <ul className="mt-2 space-y-2 text-sm">
                 {upcoming.map((s) => (
-                  <li key={s.id}>
-                    {formatSlot(s.startsAt)}
-                    <span className="text-neutral-500"> · {s.clientName ?? "клиент"}</span>
+                  <li key={s.id} className="flex flex-wrap items-center gap-2">
+                    <span>
+                      {formatSlot(s.startsAt)}
+                      <span className="text-neutral-500"> · {s.clientName ?? "клиент"}</span>
+                    </span>
+                    <PaidControl slotId={s.id} paid={Boolean(s.paidAt)} />
                   </li>
                 ))}
               </ul>
