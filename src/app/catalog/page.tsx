@@ -76,8 +76,8 @@ export default async function CatalogPage({
         <p className="mt-3 max-w-2xl text-neutral-600">
           Первая встреча с любым специалистом бесплатная — выбирайте и записывайтесь сразу. Если не
           хочется разбираться —{" "}
-          <Link href="/anketa" className="font-medium text-brand-700 underline">
-            заполните анкету
+          <Link href="/login" className="font-medium text-brand-700 underline">
+            начните подбор в личном кабинете
           </Link>
           , и мы подберём психолога за вас.
         </p>
@@ -140,10 +140,11 @@ export default async function CatalogPage({
                   : "По этим условиям пока никого нет"}
             </p>
             <p className="mt-2 text-neutral-600">
-              Оставьте заявку — оператор подберёт психолога вручную, как только появится подходящий.
+              Начните подбор в кабинете — оператор подберёт психолога вручную, как только появится
+              подходящий.
             </p>
             <Button asChild className="mt-5 rounded-lg bg-accent-500 hover:bg-accent-600">
-              <Link href="/anketa">Заполнить анкету</Link>
+              <Link href="/login">Начать подбор</Link>
             </Button>
           </div>
         ) : (

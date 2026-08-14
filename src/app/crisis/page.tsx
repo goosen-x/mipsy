@@ -42,8 +42,8 @@ export default function CrisisPage() {
         <p className="mt-8 text-neutral-600">
           Когда острый момент пройдёт, мы будем рады помочь подобрать психолога для регулярной
           работы —{" "}
-          <Link href="/anketa" className="font-medium text-brand-700 underline">
-            анкета здесь
+          <Link href="/login" className="font-medium text-brand-700 underline">
+            подбор начинается в личном кабинете
           </Link>
           .
         </p>

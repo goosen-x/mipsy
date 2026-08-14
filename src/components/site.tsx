@@ -9,7 +9,11 @@ export async function SiteHeader() {
   return (
     <header className="border-b border-neutral-100">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-        <Link href="/" className="text-2xl font-bold tracking-tight text-brand-700">
+        <Link
+          href="/"
+          className="flex items-center gap-2 text-2xl font-bold tracking-tight text-brand-700"
+        >
+          <span aria-hidden className="h-3.5 w-3.5 rounded-full bg-brand-600" />
           mipsy
         </Link>
         <nav className="flex items-center gap-6 text-sm">
@@ -29,7 +33,7 @@ export async function SiteHeader() {
             </Link>
           )}
           <Link
-            href="/anketa"
+            href="/login"
             className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
           >
             Подобрать психолога
@@ -47,7 +51,8 @@ export function CabinetHeader({ title, wide }: { title: string; wide?: boolean }
       <div
         className={`mx-auto flex ${wide ? "max-w-4xl" : "max-w-3xl"} items-center justify-between px-4 py-4`}
       >
-        <Link href="/" className="text-xl font-bold text-brand-700">
+        <Link href="/" className="flex items-center gap-2 text-xl font-bold text-brand-700">
+          <span aria-hidden className="h-3 w-3 rounded-full bg-brand-600" />
           mipsy
         </Link>
         <div className="flex items-center gap-4 text-sm text-neutral-500">
