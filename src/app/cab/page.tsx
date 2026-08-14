@@ -88,8 +88,16 @@ export default async function CabinetPage() {
     .where(eq(slots.psychologistId, psy.id))
     .orderBy(asc(slots.startsAt));
   const now = new Date();
-  const booked = mySlots.filter((s) => s.status === "booked");
-  const finished = mySlots.filter((s) => s.status === "done" || s.status === "no_show");
+  const upcoming = mySlots.filter((s) => s.status === "booked" && !isPast(s.startsAt, now));
+  // Прошедшее целиком: ждущие отметки исхода — первыми, свежие сверху.
+  const past = mySlots
+    .filter(
+      (s) =>
+        s.status === "done" ||
+        s.status === "no_show" ||
+        (s.status === "booked" && isPast(s.startsAt, now)),
+    )
+    .reverse();
 
   const status = STATUS_LABELS[psy.moderationStatus] ?? STATUS_LABELS.new;
 
@@ -152,32 +160,35 @@ export default async function CabinetPage() {
               ))}
             </ul>
           )}
-          {booked.length > 0 && (
-            <ul className="mt-4 space-y-2 border-t pt-4 text-sm">
-              {booked.map((s) => (
-                <li key={s.id} className="flex flex-wrap items-center justify-between gap-3">
-                  <span>
+          {upcoming.length > 0 && (
+            <div className="mt-4 border-t pt-4">
+              <h3 className="text-sm font-semibold text-neutral-700">Предстоящие встречи</h3>
+              <ul className="mt-2 space-y-2 text-sm">
+                {upcoming.map((s) => (
+                  <li key={s.id}>
                     {formatSlot(s.startsAt)}
-                    <span className="text-neutral-500">
-                      {" · "}
-                      {s.clientName ?? "клиент"}
-
-                    </span>
-                  </span>
-                  {isPast(s.startsAt, now) && <OutcomeControl slotId={s.id} />}
-                </li>
-              ))}
-            </ul>
+                    <span className="text-neutral-500"> · {s.clientName ?? "клиент"}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
-          {finished.length > 0 && (
-            <ul className="mt-4 space-y-1 border-t pt-4 text-sm text-neutral-500">
-              {finished.map((s) => (
-                <li key={s.id}>
-                  {formatSlot(s.startsAt)} · {s.clientName ?? "клиент"} ·{" "}
-                  {s.status === "done" ? "состоялась" : "клиент не пришёл"}
-                </li>
-              ))}
-            </ul>
+          {past.length > 0 && (
+            <div className="mt-4 border-t pt-4">
+              <h3 className="text-sm font-semibold text-neutral-700">Прошедшие встречи</h3>
+              <ul className="mt-2 space-y-2 text-sm">
+                {past.map((s) => (
+                  <li key={s.id} className="flex flex-wrap items-center justify-between gap-3">
+                    <span className={s.status === "booked" ? undefined : "text-neutral-500"}>
+                      {formatSlot(s.startsAt)} · {s.clientName ?? "клиент"}
+                      {s.status === "done" && " · состоялась"}
+                      {s.status === "no_show" && " · клиент не пришёл"}
+                    </span>
+                    {s.status === "booked" && <OutcomeControl slotId={s.id} />}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </section>
 

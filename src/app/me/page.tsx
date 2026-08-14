@@ -75,12 +75,30 @@ export default async function ClientCabinetPage() {
 
   const now = new Date();
   const mySlots = await db
-    .select()
+    .select({
+      id: slots.id,
+      startsAt: slots.startsAt,
+      durationMin: slots.durationMin,
+      status: slots.status,
+      meetingLink: slots.meetingLink,
+      psyName: psychologists.name,
+    })
     .from(slots)
+    .innerJoin(psychologists, eq(slots.psychologistId, psychologists.id))
     .where(inArray(slots.clientRequestId, requestIds))
     .orderBy(asc(slots.startsAt));
   const upcoming = mySlots.filter((s) => s.status === "booked" && !isPast(s.startsAt, now));
-  const held = mySlots.filter((s) => s.status === "done");
+  // Прошедшее целиком: состоявшиеся, неявки и брони, где специалист ещё не
+  // отметил итог, — свежие сверху.
+  const past = mySlots
+    .filter(
+      (s) =>
+        s.status === "done" ||
+        s.status === "no_show" ||
+        (s.status === "booked" && isPast(s.startsAt, now)),
+    )
+    .reverse();
+  const held = past.filter((s) => s.status === "done");
 
   const myReviews = held.length
     ? await db
@@ -270,7 +288,7 @@ export default async function ClientCabinetPage() {
         {/* Встречи */}
         {upcoming.length > 0 && (
           <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-bold">Ваши встречи</h2>
+            <h2 className="text-lg font-bold">Предстоящие встречи</h2>
             <p className="mt-1 text-xs text-neutral-500">Время указано {TZ_LABEL}</p>
             <ul className="mt-4 space-y-3">
               {upcoming.map((s) => (
@@ -279,7 +297,7 @@ export default async function ClientCabinetPage() {
                     <div>
                       <div className="font-medium">{formatSlot(s.startsAt)}</div>
                       <div className="text-sm text-neutral-500">
-                        {s.durationMin} минут
+                        с {s.psyName} · {s.durationMin} минут
                       </div>
                       <div className="mt-1 flex flex-wrap gap-3 text-sm">
                         <Link href={`/api/ics?slot=${s.id}`} className="text-brand-700 underline">
@@ -310,32 +328,43 @@ export default async function ClientCabinetPage() {
           </section>
         )}
 
-        {/* Отзывы о состоявшихся встречах */}
-        {held.length > 0 && (
+        {/* Прошедшие встречи: состоявшиеся (с отзывом), неявки и ждущие отметки */}
+        {past.length > 0 && (
           <section className="rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="text-lg font-bold">Прошедшие встречи</h2>
             <ul className="mt-4 space-y-4">
-              {held.map((s) => {
+              {past.map((s) => {
                 const review = myReviews.find((r) => r.slotId === s.id);
                 return (
                   <li key={s.id} className="rounded-xl border p-4">
-                    <div className="font-medium">{formatSlot(s.startsAt)}</div>
-                    {review ? (
-                      <p className="mt-2 text-sm text-neutral-600">
-                        Ваша оценка: {"★".repeat(review.rating)}
-                        {review.status === "pending" && " · отзыв на модерации"}
-                        {review.status === "published" && " · опубликован"}
-                      </p>
-                    ) : (
-                      <div className="mt-3">
-                        <p className="text-sm text-neutral-600">
-                          Как всё прошло? Оценка помогает другим людям выбрать специалиста.
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-medium">{formatSlot(s.startsAt)}</div>
+                      <span className="text-sm text-neutral-500">
+                        с {s.psyName} ·{" "}
+                        {s.status === "done"
+                          ? "состоялась"
+                          : s.status === "no_show"
+                            ? "не состоялась — вы не пришли"
+                            : "прошла, специалист ещё не подтвердил итог"}
+                      </span>
+                    </div>
+                    {s.status === "done" &&
+                      (review ? (
+                        <p className="mt-2 text-sm text-neutral-600">
+                          Ваша оценка: {"★".repeat(review.rating)}
+                          {review.status === "pending" && " · отзыв на модерации"}
+                          {review.status === "published" && " · опубликован"}
                         </p>
+                      ) : (
                         <div className="mt-3">
-                          <ReviewForm slotId={s.id} />
+                          <p className="text-sm text-neutral-600">
+                            Как всё прошло? Оценка помогает другим людям выбрать специалиста.
+                          </p>
+                          <div className="mt-3">
+                            <ReviewForm slotId={s.id} />
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      ))}
                   </li>
                 );
               })}
