@@ -167,11 +167,11 @@ export function psyMeetingInvite(params: {
 // Ссылки ведут в кабинет: человек входит по почте и коду, секрета в адресе нет.
 export const messages = {
   clientBooked: (psyName: string, startsAt: string, meetingLink?: string | null) =>
-    `Вы записаны к психологу ${psyName} на ${formatSlot(startsAt)}. Первая встреча бесплатная.${meetingLink ? `\n\nСсылка на встречу: ${meetingLink}` : ""}\n\nЕсли планы изменятся, встречу можно перенести или отменить не позднее чем за 24 часа в личном кабинете: ${SITE_URL}/me\n\nКоманда mipsy`,
+    `Вы записаны к психологу ${psyName} на ${formatSlot(startsAt)}.${meetingLink ? `\n\nСсылка на встречу: ${meetingLink}` : ""}\n\nЕсли планы изменятся, встречу можно перенести или отменить не позднее чем за 24 часа в личном кабинете: ${SITE_URL}/me\n\nКоманда mipsy`,
   clientMatched: (names: string[]) =>
     names.length > 1
-      ? `Мы подобрали для вас ${names.length} специалистов: ${names.join(", ")}. Посмотрите профили, выберите того, кто откликнется, и запишитесь на бесплатную первую встречу: ${SITE_URL}/me`
-      : `Мы подобрали вам психолога — ${names[0]}. Выберите удобное время для бесплатной первой встречи: ${SITE_URL}/me`,
+      ? `Мы подобрали для вас ${names.length} специалистов: ${names.join(", ")}. Посмотрите профили, выберите того, кто откликнется, и запишитесь на встречу: ${SITE_URL}/me`
+      : `Мы подобрали вам психолога — ${names[0]}. Выберите удобное время для первой встречи: ${SITE_URL}/me`,
   clientRescheduled: (psyName: string, startsAt: string) =>
     `Встреча с ${psyName} перенесена на ${formatSlot(startsAt)}. Подробности в кабинете: ${SITE_URL}/me`,
   clientCancelled: (psyName: string, startsAt: string) =>

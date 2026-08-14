@@ -213,9 +213,8 @@ export function ProfileForm({
         </div>
       </Field>
       <div className="rounded-xl bg-brand-50 p-4 text-sm text-brand-900">
-        <strong>Первая встреча с новым клиентом — бесплатная.</strong> Это правило платформы: так
-        человек понимает, подходите ли вы друг другу, и охотнее решается прийти. Платными будут все
-        последующие сессии.
+        <strong>Все сессии платные, оплата — напрямую вам.</strong> Стоимость клиент видит до
+        записи, поэтому держите поле «Стоимость сессии» актуальным.
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {saved && <p className="text-sm text-brand-700">Сохранено ✓</p>}

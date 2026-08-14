@@ -180,16 +180,6 @@ export function BookingCalendar({
                   )}
                 >
                   {s.startsAt.split("T")[1]}
-                  {s.isIntroCall && (
-                    <span
-                      className={cn(
-                        "ml-1 text-xs",
-                        selectedSlot === s.id ? "text-brand-100" : "text-brand-700",
-                      )}
-                    >
-                      знакомство
-                    </span>
-                  )}
                 </button>
               ))}
             </div>

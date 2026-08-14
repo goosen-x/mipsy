@@ -117,7 +117,7 @@ export const psychologists = sqliteTable("psychologists", {
   faq: text("faq", { mode: "json" }).$type<{ q: string; a: string }[]>(),
   introCallEnabled: integer("intro_call_enabled", { mode: "boolean" })
     .notNull()
-    .default(false), // историческое поле: первая встреча теперь бесплатна у всех
+    .default(false), // мёртвое поле времён бесплатных первых встреч — в интерфейсе не используется
 
   // Профиль изменён после одобрения — оператор должен перечитать тексты.
   needsReview: integer("needs_review", { mode: "boolean" }).notNull().default(false),

@@ -154,7 +154,7 @@ export default async function CabinetPage() {
                     <span className="text-neutral-500">
                       {" · "}
                       {s.clientName ?? "клиент"}
-                      {s.isIntroCall && " · первая встреча"}
+
                     </span>
                   </span>
                   {isPast(s.startsAt, now) && <OutcomeControl slotId={s.id} />}
@@ -217,7 +217,7 @@ export default async function CabinetPage() {
                 topicSlugs: psy.topicSlugs ?? [],
                 howSessions: psy.howSessions ?? "",
                 faq: psy.faq ?? [],
-                introCallEnabled: psy.introCallEnabled,
+
               }}
             />
           </div>

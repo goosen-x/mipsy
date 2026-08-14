@@ -101,7 +101,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
               <dd>{psy.price || "уточняется при подборе"}</dd>
             </dl>
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <Badge variant="secondary">Первая встреча — бесплатно</Badge>
               {avg && (
                 <span className="text-sm">
                   <span className="text-accent-500">★</span> {avg}{" "}
@@ -192,13 +191,13 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
           </Section>
         )}
 
-        {/* 7. Запись: выбор времени прямо здесь, первая встреча бесплатна */}
+        {/* 7. Запись: выбор времени прямо здесь */}
         <section id="booking" className="mt-12 rounded-3xl bg-brand-50 p-6 sm:p-8">
           <div className="text-center">
             <h2 className="text-2xl font-bold">Запись на встречу</h2>
             <p className="mx-auto mt-2 max-w-lg text-neutral-600">
-              Первая встреча с {psy.name} бесплатная — чтобы вы поняли, ваш ли это специалист.
-              Выберите удобную дату и время.
+              Выберите удобную дату и время{psy.price ? ` — сессия ${psy.price}` : ""}. Оплата
+              напрямую специалисту.
             </p>
           </div>
           <div className="mt-6">

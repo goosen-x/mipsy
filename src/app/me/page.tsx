@@ -166,8 +166,8 @@ export default async function ClientCabinetPage() {
               {proposals.length === 1 ? "специалиста" : `${proposals.length} специалистов`}
             </h2>
             <p className="mt-1 text-sm text-neutral-500">
-              Посмотрите профили и выберите того, кто откликнется. Первая встреча бесплатная, а если
-              не подойдёт — подберём другого.
+              Посмотрите профили и выберите того, кто откликнется. Если не подойдёт — бесплатно
+              подберём другого.
             </p>
             <div className="mt-5 space-y-4">
               {proposals.map((p) => (
@@ -245,7 +245,7 @@ export default async function ClientCabinetPage() {
                 <div className="text-xl font-semibold">{chosen.psy.name}</div>
                 <div className="text-neutral-500">{chosen.psy.approach}</div>
                 <div className="mt-1 text-sm text-neutral-600">
-                  {chosen.psy.price || "стоимость уточняется"} · первая встреча бесплатно
+                  {chosen.psy.price || "стоимость уточняется"}
                 </div>
                 {chosen.psy.slug && (
                   <Link
@@ -279,7 +279,6 @@ export default async function ClientCabinetPage() {
                       <div className="font-medium">{formatSlot(s.startsAt)}</div>
                       <div className="text-sm text-neutral-500">
                         {s.durationMin} минут
-                        {s.isIntroCall && " · первая встреча, бесплатно"}
                       </div>
                       <div className="mt-1 flex flex-wrap gap-3 text-sm">
                         <Link href={`/api/ics?slot=${s.id}`} className="text-brand-700 underline">
@@ -365,9 +364,8 @@ export default async function ClientCabinetPage() {
           <section className="rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="text-lg font-bold">Оплата</h2>
             <p className="mt-2 text-neutral-600">
-              Первая встреча бесплатная — платить за неё не нужно. Последующие сессии
-              {chosen.psy.price ? ` стоят ${chosen.psy.price} и ` : " "}
-              оплачиваются напрямую специалисту, как вы договоритесь.
+              Сессии{chosen.psy.price ? ` стоят ${chosen.psy.price} и` : ""} оплачиваются напрямую
+              специалисту, как вы договоритесь.
             </p>
             <p className="mt-2 text-sm text-neutral-400">
               Онлайн-оплата на платформе появится позже.

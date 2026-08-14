@@ -80,7 +80,7 @@ export default async function CatalogPage({
       <main className="mx-auto max-w-5xl px-4 py-10">
         <h1 className="text-3xl font-bold">Наши психологи</h1>
         <p className="mt-3 max-w-2xl text-neutral-600">
-          Первая встреча с любым специалистом бесплатная — выбирайте и записывайтесь сразу. Если не
+          Выбирайте и записывайтесь сразу — стоимость сессии видна в профиле специалиста. Если не
           хочется разбираться —{" "}
           <Link href="/login" className="font-medium text-brand-700 underline">
             начните подбор в личном кабинете
@@ -226,7 +226,7 @@ export default async function CatalogPage({
                             <span className="text-neutral-400">({r.count})</span>
                           </span>
                         ) : (
-                          <Badge variant="secondary">Первая встреча бесплатно</Badge>
+                          <Badge variant="secondary">Новый специалист</Badge>
                         );
                       })()}
                       <span className="text-sm font-medium text-accent-600">

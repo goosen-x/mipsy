@@ -67,7 +67,7 @@ export function ProfileBooking({
             <div className="text-sm text-neutral-500">Вы выбрали</div>
             <div className="text-lg font-semibold">{formatSlot(chosen.startsAt)}</div>
             <div className="text-sm text-brand-700">
-              Первая встреча с {psyName} — бесплатно, {chosen.durationMin} минут
+              Сессия с {psyName}, {chosen.durationMin} минут
             </div>
           </div>
           <Button variant="ghost" onClick={() => setSlotId(null)}>
@@ -92,7 +92,7 @@ export function ProfileBooking({
           <div className="text-sm text-neutral-500">Вы выбрали</div>
           <div className="text-lg font-semibold">{formatSlot(chosen.startsAt)}</div>
           <div className="text-sm text-brand-700">
-            Первая встреча с {psyName} — бесплатно, {chosen.durationMin} минут
+            Сессия с {psyName}, {chosen.durationMin} минут
           </div>
         </div>
         <Button variant="ghost" onClick={() => setSlotId(null)}>
@@ -152,7 +152,7 @@ export function ProfileBooking({
             })
           }
         >
-          {pending ? "Бронируем…" : "Забронировать бесплатную встречу"}
+          {pending ? "Бронируем…" : "Забронировать встречу"}
         </Button>
       </div>
     </div>

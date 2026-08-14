@@ -153,9 +153,6 @@ export function Schedule({ slots }: { slots: Slot[] }) {
               className="w-20"
             />
           </div>
-          <span className="text-sm text-neutral-500">
-            Первая встреча каждого нового клиента бесплатная — отмечать это не нужно.
-          </span>
         </div>
 
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
@@ -203,7 +200,6 @@ function SlotChip({ slot }: { slot: Slot }) {
       title={error ?? undefined}
     >
       {slot.startsAt.split("T")[1]}
-      {slot.isIntroCall && <span className="text-xs text-neutral-500">знакомство</span>}
       {booked ? (
         <span className="text-xs font-medium">записан {slot.clientName ?? "клиент"}</span>
       ) : (

@@ -32,7 +32,6 @@ export async function GET(
       startsAt: slots.startsAt,
       durationMin: slots.durationMin,
       status: slots.status,
-      isIntroCall: slots.isIntroCall,
       meetingLink: slots.meetingLink,
       clientName: clientRequests.name,
     })
@@ -53,7 +52,7 @@ export async function GET(
       uid: `mipsy-slot-${s.id}@mipsy.mskacademy.ru`,
       startsAt: s.startsAt,
       durationMin: s.durationMin,
-      summary: `Сессия: ${s.clientName ?? "клиент"}${s.isIntroCall ? " · первая встреча" : ""} (mipsy)`,
+      summary: `Сессия: ${s.clientName ?? "клиент"} (mipsy)`,
       description: s.meetingLink
         ? `Ссылка на встречу: ${s.meetingLink}\nКабинет: ${SITE_URL}/cab`
         : `Кабинет: ${SITE_URL}/cab`,

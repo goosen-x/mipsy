@@ -17,8 +17,6 @@ export type DirectBooking = {
 /**
  * Запись напрямую из профиля/каталога: клиент сам выбрал специалиста и время.
  * Доступна после входа — почта подтверждена, бронь не попадёт в чужой кабинет.
- * Первая сессия с психологом — бесплатная (правило платформы), поэтому
- * бронь помечается как вводная.
  */
 export async function bookFirstSession(
   slug: string,
@@ -63,12 +61,10 @@ export async function bookFirstSession(
     })
     .returning({ id: clientRequests.id });
 
-  // Первая сессия с психологом бесплатна (правило платформы) — бронь вводная.
   const booked = await takeSlot(db, {
     slotId,
     psychologist: psy,
     clientRequestId: req.id,
-    isIntroCall: true,
   });
   if (!booked.ok) {
     await db.delete(clientRequests).where(eq(clientRequests.id, req.id));

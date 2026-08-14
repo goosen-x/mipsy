@@ -21,7 +21,7 @@ export type ProfileUpdate = {
   topicSlugs: string[];
   howSessions: string;
   faq: { q: string; a: string }[];
-  introCallEnabled: boolean;
+
 };
 
 export async function updateProfile(
@@ -47,7 +47,7 @@ export async function updateProfile(
       topicSlugs: data.topicSlugs ?? [],
       howSessions: data.howSessions?.trim() || null,
       faq: (data.faq ?? []).filter((f) => f.q.trim() && f.a.trim()),
-      introCallEnabled: data.introCallEnabled,
+
     })
     .where(eq(psychologists.id, psy.id));
 

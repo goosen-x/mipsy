@@ -164,8 +164,7 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
         <p className="mt-4 text-lg text-neutral-600">
           Мы уже подобрали по вашим ответам{" "}
           {done.matched === 1 ? "специалиста" : `${done.matched} специалистов`} — посмотрите
-          профили в кабинете, выберите того, кто откликнется, и запишитесь на бесплатную первую
-          встречу.
+          профили в кабинете, выберите того, кто откликнется, и запишитесь на первую встречу.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Button asChild size="lg">
