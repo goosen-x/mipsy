@@ -3,13 +3,12 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, psychologists } from "@/db";
-import { adoptSession, linkAccount } from "@/lib/auth";
-import { isEmail, normalizeEmail } from "@/lib/auth-core";
+import { currentAccount, linkAccount } from "@/lib/auth";
+import { isValidPhone, normalizePhone } from "@/lib/rules";
 
 export type PsyApplication = {
   name: string;
   phone: string;
-  email: string;
   education: string;
   educationDocs: string;
   experienceYears: number | null;
@@ -19,28 +18,28 @@ export type PsyApplication = {
 
 export async function submitPsyApplication(
   payload: PsyApplication,
-): Promise<{ ok: true; needsLogin: boolean } | { ok: false; error: string }> {
-  const name = payload.name?.trim();
-  const phone = payload.phone?.replace(/[^\d+]/g, "") ?? "";
-  const email = normalizeEmail(payload.email);
-  if (!name) return { ok: false, error: "Укажите имя" };
-  if (phone.replace(/\D/g, "").length < 10) return { ok: false, error: "Проверьте номер телефона" };
-  if (!isEmail(email)) return { ok: false, error: "Проверьте адрес почты — по нему вы будете входить в кабинет" };
-  if (!payload.education?.trim()) return { ok: false, error: "Расскажите об образовании" };
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  // Заявка подаётся из-под входа: почта подтверждена, и заявка не может
+  // оказаться привязанной к чужому адресу.
+  const account = await currentAccount();
+  if (!account) return { ok: false, error: "Войдите на сайт — заявка подаётся после входа" };
 
-  const account = await linkAccount({ email, name, phone });
-  if (!account) return { ok: false, error: "Проверьте адрес почты" };
+  const name = payload.name?.trim();
+  const phone = normalizePhone(payload.phone);
+  if (!name) return { ok: false, error: "Укажите имя" };
+  if (!isValidPhone(phone)) return { ok: false, error: "Проверьте номер телефона" };
+  if (!payload.education?.trim()) return { ok: false, error: "Расскажите об образовании" };
 
   const [existing] = await db
     .select({ id: psychologists.id })
     .from(psychologists)
     .where(eq(psychologists.accountId, account.id));
   if (existing) {
-    return {
-      ok: false,
-      error: "На эту почту уже есть заявка. Войдите в кабинет по коду с почты — /login",
-    };
+    return { ok: false, error: "У вас уже есть заявка — она видна в кабинете специалиста, /cab" };
   }
+
+  // Имя аккаунта могло быть заглушкой из адреса почты — заявка его уточняет.
+  await linkAccount({ email: account.email, name, phone });
 
   const token = randomUUID();
   await db.insert(psychologists).values({
@@ -48,7 +47,7 @@ export async function submitPsyApplication(
     accountId: account.id,
     name,
     phone,
-    email,
+    email: account.email,
     education: payload.education.trim(),
     educationDocs: payload.educationDocs?.trim() || null,
     experienceYears: payload.experienceYears,
@@ -57,6 +56,5 @@ export async function submitPsyApplication(
     moderationStatus: "new",
   });
 
-  const signedIn = await adoptSession(account);
-  return { ok: true, needsLogin: !signedIn };
+  return { ok: true };
 }

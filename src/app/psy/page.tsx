@@ -1,7 +1,10 @@
+import { redirect } from "next/navigation";
 import { SiteFooter, SiteHeader } from "@/components/site";
+import { currentAccount } from "@/lib/auth";
 import { PsyApplicationForm } from "./form";
 
 export const metadata = { title: "Психологам — mipsy" };
+export const dynamic = "force-dynamic";
 
 const TERMS = [
   {
@@ -18,7 +21,12 @@ const TERMS = [
   },
 ];
 
-export default function PsyPage() {
+export default async function PsyPage() {
+  // Заявка — за входом: сначала специалист подтверждает почту, потом
+  // рассказывает о себе. Так заявка не окажется привязанной к чужому адресу.
+  const account = await currentAccount();
+  if (!account) redirect("/login?next=%2Fpsy");
+
   return (
     <>
       <SiteHeader />
@@ -62,7 +70,7 @@ export default function PsyPage() {
           Заполните то, что есть — недостающее уточним при созвоне.
         </p>
         <div className="mt-6">
-          <PsyApplicationForm />
+          <PsyApplicationForm email={account.email} />
         </div>
       </main>
       <SiteFooter />

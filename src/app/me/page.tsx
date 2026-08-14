@@ -37,15 +37,15 @@ export default async function ClientCabinetPage() {
           <section className="rounded-2xl bg-white p-8 shadow-sm">
             <h1 className="text-2xl font-bold">Здравствуйте, {account.name}!</h1>
             <p className="mt-3 text-neutral-600">
-              У вас пока нет обращений. Заполните анкету — оператор изучит её и напишет вам,
-              а можно выбрать психолога самостоятельно в каталоге.
+              Ваш кабинет готов. Ответьте на несколько вопросов — мы изучим их и предложим
+              специалистов под ваш запрос. А можно выбрать психолога самостоятельно в каталоге.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/anketa"
                 className="rounded-lg bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700"
               >
-                Пройти анкету
+                Подобрать психолога
               </Link>
               <Link
                 href="/catalog"
@@ -135,9 +135,26 @@ export default async function ClientCabinetPage() {
             </p>
           )}
           {req.status === "rejected" && (
-            <p className="mt-3 text-neutral-600">
-              По вашей заявке мы больше не ведём подбор. Если это ошибка — заполните анкету заново.
-            </p>
+            <>
+              <p className="mt-3 text-neutral-600">
+                По вашей заявке мы больше не ведём подбор. Если запрос снова актуален — начните
+                новый подбор, прежние ответы не пропадут.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link
+                  href="/anketa"
+                  className="rounded-lg bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700"
+                >
+                  Подобрать психолога
+                </Link>
+                <Link
+                  href="/catalog"
+                  className="rounded-lg border border-neutral-200 px-5 py-2.5 font-medium hover:border-brand-400"
+                >
+                  Открыть каталог
+                </Link>
+              </div>
+            </>
           )}
         </section>
 

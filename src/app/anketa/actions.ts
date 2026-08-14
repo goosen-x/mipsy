@@ -2,8 +2,8 @@
 
 import { randomUUID } from "node:crypto";
 import { db, clientRequests } from "@/db";
-import { adoptSession, linkAccount } from "@/lib/auth";
-import { isEmail, normalizeEmail } from "@/lib/auth-core";
+import { currentAccount, linkAccount } from "@/lib/auth";
+import { isCrisisAnswer } from "@/lib/rules";
 
 export type AnketaPayload = {
   forWhom: "self";
@@ -22,33 +22,33 @@ export type AnketaPayload = {
   preferredTime: string[];
   story: string | null;
   name: string;
-  email: string | null;
   pdConsent: boolean;
 };
 
-const FREQ = ["never", "seldom", "monthly", "weekly", "daily"];
-
 export async function submitAnketa(
   payload: AnketaPayload,
-): Promise<{ ok: true; needsLogin: boolean } | { ok: false; error: string }> {
-  const name = payload.name?.trim();
-  const email = normalizeEmail(payload.email);
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  // Анкета доступна только из кабинета: почта уже подтверждена входом,
+  // и заявка не может оказаться в чужом кабинете.
+  const account = await currentAccount();
+  if (!account) {
+    return { ok: false, error: "Войдите в кабинет — подбор психолога запускается оттуда" };
+  }
 
+  const name = payload.name?.trim();
   if (!name) return { ok: false, error: "Укажите имя" };
-  // Почта обязательна: это вход в личный кабинет и адрес для писем о встречах.
-  if (!isEmail(email)) return { ok: false, error: "Проверьте адрес почты — по нему вы будете входить в кабинет" };
   if (!payload.pdConsent) return { ok: false, error: "Нужно согласие на обработку данных" };
 
-  const account = await linkAccount({ email, name });
-  if (!account) return { ok: false, error: "Проверьте адрес почты" };
+  // Имя аккаунта могло быть заглушкой из адреса почты — анкета его уточняет.
+  await linkAccount({ email: account.email, name });
 
-  const crisisFlag =
-    !!payload.freqSelfHarm && FREQ.indexOf(payload.freqSelfHarm) >= FREQ.indexOf("monthly");
+  const crisisFlag = isCrisisAnswer(payload.freqSelfHarm);
   const token = randomUUID();
 
   await db.insert(clientRequests).values({
     clientToken: token,
     accountId: account.id,
+    email: account.email,
     forWhom: "self",
     gender: payload.gender,
     age: payload.age,
@@ -65,14 +65,10 @@ export async function submitAnketa(
     preferredTime: payload.preferredTime ?? [],
     story: payload.story?.trim() || null,
     name,
-    email,
     pdConsent: true,
     crisisFlag,
     status: "new",
   });
 
-  // Сессию выдаём, только если почта наша или ничья: иначе чужой анкетой
-  // можно было бы забрать чужой кабинет.
-  const signedIn = await adoptSession(account);
-  return { ok: true, needsLogin: !signedIn };
+  return { ok: true };
 }

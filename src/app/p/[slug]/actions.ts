@@ -3,21 +3,20 @@
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { clientRequests, db, matches, psychologists, slots } from "@/db";
-import { adoptSession, linkAccount } from "@/lib/auth";
-import { isEmail, normalizeEmail } from "@/lib/auth-core";
-import { isPast } from "@/lib/datetime";
+import { clientRequests, db, matches, psychologists } from "@/db";
+import { currentAccount, linkAccount } from "@/lib/auth";
+import { takeSlot } from "@/lib/booking";
 import { meetingInvite, messages, notify, subjects } from "@/lib/notify";
 
 export type DirectBooking = {
   name: string;
-  email: string;
   note: string;
   pdConsent: boolean;
 };
 
 /**
  * Запись напрямую из профиля/каталога: клиент сам выбрал специалиста и время.
+ * Доступна после входа — почта подтверждена, бронь не попадёт в чужой кабинет.
  * Первая сессия с психологом — бесплатная (правило платформы), поэтому
  * бронь помечается как вводная.
  */
@@ -25,15 +24,17 @@ export async function bookFirstSession(
   slug: string,
   slotId: number,
   data: DirectBooking,
-): Promise<{ ok: true; needsLogin: boolean } | { ok: false; error: string }> {
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const account = await currentAccount();
+  if (!account) return { ok: false, error: "Войдите на сайт, чтобы записаться" };
+
   const name = data.name?.trim();
-  const email = normalizeEmail(data.email);
+  const email = account.email;
   if (!name) return { ok: false, error: "Укажите имя" };
-  if (!isEmail(email)) return { ok: false, error: "Проверьте адрес почты — по нему вы будете входить в кабинет" };
   if (!data.pdConsent) return { ok: false, error: "Нужно согласие на обработку данных" };
 
-  const account = await linkAccount({ email, name });
-  if (!account) return { ok: false, error: "Проверьте адрес почты" };
+  // Имя аккаунта могло быть заглушкой из адреса почты — бронь его уточняет.
+  await linkAccount({ email, name });
 
   const [psy] = await db
     .select({
@@ -46,11 +47,6 @@ export async function bookFirstSession(
     .from(psychologists)
     .where(and(eq(psychologists.slug, slug), eq(psychologists.moderationStatus, "approved")));
   if (!psy) return { ok: false, error: "Специалист не найден" };
-
-  const [slot] = await db.select().from(slots).where(eq(slots.id, slotId));
-  if (!slot || slot.psychologistId !== psy.id) return { ok: false, error: "Это время недоступно" };
-  if (slot.status !== "free") return { ok: false, error: "Это время уже заняли" };
-  if (isPast(slot.startsAt)) return { ok: false, error: "Это время уже прошло" };
 
   const token = randomUUID();
   const [req] = await db
@@ -67,19 +63,18 @@ export async function bookFirstSession(
     })
     .returning({ id: clientRequests.id });
 
-  const booked = await db
-    .update(slots)
-    .set({
-      status: "booked",
-      clientRequestId: req.id,
-      isIntroCall: true,
-      meetingLink: psy.meetingUrl,
-    })
-    .where(and(eq(slots.id, slotId), eq(slots.status, "free")));
-  if ((booked as unknown as { changes: number }).changes === 0) {
+  // Первая сессия с психологом бесплатна (правило платформы) — бронь вводная.
+  const booked = await takeSlot(db, {
+    slotId,
+    psychologist: psy,
+    clientRequestId: req.id,
+    isIntroCall: true,
+  });
+  if (!booked.ok) {
     await db.delete(clientRequests).where(eq(clientRequests.id, req.id));
-    return { ok: false, error: "Это время только что заняли, выберите другое" };
+    return booked;
   }
+  const slot = booked.slot;
 
   await db.insert(matches).values({
     clientRequestId: req.id,
@@ -120,8 +115,7 @@ export async function bookFirstSession(
     slotId,
   });
 
-  const signedIn = await adoptSession(account);
   revalidatePath(`/p/${slug}`);
-  revalidatePath("/op");
-  return { ok: true, needsLogin: !signedIn };
+  revalidatePath("/admin");
+  return { ok: true };
 }

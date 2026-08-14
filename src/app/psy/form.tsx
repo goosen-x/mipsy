@@ -8,11 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { submitPsyApplication } from "./actions";
 
-export function PsyApplicationForm() {
+export function PsyApplicationForm({ email }: { email: string }) {
   const [form, setForm] = useState({
     name: "",
     phone: "",
-    email: "",
     education: "",
     educationDocs: "",
     experienceYears: "",
@@ -21,7 +20,6 @@ export function PsyApplicationForm() {
   });
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
-  const [needsLogin, setNeedsLogin] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function set(key: keyof typeof form, value: string) {
@@ -34,17 +32,13 @@ export function PsyApplicationForm() {
       const res = await submitPsyApplication({
         name: form.name,
         phone: form.phone,
-        email: form.email,
         education: form.education,
         educationDocs: form.educationDocs,
         experienceYears: form.experienceYears ? Number(form.experienceYears) : null,
         supervision: form.supervision,
         personalTherapy: form.personalTherapy,
       });
-      if (res.ok) {
-        setNeedsLogin(res.needsLogin);
-        setSent(true);
-      }
+      if (res.ok) setSent(true);
       else setError(res.error);
     });
   }
@@ -59,16 +53,14 @@ export function PsyApplicationForm() {
         </p>
         <p className="mt-4">
           <Link
-            href={needsLogin ? "/login?next=%2Fcab" : "/cab"}
+            href="/cab"
             className="inline-block rounded-lg bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700"
           >
-            {needsLogin ? "Войти по коду" : "Перейти в кабинет"}
+            Перейти в кабинет
           </Link>
         </p>
         <p className="mt-3 text-sm text-neutral-500">
-          {needsLogin
-            ? "На эту почту уже есть кабинет — впустим по коду из письма."
-            : "С другого устройства вход по адресу " + form.email + " — пришлём код на почту."}
+          С другого устройства вход по адресу {email} — пришлём код на почту.
         </p>
       </div>
     );
@@ -88,13 +80,11 @@ export function PsyApplicationForm() {
             placeholder="+7 900 000-00-00"
           />
         </Field>
-        <Field label="Email" required hint="Вход в кабинет и письма о записях">
-          <Input
-            type="email"
-            value={form.email}
-            onChange={(e) => set("email", e.target.value)}
-            placeholder="anna@example.com"
-          />
+        <Field label="Email" hint="Вход в кабинет и письма о записях">
+          <div className="rounded-xl bg-brand-50 px-3 py-2 text-sm">
+            <span className="text-neutral-600">Подтверждён: </span>
+            <span className="font-medium text-brand-800">{email}</span>
+          </div>
         </Field>
       </div>
       <Field label="Образование" required hint="Вузы, программы переподготовки, годы окончания">

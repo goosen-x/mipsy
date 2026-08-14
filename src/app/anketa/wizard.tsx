@@ -29,7 +29,6 @@ type State = {
   preferredTime: string[];
   story: string;
   name: string;
-  email: string;
   pdConsent: boolean;
 };
 
@@ -63,7 +62,7 @@ function countWords(s: string) {
   return s.trim().split(/\s+/).filter(Boolean).length;
 }
 
-export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; knownEmail?: string }) {
+export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string }) {
   const [state, setState] = useState<State>({
     gender: null,
     age: "",
@@ -80,14 +79,12 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
     preferredTime: [],
     story: "",
     name: "",
-    email: knownEmail,
     pdConsent: true,
   });
   const [stepIdx, setStepIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
-  const [needsLogin, setNeedsLogin] = useState(false);
 
   // Кризисный экран вставляется в маршрут сразу после вопроса о самоповреждении,
   // если ответ — не «никогда».
@@ -147,15 +144,11 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
       preferredTime: state.preferredTime,
       story: state.story || null,
       name: state.name,
-      email: state.email || null,
       pdConsent: state.pdConsent,
     };
     startTransition(async () => {
       const res = await submitAnketa(payload);
-      if (res.ok) {
-        setNeedsLogin(res.needsLogin);
-        setDone(true);
-      }
+      if (res.ok) setDone(true);
       else setError(res.error ?? "Что-то пошло не так, попробуйте ещё раз");
     });
   }
@@ -166,35 +159,20 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
         <h1 className="text-3xl font-bold">Спасибо, {state.name}!</h1>
         <p className="mt-4 text-lg text-neutral-600">
           Анкета у нас. Оператор изучит её и напишет вам на{" "}
-          <span className="font-medium text-neutral-900">{state.email}</span>, чтобы обсудить
+          <span className="font-medium text-neutral-900">{email}</span>, чтобы обсудить
           подбор психолога. Обычно это занимает не больше одного рабочего дня.
         </p>
         <div className="mt-6 rounded-2xl bg-brand-50 p-5">
-          <div className="font-semibold text-brand-800">
-            {needsLogin ? "На эту почту уже есть кабинет" : "Личный кабинет уже открыт"}
-          </div>
+          <div className="font-semibold text-brand-800">Подбор виден в кабинете</div>
           <p className="mt-1 text-sm text-neutral-600">
-            {needsLogin ? (
-              <>
-                Анкета сохранена. Чтобы увидеть подбор, войдите по коду с адреса{" "}
-                <span className="font-medium text-neutral-900">{state.email}</span> — так мы
-                убеждаемся, что кабинет открывается его владельцу.
-              </>
-            ) : (
-              <>
-                Здесь будет виден подобранный психолог и свободное время для записи. На этом
-                устройстве вы уже вошли; с другого — впустим по адресу{" "}
-                <span className="font-medium text-neutral-900">{state.email}</span> и коду из
-                письма.
-              </>
-            )}
+            Там появится подобранный психолог и свободное время для записи. На этом устройстве вы
+            уже вошли; с другого — впустим по адресу{" "}
+            <span className="font-medium text-neutral-900">{email}</span> и коду из письма.
           </p>
         </div>
         <div className="mt-6 flex gap-3">
           <Button asChild>
-            <Link href={needsLogin ? "/login?next=%2Fme" : "/me"}>
-              {needsLogin ? "Войти по коду" : "Перейти в кабинет"}
-            </Link>
+            <Link href="/me">Перейти в кабинет</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/">На главную</Link>
@@ -513,29 +491,13 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
             placeholder="Как к вам обращаться"
             className="mt-1"
           />
-          {knownEmail ? (
-            <div className="mt-4 rounded-xl bg-brand-50 p-3 text-sm">
-              <span className="text-neutral-600">Почта подтверждена: </span>
-              <span className="font-medium text-brand-800">{knownEmail}</span>
-              <div className="mt-0.5 text-xs text-neutral-500">
-                На неё придут подбор и подтверждение записи.
-              </div>
+          <div className="mt-4 rounded-xl bg-brand-50 p-3 text-sm">
+            <span className="text-neutral-600">Почта подтверждена: </span>
+            <span className="font-medium text-brand-800">{email}</span>
+            <div className="mt-0.5 text-xs text-neutral-500">
+              На неё придут подбор и подтверждение записи.
             </div>
-          ) : (
-            <>
-              <Label htmlFor="email" className="mt-4 block">
-                Email — вход в личный кабинет и письма о встречах
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={state.email}
-                onChange={(e) => set("email", e.target.value)}
-                placeholder="ivan@example.com"
-                className="mt-1"
-              />
-            </>
-          )}
+          </div>
           <div className="mt-4 flex items-start gap-3">
             <Checkbox
               id="pd"
@@ -551,7 +513,7 @@ export function AnketaWizard({ topics, knownEmail = "" }: { topics: Topic[]; kno
           <Button
             className="mt-5 w-full"
             size="lg"
-            disabled={pending || !state.name.trim() || !state.email.trim() || !state.pdConsent}
+            disabled={pending || !state.name.trim() || !state.pdConsent}
             onClick={submit}
           >
             {pending ? "Отправляем…" : "Отправить анкету"}

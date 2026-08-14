@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db, psychologists, reviews, slots, topics } from "@/db";
 import { SiteFooter, SiteHeader } from "@/components/site";
 import { Badge } from "@/components/ui/badge";
+import { currentAccount } from "@/lib/auth";
 import { isPast } from "@/lib/datetime";
 import { ProfileBooking } from "./booking";
 
@@ -11,6 +12,8 @@ export const dynamic = "force-dynamic";
 // Публичный профиль: 7 фиксированных секций, никаких контактов.
 export default async function ProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  // Профиль публичный, но запись — только после входа.
+  const account = await currentAccount();
   const [psy] = await db
     .select()
     .from(psychologists)
@@ -202,6 +205,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
             <ProfileBooking
               slug={slug}
               psyName={psy.name}
+              viewer={account ? { name: account.name, email: account.email } : null}
               slots={freeSlots.map((s) => ({
                 id: s.id,
                 startsAt: s.startsAt,

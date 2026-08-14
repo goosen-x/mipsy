@@ -99,5 +99,6 @@ export async function confirmLoginCode(
   }
   await signIn(fresh.accountId);
   await logLogin(email, "verified_new");
-  return { ok: true, path: "/anketa" };
+  // Новый человек попадает в свой кабинет — подбор психолога запускается оттуда кнопкой.
+  return { ok: true, path: "/me" };
 }
