@@ -56,9 +56,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
       .orderBy(asc(slots.startsAt))
   ).filter((s) => !isPast(s.startsAt, now));
 
-  const formatLabel =
-    psy.format === "online" ? "Онлайн" : psy.format === "offline" ? "Очно" : "Онлайн и очно";
-
   return (
     <>
       <SiteHeader />
@@ -92,12 +89,8 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
                   <dd>{psy.experienceYears} лет</dd>
                 </>
               )}
-              {psy.format && (
-                <>
-                  <dt className="text-neutral-500">Формат</dt>
-                  <dd>{formatLabel}</dd>
-                </>
-              )}
+              <dt className="text-neutral-500">Формат</dt>
+              <dd>Онлайн, по видеосвязи</dd>
               <dt className="text-neutral-500">Стоимость</dt>
               <dd>{gradePriceLabel(psy.grade) ?? "уточняется при подборе"}</dd>
             </dl>

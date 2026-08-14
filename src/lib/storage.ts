@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 /**
- * Хранилище файлов пользователей (сейчас — фото психологов).
+ * Хранилище файлов пользователей (фото психологов и документы об образовании).
  *
  * Реализация локальная: файлы лежат в volume рядом с базой и отдаются
  * роутом `/uploads/[name]`. Всё, что знает остальной код, — это ключ файла
@@ -25,7 +25,7 @@ function localDir(): string {
 
 /** Ключи генерируем сами (uuid.ext) — снаружи произвольные имена не принимаются. */
 export function isValidKey(key: string): boolean {
-  return /^[a-f0-9-]{36}\.(jpg|png|webp)$/.test(key);
+  return /^[a-f0-9-]{36}\.(jpg|png|webp|pdf)$/.test(key);
 }
 
 export function publicUrl(key: string): string {

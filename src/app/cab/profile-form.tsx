@@ -14,12 +14,6 @@ import { uploadPhoto } from "./upload";
 
 type Topic = { slug: string; title: string };
 
-const FORMATS = [
-  ["online", "Онлайн"],
-  ["offline", "Очно"],
-  ["both", "Онлайн и очно"],
-] as const;
-
 export function ProfileForm({
   topics,
   initial,
@@ -109,27 +103,6 @@ export function ProfileForm({
           placeholder="https://telemost.yandex.ru/..."
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Формат работы">
-          <div className="flex gap-2">
-            {FORMATS.map(([v, label]) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => set("format", v)}
-                className={cn(
-                  "rounded-xl border px-3 py-2 text-sm",
-                  form.format === v
-                    ? "border-brand-600 bg-brand-50 font-medium text-brand-800"
-                    : "border-neutral-200 hover:border-brand-400",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </Field>
-      </div>
       <Field label="О себе" hint="2–3 абзаца: кто вы, с чем работаете, что для вас важно в терапии">
         <Textarea rows={5} value={form.about} onChange={(e) => set("about", e.target.value)} />
       </Field>

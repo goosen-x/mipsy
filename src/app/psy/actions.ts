@@ -12,7 +12,7 @@ export type PsyApplication = {
   birthYear: number | null;
   phone: string;
   education: string;
-  educationDocs: string;
+  educationDocs: string[]; // адреса загруженных сканов, /uploads/<uuid>.<ext>
   experienceYears: number | null;
   supervision: string;
   personalTherapy: string;
@@ -39,6 +39,13 @@ export async function submitPsyApplication(
   if (!isValidPhone(phone)) return { ok: false, error: "Проверьте номер телефона" };
   if (!payload.education?.trim()) return { ok: false, error: "Расскажите об образовании" };
 
+  // Документы обязательны, и принимаются только наши загрузки — произвольные
+  // ссылки в поле не попадают.
+  const docs = (payload.educationDocs ?? []).filter((u) => /^\/uploads\/[a-f0-9-]{36}\.\w{3,4}$/.test(u));
+  if (docs.length === 0) {
+    return { ok: false, error: "Приложите документы об образовании — без них заявку не рассмотреть" };
+  }
+
   const [existing] = await db
     .select({ id: psychologists.id })
     .from(psychologists)
@@ -61,7 +68,7 @@ export async function submitPsyApplication(
     phone,
     email: account.email,
     education: payload.education.trim(),
-    educationDocs: payload.educationDocs?.trim() || null,
+    educationDocs: docs.join("\n"),
     experienceYears: payload.experienceYears,
     supervision: payload.supervision?.trim() || null,
     personalTherapy: payload.personalTherapy?.trim() || null,

@@ -15,7 +15,6 @@ export type ProfileUpdate = {
   meetingUrl: string;
   photoUrl: string;
   approach: string;
-  format: string;
   about: string;
   topicSlugs: string[];
   howSessions: string;
@@ -40,7 +39,6 @@ export async function updateProfile(
       photoUrl: data.photoUrl?.trim() || null,
       meetingUrl: data.meetingUrl?.trim() || null,
       approach: data.approach?.trim() || null,
-      format: data.format || null,
       about: data.about?.trim() || null,
       topicSlugs: data.topicSlugs ?? [],
       howSessions: data.howSessions?.trim() || null,

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { submitPsyApplication } from "./actions";
+import { uploadEducationDoc } from "./upload";
 
 export function PsyApplicationForm({ email }: { email: string }) {
   const [form, setForm] = useState({
@@ -15,11 +16,11 @@ export function PsyApplicationForm({ email }: { email: string }) {
     birthYear: "",
     phone: "",
     education: "",
-    educationDocs: "",
     experienceYears: "",
     supervision: "",
     personalTherapy: "",
   });
+  const [docs, setDocs] = useState<{ url: string; name: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -37,7 +38,7 @@ export function PsyApplicationForm({ email }: { email: string }) {
         birthYear: form.birthYear ? Number(form.birthYear) : null,
         phone: form.phone,
         education: form.education,
-        educationDocs: form.educationDocs,
+        educationDocs: docs.map((d) => d.url),
         experienceYears: form.experienceYears ? Number(form.experienceYears) : null,
         supervision: form.supervision,
         personalTherapy: form.personalTherapy,
@@ -130,12 +131,45 @@ export function PsyApplicationForm({ email }: { email: string }) {
       </Field>
       <Field
         label="Документы об образовании"
-        hint="Ссылки на сканы (диск, облако) — или напишите, что предоставите при созвоне"
+        required
+        hint="Сканы дипломов и сертификатов: PDF, JPG или PNG до 10 МБ. Их увидит только модерация"
       >
-        <Textarea
-          rows={2}
-          value={form.educationDocs}
-          onChange={(e) => set("educationDocs", e.target.value)}
+        {docs.length > 0 && (
+          <ul className="mb-2 space-y-1 text-sm">
+            {docs.map((d) => (
+              <li key={d.url} className="flex items-center gap-2">
+                <a href={d.url} target="_blank" rel="noreferrer" className="text-brand-700 underline">
+                  {d.name}
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setDocs(docs.filter((x) => x.url !== d.url))}
+                  className="text-neutral-400 hover:text-red-600"
+                  aria-label="Убрать документ"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <input
+          type="file"
+          accept="application/pdf,image/jpeg,image/png,image/webp"
+          className="block text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-white hover:file:bg-brand-700"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const fd = new FormData();
+            fd.set("doc", file);
+            e.target.value = "";
+            setError(null);
+            startTransition(async () => {
+              const res = await uploadEducationDoc(fd);
+              if (res.ok) setDocs((prev) => [...prev, { url: res.url, name: res.name }]);
+              else setError(res.error);
+            });
+          }}
         />
       </Field>
       <Field label="Опыт практики, лет">
@@ -167,7 +201,8 @@ export function PsyApplicationForm({ email }: { email: string }) {
           !form.gender ||
           !form.birthYear ||
           !form.phone.trim() ||
-          !form.education.trim()
+          !form.education.trim() ||
+          docs.length === 0
         }
         onClick={submit}
       >

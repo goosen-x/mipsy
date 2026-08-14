@@ -111,7 +111,7 @@ export const psychologists = sqliteTable("psychologists", {
   // Профиль: 7 фиксированных секций
   photoUrl: text("photo_url"),
   approach: text("approach"),
-  format: text("format"), // online | offline | both
+  format: text("format"), // мёртвое поле: сессии только онлайн, формат не выбирается
   price: text("price"), // заглушка до решения по ценам
   about: text("about"), // максимум 2–3 абзаца
   topicSlugs: text("topic_slugs", { mode: "json" }).$type<string[]>(),

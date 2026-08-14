@@ -53,7 +53,29 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
         <h2 className="text-lg font-bold">Заявка на модерацию</h2>
         <dl className="mt-4 space-y-3 text-sm">
           <Block k="Образование" v={psy.education} />
-          <Block k="Документы" v={psy.educationDocs} />
+          <div>
+            <dt className="text-xs font-medium uppercase text-neutral-400">Документы</dt>
+            <dd className="mt-0.5 text-neutral-800">
+              {psy.educationDocs ? (
+                <ul className="space-y-1">
+                  {psy.educationDocs.split("\n").map((doc, i) =>
+                    doc.startsWith("/uploads/") ? (
+                      <li key={doc}>
+                        <a href={doc} target="_blank" className="text-brand-700 underline">
+                          Документ {i + 1} ({doc.split(".").pop()?.toUpperCase()})
+                        </a>
+                      </li>
+                    ) : (
+                      // Заявки до загрузки файлов: в поле — текст со ссылками.
+                      <li key={doc} className="whitespace-pre-line">{doc}</li>
+                    ),
+                  )}
+                </ul>
+              ) : (
+                "—"
+              )}
+            </dd>
+          </div>
           <Block k="Опыт практики" v={psy.experienceYears != null ? `${psy.experienceYears} лет` : null} />
           <Block k="Супервизия" v={psy.supervision} />
           <Block k="Личная терапия" v={psy.personalTherapy} />
@@ -71,7 +93,6 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
         <h2 className="text-lg font-bold">Профиль (заполняет психолог)</h2>
         <dl className="mt-4 space-y-3 text-sm">
           <Block k="Подход" v={psy.approach} />
-          <Block k="Формат" v={psy.format} />
           <Block
             k="Грейд и цена"
             v={psy.grade ? `${gradeTitle(psy.grade)} — ${gradePriceLabel(psy.grade)}` : "не присвоен"}

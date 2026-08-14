@@ -233,7 +233,6 @@ export default async function CabinetPage() {
                 meetingUrl: psy.meetingUrl ?? "",
                 photoUrl: psy.photoUrl ?? "",
                 approach: psy.approach ?? "",
-                format: psy.format ?? "",
                 about: psy.about ?? "",
                 topicSlugs: psy.topicSlugs ?? [],
                 howSessions: psy.howSessions ?? "",

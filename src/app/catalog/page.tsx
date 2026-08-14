@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function CatalogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ topic?: string; gender?: string; age?: string; format?: string; q?: string }>;
+  searchParams: Promise<{ topic?: string; gender?: string; age?: string; q?: string }>;
 }) {
   const sp = await searchParams;
   const all = await db
@@ -47,7 +47,6 @@ export default async function CatalogPage({
   const thisYear = new Date().getFullYear();
   const list = all.filter((p) => {
     if (sp.topic && !(p.topicSlugs ?? []).includes(sp.topic)) return false;
-    if (sp.format && p.format !== sp.format && p.format !== "both") return false;
     if (sp.gender && p.gender && p.gender !== sp.gender) return false;
     if (sp.age && p.birthYear) {
       const bracket = thisYear - p.birthYear < 40 ? "under40" : "over40";
@@ -92,7 +91,6 @@ export default async function CatalogPage({
         {/* Поиск и фильтры */}
         <form action="/catalog" className="mt-8 flex flex-wrap gap-2">
           {sp.topic && <input type="hidden" name="topic" value={sp.topic} />}
-          {sp.format && <input type="hidden" name="format" value={sp.format} />}
           {sp.gender && <input type="hidden" name="gender" value={sp.gender} />}
           {sp.age && <input type="hidden" name="age" value={sp.age} />}
           <input
@@ -146,18 +144,6 @@ export default async function CatalogPage({
             </FilterChip>
             <FilterChip href={q({ age: "over40" })} active={sp.age === "over40"}>
               40 и старше
-            </FilterChip>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-neutral-500">Формат:</span>
-            <FilterChip href={q({ format: undefined })} active={!sp.format}>
-              любой
-            </FilterChip>
-            <FilterChip href={q({ format: "online" })} active={sp.format === "online"}>
-              онлайн
-            </FilterChip>
-            <FilterChip href={q({ format: "offline" })} active={sp.format === "offline"}>
-              очно
             </FilterChip>
           </div>
         </div>

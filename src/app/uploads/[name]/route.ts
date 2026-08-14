@@ -5,9 +5,10 @@ const MIME: Record<string, string> = {
   jpg: "image/jpeg",
   png: "image/png",
   webp: "image/webp",
+  pdf: "application/pdf",
 };
 
-/** Отдаёт загруженные фото из хранилища: в образ они не попадают. */
+/** Отдаёт загруженные файлы из хранилища: в образ они не попадают. */
 export async function GET(_req: Request, { params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;
   const file = await getObject(name);
