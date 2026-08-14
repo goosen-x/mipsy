@@ -90,6 +90,10 @@ export const psychologists = sqliteTable("psychologists", {
   name: text("name").notNull(),
   phone: text("phone").notNull(),
   email: text("email"),
+  // Для автоподбора и фильтров каталога: клиент в анкете выбирает пол
+  // и возраст специалиста. У заявок до августа-2026 полей нет.
+  gender: text("gender"), // female | male
+  birthYear: integer("birth_year"),
 
   // Поля модерации — широкая заявка, пороги оператор решает вручную
   education: text("education"), // вузы, программы, годы

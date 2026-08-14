@@ -87,7 +87,7 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
   const [stepIdx, setStepIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<{ matched: number; catalogUrl: string } | null>(null);
 
   // Кризисный экран вставляется в маршрут сразу после вопроса о самоповреждении,
   // если ответ — не «никогда».
@@ -152,9 +152,35 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
     };
     startTransition(async () => {
       const res = await submitAnketa(payload);
-      if (res.ok) setDone(true);
+      if (res.ok) setDone({ matched: res.matched, catalogUrl: res.catalogUrl });
       else setError(res.error ?? "Что-то пошло не так, попробуйте ещё раз");
     });
+  }
+
+  if (done && done.matched > 0) {
+    return (
+      <Shell progress={100} onBack={null}>
+        <h1 className="text-3xl font-bold">Спасибо, {state.name}!</h1>
+        <p className="mt-4 text-lg text-neutral-600">
+          Мы уже подобрали по вашим ответам{" "}
+          {done.matched === 1 ? "специалиста" : `${done.matched} специалистов`} — посмотрите
+          профили в кабинете, выберите того, кто откликнется, и запишитесь на бесплатную первую
+          встречу.
+        </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Button asChild size="lg">
+            <Link href="/me">Посмотреть подобранных</Link>
+          </Button>
+          <Button asChild variant="outline" size="lg">
+            <Link href={done.catalogUrl}>Выбрать самому в каталоге</Link>
+          </Button>
+        </div>
+        <p className="mt-4 text-sm text-neutral-500">
+          В каталоге уже включены фильтры по вашим ответам. Если никто не откликнется — напишите
+          нам из кабинета, оператор подберёт вручную.
+        </p>
+      </Shell>
+    );
   }
 
   if (done) {
@@ -162,24 +188,17 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
       <Shell progress={100} onBack={null}>
         <h1 className="text-3xl font-bold">Спасибо, {state.name}!</h1>
         <p className="mt-4 text-lg text-neutral-600">
-          Анкета у нас. Оператор изучит её и напишет вам на{" "}
-          <span className="font-medium text-neutral-900">{email}</span>, чтобы обсудить
-          подбор психолога. Обычно это занимает не больше одного рабочего дня.
+          Анкета у нас. Под ваши пожелания сейчас нет свободного специалиста, поэтому подбором
+          займётся оператор — он напишет вам на{" "}
+          <span className="font-medium text-neutral-900">{email}</span> не позднее следующего
+          рабочего дня.
         </p>
-        <div className="mt-6 rounded-2xl bg-brand-50 p-5">
-          <div className="font-semibold text-brand-800">Подбор виден в кабинете</div>
-          <p className="mt-1 text-sm text-neutral-600">
-            Там появится подобранный психолог и свободное время для записи. На этом устройстве вы
-            уже вошли; с другого — впустим по адресу{" "}
-            <span className="font-medium text-neutral-900">{email}</span> и коду из письма.
-          </p>
-        </div>
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex flex-wrap gap-3">
           <Button asChild>
             <Link href="/me">Перейти в кабинет</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/">На главную</Link>
+            <Link href={done.catalogUrl}>Посмотреть каталог</Link>
           </Button>
         </div>
       </Shell>

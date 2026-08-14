@@ -8,6 +8,8 @@ import { isValidPhone, normalizePhone } from "@/lib/rules";
 
 export type PsyApplication = {
   name: string;
+  gender: string; // female | male
+  birthYear: number | null;
   phone: string;
   education: string;
   educationDocs: string;
@@ -27,6 +29,13 @@ export async function submitPsyApplication(
   const name = payload.name?.trim();
   const phone = normalizePhone(payload.phone);
   if (!name) return { ok: false, error: "Укажите имя" };
+  if (payload.gender !== "female" && payload.gender !== "male") {
+    return { ok: false, error: "Укажите пол" };
+  }
+  const maxBirthYear = new Date().getFullYear() - 18;
+  if (!payload.birthYear || payload.birthYear < 1930 || payload.birthYear > maxBirthYear) {
+    return { ok: false, error: "Проверьте год рождения" };
+  }
   if (!isValidPhone(phone)) return { ok: false, error: "Проверьте номер телефона" };
   if (!payload.education?.trim()) return { ok: false, error: "Расскажите об образовании" };
 
@@ -46,6 +55,8 @@ export async function submitPsyApplication(
     cabinetToken: token,
     accountId: account.id,
     name,
+    gender: payload.gender,
+    birthYear: payload.birthYear,
     phone,
     email: account.email,
     education: payload.education.trim(),

@@ -11,6 +11,8 @@ import { submitPsyApplication } from "./actions";
 export function PsyApplicationForm({ email }: { email: string }) {
   const [form, setForm] = useState({
     name: "",
+    gender: "",
+    birthYear: "",
     phone: "",
     education: "",
     educationDocs: "",
@@ -31,6 +33,8 @@ export function PsyApplicationForm({ email }: { email: string }) {
     startTransition(async () => {
       const res = await submitPsyApplication({
         name: form.name,
+        gender: form.gender,
+        birthYear: form.birthYear ? Number(form.birthYear) : null,
         phone: form.phone,
         education: form.education,
         educationDocs: form.educationDocs,
@@ -71,6 +75,40 @@ export function PsyApplicationForm({ email }: { email: string }) {
       <Field label="Имя и фамилия" required>
         <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Анна Иванова" />
       </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Пол" required hint="Клиенты часто просят специалиста определённого пола">
+          <div className="flex gap-2">
+            {[
+              ["female", "Женщина"],
+              ["male", "Мужчина"],
+            ].map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => set("gender", v)}
+                className={
+                  form.gender === v
+                    ? "rounded-xl border border-brand-600 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-800"
+                    : "rounded-xl border border-neutral-200 px-4 py-2 text-sm hover:border-brand-400"
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Год рождения" required hint="Возраст участвует в подборе и фильтрах каталога">
+          <Input
+            type="number"
+            min={1930}
+            max={2010}
+            value={form.birthYear}
+            onChange={(e) => set("birthYear", e.target.value)}
+            placeholder="1985"
+            className="max-w-32"
+          />
+        </Field>
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Телефон" required>
           <Input
@@ -123,7 +161,14 @@ export function PsyApplicationForm({ email }: { email: string }) {
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Button
         size="lg"
-        disabled={pending || !form.name.trim() || !form.phone.trim() || !form.education.trim()}
+        disabled={
+          pending ||
+          !form.name.trim() ||
+          !form.gender ||
+          !form.birthYear ||
+          !form.phone.trim() ||
+          !form.education.trim()
+        }
         onClick={submit}
       >
         {pending ? "Отправляем…" : "Отправить заявку"}

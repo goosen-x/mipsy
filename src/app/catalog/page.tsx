@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function CatalogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ topic?: string; gender?: string; format?: string; q?: string }>;
+  searchParams: Promise<{ topic?: string; gender?: string; age?: string; format?: string; q?: string }>;
 }) {
   const sp = await searchParams;
   const all = await db
@@ -43,9 +43,15 @@ export default async function CatalogPage({
   // Поиск фильтруем в приложении: SQLite LIKE не умеет регистр кириллицы,
   // а специалистов на платформе десятки, а не тысячи.
   const query = (sp.q ?? "").trim().toLowerCase();
+  const thisYear = new Date().getFullYear();
   const list = all.filter((p) => {
     if (sp.topic && !(p.topicSlugs ?? []).includes(sp.topic)) return false;
     if (sp.format && p.format !== sp.format && p.format !== "both") return false;
+    if (sp.gender && p.gender && p.gender !== sp.gender) return false;
+    if (sp.age && p.birthYear) {
+      const bracket = thisYear - p.birthYear < 40 ? "under40" : "over40";
+      if (bracket !== sp.age) return false;
+    }
     if (query) {
       const topicTitles = (p.topicSlugs ?? [])
         .map((slug) => topicList.find((t) => t.slug === slug)?.title ?? "")
@@ -86,6 +92,8 @@ export default async function CatalogPage({
         <form action="/catalog" className="mt-8 flex flex-wrap gap-2">
           {sp.topic && <input type="hidden" name="topic" value={sp.topic} />}
           {sp.format && <input type="hidden" name="format" value={sp.format} />}
+          {sp.gender && <input type="hidden" name="gender" value={sp.gender} />}
+          {sp.age && <input type="hidden" name="age" value={sp.age} />}
           <input
             type="search"
             name="q"
@@ -114,6 +122,30 @@ export default async function CatalogPage({
                 {t.title}
               </FilterChip>
             ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-neutral-500">Специалист:</span>
+            <FilterChip href={q({ gender: undefined })} active={!sp.gender}>
+              не важно
+            </FilterChip>
+            <FilterChip href={q({ gender: "female" })} active={sp.gender === "female"}>
+              женщина
+            </FilterChip>
+            <FilterChip href={q({ gender: "male" })} active={sp.gender === "male"}>
+              мужчина
+            </FilterChip>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-neutral-500">Возраст:</span>
+            <FilterChip href={q({ age: undefined })} active={!sp.age}>
+              любой
+            </FilterChip>
+            <FilterChip href={q({ age: "under40" })} active={sp.age === "under40"}>
+              до 40
+            </FilterChip>
+            <FilterChip href={q({ age: "over40" })} active={sp.age === "over40"}>
+              40 и старше
+            </FilterChip>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-neutral-500">Формат:</span>

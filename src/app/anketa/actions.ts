@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { db, clientRequests } from "@/db";
 import { currentAccount, linkAccount } from "@/lib/auth";
+import { autoMatch, catalogUrlFor } from "@/lib/matching";
 import { isCrisisAnswer, isValidPhone, normalizePhone } from "@/lib/rules";
 
 export type AnketaPayload = {
@@ -26,9 +27,11 @@ export type AnketaPayload = {
   pdConsent: boolean;
 };
 
-export async function submitAnketa(
-  payload: AnketaPayload,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+export type AnketaResult =
+  | { ok: true; matched: number; catalogUrl: string }
+  | { ok: false; error: string };
+
+export async function submitAnketa(payload: AnketaPayload): Promise<AnketaResult> {
   // Анкета доступна только из кабинета: почта уже подтверждена входом,
   // и заявка не может оказаться в чужом кабинете.
   const account = await currentAccount();
@@ -50,7 +53,7 @@ export async function submitAnketa(
   const crisisFlag = isCrisisAnswer(payload.freqSelfHarm);
   const token = randomUUID();
 
-  await db.insert(clientRequests).values({
+  const [req] = await db.insert(clientRequests).values({
     clientToken: token,
     accountId: account.id,
     email: account.email,
@@ -74,7 +77,16 @@ export async function submitAnketa(
     pdConsent: true,
     crisisFlag,
     status: "new",
-  });
+  }).returning({ id: clientRequests.id });
 
-  return { ok: true };
+  // Сразу предлагаем до трёх подходящих специалистов. Если никто не подошёл,
+  // заявка остаётся у админа — как раньше.
+  const prefs = {
+    topicSlugs: payload.topicSlugs ?? [],
+    prefGender: payload.prefGender,
+    prefAge: payload.prefAge,
+  };
+  const proposed = await autoMatch(db, { clientRequestId: req.id, prefs });
+
+  return { ok: true, matched: proposed.length, catalogUrl: catalogUrlFor(prefs) };
 }
