@@ -61,8 +61,8 @@ export const clientRequests = sqliteTable("client_requests", {
 
   story: text("story"),
   name: text("name").notNull(),
-  // Телефон больше не спрашиваем: связь с клиентом идёт почтой. У прежних
-  // заявок номер сохранён, у новых его нет.
+  // Основная связь — почтой, но телефон анкета спрашивает: кризисные заявки
+  // и молчащая почта требуют звонка. У заявок периода «без телефонов» его нет.
   phone: text("phone"),
   email: text("email"),
   pdConsent: integer("pd_consent", { mode: "boolean" }).notNull().default(false),

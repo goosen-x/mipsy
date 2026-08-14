@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { db, clientRequests } from "@/db";
 import { currentAccount, linkAccount } from "@/lib/auth";
-import { isCrisisAnswer } from "@/lib/rules";
+import { isCrisisAnswer, isValidPhone, normalizePhone } from "@/lib/rules";
 
 export type AnketaPayload = {
   forWhom: "self";
@@ -22,6 +22,7 @@ export type AnketaPayload = {
   preferredTime: string[];
   story: string | null;
   name: string;
+  phone: string;
   pdConsent: boolean;
 };
 
@@ -36,11 +37,15 @@ export async function submitAnketa(
   }
 
   const name = payload.name?.trim();
+  // Телефон нужен для срочной связи: кризисные заявки и случаи, когда письмо
+  // остаётся без ответа, — почтой не решаются.
+  const phone = normalizePhone(payload.phone);
   if (!name) return { ok: false, error: "Укажите имя" };
+  if (!isValidPhone(phone)) return { ok: false, error: "Проверьте номер телефона" };
   if (!payload.pdConsent) return { ok: false, error: "Нужно согласие на обработку данных" };
 
-  // Имя аккаунта могло быть заглушкой из адреса почты — анкета его уточняет.
-  await linkAccount({ email: account.email, name });
+  // Имя и телефон аккаунта анкета уточняет (имя могло быть заглушкой из адреса).
+  await linkAccount({ email: account.email, name, phone });
 
   const crisisFlag = isCrisisAnswer(payload.freqSelfHarm);
   const token = randomUUID();
@@ -65,6 +70,7 @@ export async function submitAnketa(
     preferredTime: payload.preferredTime ?? [],
     story: payload.story?.trim() || null,
     name,
+    phone,
     pdConsent: true,
     crisisFlag,
     status: "new",

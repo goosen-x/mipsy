@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { isValidPhone } from "@/lib/rules";
 import { submitAnketa, type AnketaPayload } from "./actions";
 
 type Topic = { slug: string; title: string };
@@ -29,6 +30,7 @@ type State = {
   preferredTime: string[];
   story: string;
   name: string;
+  phone: string;
   pdConsent: boolean;
 };
 
@@ -79,6 +81,7 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
     preferredTime: [],
     story: "",
     name: "",
+    phone: "",
     pdConsent: true,
   });
   const [stepIdx, setStepIdx] = useState(0);
@@ -144,6 +147,7 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
       preferredTime: state.preferredTime,
       story: state.story || null,
       name: state.name,
+      phone: state.phone,
       pdConsent: state.pdConsent,
     };
     startTransition(async () => {
@@ -491,6 +495,20 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
             placeholder="Как к вам обращаться"
             className="mt-1"
           />
+          <Label htmlFor="phone" className="mt-4 block">
+            Телефон
+          </Label>
+          <Input
+            id="phone"
+            type="tel"
+            value={state.phone}
+            onChange={(e) => set("phone", e.target.value)}
+            placeholder="+7 900 000-00-00"
+            className="mt-1"
+          />
+          <p className="mt-1 text-xs text-neutral-500">
+            Для срочной связи по заявке — если письмо останется без ответа.
+          </p>
           <div className="mt-4 rounded-xl bg-brand-50 p-3 text-sm">
             <span className="text-neutral-600">Почта подтверждена: </span>
             <span className="font-medium text-brand-800">{email}</span>
@@ -513,7 +531,7 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
           <Button
             className="mt-5 w-full"
             size="lg"
-            disabled={pending || !state.name.trim() || !state.pdConsent}
+            disabled={pending || !state.name.trim() || !isValidPhone(state.phone) || !state.pdConsent}
             onClick={submit}
           >
             {pending ? "Отправляем…" : "Отправить анкету"}
