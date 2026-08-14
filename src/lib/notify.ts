@@ -167,7 +167,7 @@ export function psyMeetingInvite(params: {
 // Ссылки ведут в кабинет: человек входит по почте и коду, секрета в адресе нет.
 export const messages = {
   clientBooked: (psyName: string, startsAt: string, meetingLink?: string | null) =>
-    `Вы записаны к психологу ${psyName} на ${formatSlot(startsAt)}.${meetingLink ? `\n\nСсылка на встречу: ${meetingLink}` : ""}\n\nЕсли планы изменятся, встречу можно перенести или отменить не позднее чем за 24 часа в личном кабинете: ${SITE_URL}/me\n\nКоманда mipsy`,
+    `Вы записаны к психологу ${psyName} на ${formatSlot(startsAt)}.${meetingLink ? `\n\nСсылка на встречу: ${meetingLink}` : ""}\n\nЕсли планы изменятся, перенести или отменить встречу бесплатно можно не позднее чем за 24 часа в личном кабинете: ${SITE_URL}/me — позже стоимость сессии удерживается.\n\nКоманда mipsy`,
   clientMatched: (names: string[]) =>
     names.length > 1
       ? `Мы подобрали для вас ${names.length} специалистов: ${names.join(", ")}. Посмотрите профили, выберите того, кто откликнется, и запишитесь на встречу: ${SITE_URL}/me`
@@ -186,6 +186,10 @@ export const messages = {
     `Клиент ${clientName} перенёс встречу на ${formatSlot(startsAt)}. Кабинет: ${SITE_URL}/cab`,
   psyCancelled: (clientName: string, startsAt: string) =>
     `Клиент ${clientName} отменил встречу ${formatSlot(startsAt)}. Время снова свободно.`,
+  psyCancelledLate: (clientName: string, startsAt: string) =>
+    `Клиент ${clientName} отменил встречу ${formatSlot(startsAt)} менее чем за 24 часа. По правилам платформы стоимость сессии удерживается — клиент оплачивает её вам, как обычную. Время снова свободно.`,
+  psyRescheduledLate: (clientName: string, startsAt: string) =>
+    `Клиент ${clientName} перенёс встречу на ${formatSlot(startsAt)} менее чем за 24 часа до прежнего времени. По правилам платформы стоимость прежней сессии удерживается — клиент оплачивает её вам, как обычную. Кабинет: ${SITE_URL}/cab`,
   psyModerated: (approved: boolean) =>
     approved
       ? `Ваш профиль одобрен и опубликован. Откройте расписание, чтобы клиенты могли записаться: ${SITE_URL}/cab`

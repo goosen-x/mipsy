@@ -207,14 +207,10 @@ export function BookingActions({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  if (!canChange) {
-    return (
-      <p className="max-w-64 text-xs text-neutral-500">
-        До встречи меньше суток — перенос и отмену согласуйте с оператором: напишите в поддержку
-        ниже.
-      </p>
-    );
-  }
+  // <24ч до встречи: перенос и отмена возможны, но стоимость сессии
+  // удерживается — клиент подтверждает это явно.
+  const LATE_WARNING =
+    "До встречи меньше 24 часов, поэтому стоимость сессии будет удержана — вы оплачиваете её специалисту, как проведённую. Продолжить?";
 
   if (mode === "move") {
     return (
@@ -227,24 +223,48 @@ export function BookingActions({
             Отмена
           </Button>
         </div>
+        {!canChange && (
+          <p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
+            До встречи меньше 24 часов — при переносе стоимость прежней сессии удерживается. Если
+            случилось что-то серьёзное, напишите в поддержку ниже — разберём вручную.
+          </p>
+        )}
         {freeSlots.length === 0 ? (
           <p className="text-sm text-neutral-500">
-            У специалиста нет других свободных окон — напишите оператору.
+            У специалиста нет других свободных окон.{" "}
+            <a href="#rematch" className="text-brand-700 underline" onClick={() => setMode("idle")}>
+              Поменяйте психолога
+            </a>{" "}
+            — переподбор бесплатный, или напишите в поддержку ниже.
           </p>
         ) : (
-          <BookingCalendar
-            slots={freeSlots}
-            submitLabel="Перенести встречу"
-            onBook={async (toId) => {
-              const res = await rescheduleSlot(slotId, toId);
-              if (res.ok) {
-                setMode("idle");
-                toast.success("Встреча перенесена — психолог уже знает");
-                router.refresh();
-              }
-              return res;
-            }}
-          />
+          <>
+            <BookingCalendar
+              slots={freeSlots}
+              submitLabel="Перенести встречу"
+              onBook={async (toId) => {
+                if (!canChange && !confirm(LATE_WARNING)) return { ok: true };
+                const res = await rescheduleSlot(slotId, toId, !canChange);
+                if (res.ok) {
+                  setMode("idle");
+                  toast.success("Встреча перенесена — психолог уже знает");
+                  router.refresh();
+                }
+                return res;
+              }}
+            />
+            <p className="mt-3 text-xs text-neutral-500">
+              Ни одно время не подходит?{" "}
+              <a
+                href="#rematch"
+                className="text-brand-700 underline"
+                onClick={() => setMode("idle")}
+              >
+                Поменяйте психолога
+              </a>{" "}
+              — переподбор бесплатный.
+            </p>
+          </>
         )}
       </div>
     );
@@ -260,20 +280,31 @@ export function BookingActions({
           variant="ghost"
           size="sm"
           disabled={pending}
-          onClick={() =>
+          onClick={() => {
+            if (!canChange && !confirm(LATE_WARNING)) return;
             startTransition(async () => {
-              const res = await cancelBooking(slotId);
+              const res = await cancelBooking(slotId, !canChange);
               if (!res.ok) setError(res.error ?? "Не получилось");
               else {
-                toast.success("Встреча отменена");
+                toast.success(
+                  canChange
+                    ? "Встреча отменена"
+                    : "Встреча отменена — стоимость сессии удерживается",
+                );
                 router.refresh();
               }
-            })
-          }
+            });
+          }}
         >
           {pending ? "Отменяем…" : "Отменить"}
         </Button>
       </div>
+      {!canChange && (
+        <p className="max-w-64 text-right text-xs text-neutral-500">
+          До встречи меньше суток: перенос и отмена — с удержанием стоимости сессии, спорный
+          случай решит поддержка.
+        </p>
+      )}
       {error && <p className="max-w-64 text-xs text-red-600">{error}</p>}
     </div>
   );

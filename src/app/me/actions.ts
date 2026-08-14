@@ -131,6 +131,8 @@ export async function bookSlot(slotId: number): Promise<{ ok: boolean; error?: s
 export async function rescheduleSlot(
   fromSlotId: number,
   toSlotId: number,
+  // Подтверждение «стоимость прежней сессии удерживается» при переносе <24ч.
+  allowLate = false,
 ): Promise<{ ok: boolean; error?: string }> {
   const c = await client();
   if (!c) return NO_SESSION;
@@ -139,6 +141,7 @@ export async function rescheduleSlot(
     fromSlotId,
     toSlotId,
     requestIds: await myRequestIds(),
+    allowLate,
   });
   if (!moved.ok) return moved;
   const { to, psy } = moved;
@@ -171,7 +174,9 @@ export async function rescheduleSlot(
     recipientPhone: psy.phone,
     recipientEmail: psy.email,
     subject: subjects.rescheduled,
-    body: messages.psyRescheduled(c.name, to.startsAt),
+    body: moved.late
+      ? messages.psyRescheduledLate(c.name, to.startsAt)
+      : messages.psyRescheduled(c.name, to.startsAt),
     attachments: [
       psyMeetingInvite({
         slotId: toSlotId,
@@ -190,11 +195,19 @@ export async function rescheduleSlot(
   return { ok: true };
 }
 
-export async function cancelBooking(slotId: number): Promise<{ ok: boolean; error?: string }> {
+export async function cancelBooking(
+  slotId: number,
+  // Подтверждение «стоимость сессии удерживается» при отмене <24ч.
+  allowLate = false,
+): Promise<{ ok: boolean; error?: string }> {
   const c = await client();
   if (!c) return NO_SESSION;
 
-  const cancelled = await cancelClientBooking(db, { slotId, requestIds: await myRequestIds() });
+  const cancelled = await cancelClientBooking(db, {
+    slotId,
+    requestIds: await myRequestIds(),
+    allowLate,
+  });
   if (!cancelled.ok) return cancelled;
 
   if (cancelled.psy) {
@@ -206,7 +219,9 @@ export async function cancelBooking(slotId: number): Promise<{ ok: boolean; erro
       recipientPhone: psy.phone,
       recipientEmail: psy.email,
       subject: subjects.cancelled,
-      body: messages.psyCancelled(c.name, cancelled.slot.startsAt),
+      body: cancelled.late
+        ? messages.psyCancelledLate(c.name, cancelled.slot.startsAt)
+        : messages.psyCancelled(c.name, cancelled.slot.startsAt),
       clientRequestId: c.id,
       psychologistId: psy.id,
       slotId,

@@ -133,43 +133,63 @@ export async function releaseSlot(db: Db, slotId: number): Promise<void> {
 }
 
 export type CancelResult =
-  | { ok: true; slot: SlotRow; psy: PsyContact | null }
+  | { ok: true; slot: SlotRow; psy: PsyContact | null; late: boolean }
   | { ok: false; error: string };
 
+/**
+ * За 24 часа и раньше отмена свободная. Позже — только с явным согласием
+ * клиента (allowLate): стоимость сессии удерживается, о чём его предупреждает
+ * кабинет до подтверждения. Флаг обязателен и на сервере — прямой вызов
+ * экшена без подтверждения не проскочит.
+ */
 export async function cancelClientBooking(
   db: Db,
-  params: { slotId: number; requestIds: number[]; now?: Date },
+  params: { slotId: number; requestIds: number[]; allowLate?: boolean; now?: Date },
 ): Promise<CancelResult> {
   const slot = await clientSlot(db, params.slotId, params.requestIds);
   if (!slot || slot.status !== "booked") return { ok: false, error: "Запись не найдена" };
-  if (!canClientChange(slot.startsAt, params.now)) {
+  const late = !canClientChange(slot.startsAt, params.now);
+  if (late && !params.allowLate) {
     return {
       ok: false,
-      error: "До встречи меньше 24 часов — отмену согласуйте с оператором через поддержку.",
+      error:
+        "До встречи меньше 24 часов — при отмене стоимость сессии удерживается. Подтвердите отмену в кабинете или напишите в поддержку.",
     };
   }
 
   await releaseSlot(db, slot.id);
-  return { ok: true, slot, psy: await psyContact(db, slot.psychologistId) };
+  return { ok: true, slot, psy: await psyContact(db, slot.psychologistId), late };
 }
 
 export type RescheduleResult =
-  | { ok: true; from: SlotRow; to: SlotRow; psy: PsyContact }
+  | { ok: true; from: SlotRow; to: SlotRow; psy: PsyContact; late: boolean }
   | { ok: false; error: string };
 
-/** Перенос: сначала занимаем новое окно и только потом освобождаем старое. */
+/**
+ * Перенос: сначала занимаем новое окно и только потом освобождаем старое.
+ * За 24 часа и раньше — бесплатно; позже — только с явным согласием клиента
+ * (allowLate): стоимость прежней сессии удерживается.
+ */
 export async function rescheduleClientBooking(
   db: Db,
-  params: { fromSlotId: number; toSlotId: number; requestIds: number[]; now?: Date },
+  params: {
+    fromSlotId: number;
+    toSlotId: number;
+    requestIds: number[];
+    allowLate?: boolean;
+    now?: Date;
+  },
 ): Promise<RescheduleResult> {
   const from = await clientSlot(db, params.fromSlotId, params.requestIds);
   if (!from || from.status !== "booked" || from.clientRequestId === null) {
     return { ok: false, error: "Запись не найдена" };
   }
-  if (!canClientChange(from.startsAt, params.now)) {
+  const late = !canClientChange(from.startsAt, params.now);
+  if (late && !params.allowLate) {
     return {
       ok: false,
-      error: "До встречи меньше 24 часов — перенос согласуйте с оператором через поддержку.",
+      error:
+        "До встречи меньше 24 часов — при переносе стоимость сессии удерживается. Подтвердите перенос в кабинете или напишите в поддержку.",
     };
   }
 
@@ -186,7 +206,7 @@ export async function rescheduleClientBooking(
   if (!taken.ok) return taken;
 
   await releaseSlot(db, from.id);
-  return { ok: true, from, to: taken.slot, psy };
+  return { ok: true, from, to: taken.slot, psy, late };
 }
 
 /** Снять все брони обращения (переподбор). Возвращает, кого предупредить. */

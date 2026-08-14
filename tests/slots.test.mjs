@@ -214,16 +214,23 @@ test("клиент отменяет свою встречу не позднее 
 
   const ok = await cancelClientBooking(db, { slotId, requestIds: [1], now: NOW });
   assert.equal(ok.ok, true);
+  assert.equal(ok.late, false, "за сутки — свободная отмена");
   assert.equal(ok.psy.name, "Анна", "есть кого предупредить об отмене");
   assert.equal(slotById(slotId).status, "free");
 });
 
-test("за сутки до встречи отмена закрыта", async () => {
+test("ближе суток отмена — только с подтверждением удержания", async () => {
   const slotId = addSlot(psy1, SOON, { status: "booked", clientRequestId: 1 });
-  const res = await cancelClientBooking(db, { slotId, requestIds: [1], now: NOW });
-  assert.equal(res.ok, false);
-  assert.match(res.error, /24 часов/);
+
+  const refused = await cancelClientBooking(db, { slotId, requestIds: [1], now: NOW });
+  assert.equal(refused.ok, false, "без подтверждения не проходит и при прямом вызове");
+  assert.match(refused.error, /удерживается/);
   assert.equal(slotById(slotId).status, "booked", "запись на месте");
+
+  const late = await cancelClientBooking(db, { slotId, requestIds: [1], allowLate: true, now: NOW });
+  assert.equal(late.ok, true);
+  assert.equal(late.late, true, "помечена поздней — психолог узнает про удержание");
+  assert.equal(slotById(slotId).status, "free");
 });
 
 test("состоявшуюся встречу отменить нельзя", async () => {
@@ -265,12 +272,26 @@ test("перенос к другому специалисту невозможе
   assert.equal(slotById(to).status, "free");
 });
 
-test("перенос ближе суток до встречи закрыт", async () => {
+test("перенос ближе суток — только с подтверждением удержания", async () => {
   const from = addSlot(psy1, SOON, { status: "booked", clientRequestId: 1 });
   const to = addSlot(psy1, FUTURE2);
-  const res = await rescheduleClientBooking(db, { fromSlotId: from, toSlotId: to, requestIds: [1], now: NOW });
-  assert.equal(res.ok, false);
-  assert.match(res.error, /24 часов/);
+
+  const refused = await rescheduleClientBooking(db, { fromSlotId: from, toSlotId: to, requestIds: [1], now: NOW });
+  assert.equal(refused.ok, false);
+  assert.match(refused.error, /удерживается/);
+  assert.equal(slotById(to).status, "free", "новое окно не занято");
+
+  const late = await rescheduleClientBooking(db, {
+    fromSlotId: from,
+    toSlotId: to,
+    requestIds: [1],
+    allowLate: true,
+    now: NOW,
+  });
+  assert.equal(late.ok, true);
+  assert.equal(late.late, true);
+  assert.equal(slotById(to).status, "booked");
+  assert.equal(slotById(from).status, "free");
 });
 
 // --- переподбор ---

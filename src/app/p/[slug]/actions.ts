@@ -76,6 +76,9 @@ export async function bookFirstSession(
     clientRequestId: req.id,
     psychologistId: psy.id,
     note: "выбрал сам в каталоге",
+    // Клиент выбрал специалиста сам — в кабинете он сразу «ваш психолог»,
+    // без повторного шага выбора.
+    chosen: true,
   });
 
   await notify({

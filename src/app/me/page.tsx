@@ -377,7 +377,7 @@ export default async function ClientCabinetPage() {
 
         {/* Переподбор */}
         {chosen && req.status !== "rematch" && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <section id="rematch" className="rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="text-lg font-bold">Психолог не подошёл?</h2>
             <p className="mt-2 text-sm text-neutral-600">
               Это нормально и случается часто — совпасть с первого раза удаётся не всем. Мы
