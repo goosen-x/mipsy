@@ -5,6 +5,7 @@ import { SiteFooter, SiteHeader } from "@/components/site";
 import { Badge } from "@/components/ui/badge";
 import { currentAccount } from "@/lib/auth";
 import { isPast } from "@/lib/datetime";
+import { gradePriceLabel } from "@/lib/grades";
 import { ProfileBooking } from "./booking";
 
 export const dynamic = "force-dynamic";
@@ -98,7 +99,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
                 </>
               )}
               <dt className="text-neutral-500">Стоимость</dt>
-              <dd>{psy.price || "уточняется при подборе"}</dd>
+              <dd>{gradePriceLabel(psy.grade) ?? "уточняется при подборе"}</dd>
             </dl>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               {avg && (
@@ -196,7 +197,8 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
           <div className="text-center">
             <h2 className="text-2xl font-bold">Запись на встречу</h2>
             <p className="mx-auto mt-2 max-w-lg text-neutral-600">
-              Выберите удобную дату и время{psy.price ? ` — сессия ${psy.price}` : ""}. Оплата
+              Выберите удобную дату и время
+              {gradePriceLabel(psy.grade) ? ` — сессия ${gradePriceLabel(psy.grade)}` : ""}. Оплата
               напрямую специалисту.
             </p>
           </div>

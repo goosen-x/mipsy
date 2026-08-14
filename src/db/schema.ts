@@ -105,6 +105,8 @@ export const psychologists = sqliteTable("psychologists", {
   personalTherapy: text("personal_therapy"),
   moderationStatus: text("moderation_status").notNull().default("new"), // new | approved | rejected
   moderationNotes: text("moderation_notes"),
+  // Присваивается на модерации; определяет фиксированную цену сессии (lib/grades.ts).
+  grade: integer("grade"), // 1 базовый | 2 опытный | 3 ведущий
 
   // Профиль: 7 фиксированных секций
   photoUrl: text("photo_url"),

@@ -10,6 +10,7 @@ import {
   normalizePhone,
   publicProfileText,
 } from "../src/lib/rules.ts";
+import { GRADES, gradePriceLabel, gradeTitle, isGrade } from "../src/lib/grades.ts";
 
 test("кризисный флаг ставится от «несколько раз в месяц» и выше", () => {
   assert.equal(isCrisisAnswer("never"), false);
@@ -54,6 +55,15 @@ test("проверяются все публичные поля профиля, 
     false,
     "без FAQ текст чистый",
   );
+});
+
+test("цена сессии определяется грейдом, без грейда цены нет", () => {
+  assert.equal(Object.keys(GRADES).length, 3, "ровно три грейда");
+  assert.equal(gradePriceLabel(2), `${GRADES[2].price.toLocaleString("ru-RU")} ₽`);
+  assert.equal(gradeTitle(3), "Ведущий");
+  assert.equal(gradePriceLabel(null), null, "грейд не присвоен — цена «уточняется»");
+  assert.equal(gradePriceLabel(7), null, "мусорный грейд не даёт цену");
+  assert.equal(isGrade(0), false);
 });
 
 test("телефон нормализуется и проверяется по длине", () => {

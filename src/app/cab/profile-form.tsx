@@ -129,9 +129,6 @@ export function ProfileForm({
             ))}
           </div>
         </Field>
-        <Field label="Стоимость сессии" hint="Например: 3500 ₽ / 50 минут">
-          <Input value={form.price} onChange={(e) => set("price", e.target.value)} />
-        </Field>
       </div>
       <Field label="О себе" hint="2–3 абзаца: кто вы, с чем работаете, что для вас важно в терапии">
         <Textarea rows={5} value={form.about} onChange={(e) => set("about", e.target.value)} />

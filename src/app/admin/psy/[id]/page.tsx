@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, psychologists } from "@/db";
 import { Badge } from "@/components/ui/badge";
+import { gradePriceLabel, gradeTitle } from "@/lib/grades";
 import { label, MODERATION_STATUS_LABELS } from "@/lib/labels";
 import { ModerationControl } from "../../controls";
 
@@ -71,11 +72,13 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
         <dl className="mt-4 space-y-3 text-sm">
           <Block k="Подход" v={psy.approach} />
           <Block k="Формат" v={psy.format} />
-          <Block k="Цена" v={psy.price} />
+          <Block
+            k="Грейд и цена"
+            v={psy.grade ? `${gradeTitle(psy.grade)} — ${gradePriceLabel(psy.grade)}` : "не присвоен"}
+          />
           <Block k="О себе" v={psy.about} />
           <Block k="Как проходят встречи" v={psy.howSessions} />
           <Block k="Темы" v={(psy.topicSlugs ?? []).join(", ") || null} />
-          <Block k="Встреча-знакомство" v={psy.introCallEnabled ? "Да, 20 минут" : "Нет"} />
         </dl>
       </section>
 
@@ -98,7 +101,7 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
           </p>
         </div>
         <div className="mt-4">
-          <ModerationControl psyId={psy.id} status={psy.moderationStatus} />
+          <ModerationControl psyId={psy.id} status={psy.moderationStatus} grade={psy.grade} />
         </div>
       </section>
     </div>

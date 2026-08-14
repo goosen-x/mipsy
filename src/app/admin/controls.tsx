@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { GRADES } from "@/lib/grades";
 import { REQUEST_STATUS_LABELS } from "@/lib/labels";
 import {
   assignPsychologist,
@@ -453,14 +454,29 @@ export function FreeSlotButton({ requestId, slotId }: { requestId: number; slotI
   );
 }
 
-export function ModerationControl({ psyId, status }: { psyId: number; status: string }) {
+export function ModerationControl({
+  psyId,
+  status,
+  grade: initialGrade,
+}: {
+  psyId: number;
+  status: string;
+  grade: number | null;
+}) {
   const router = useRouter();
   const [notes, setNotes] = useState("");
+  const [grade, setGrade] = useState<number | null>(initialGrade);
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function decide(decision: "approved" | "rejected") {
+    setError(null);
     startTransition(async () => {
-      await moderatePsychologist(psyId, decision, notes);
+      const res = await moderatePsychologist(psyId, decision, notes, grade ?? undefined);
+      if (!res.ok) {
+        setError(res.error ?? "Не получилось");
+        return;
+      }
       toast.success(
         decision === "approved"
           ? "Психолог одобрен — профиль опубликован, письмо ушло"
@@ -472,15 +488,37 @@ export function ModerationControl({ psyId, status }: { psyId: number; status: st
 
   return (
     <div className="space-y-3">
+      <div>
+        <div className="text-sm font-medium">Грейд — определяет цену сессии</div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {(Object.entries(GRADES) as unknown as [string, { title: string; price: number }][]).map(
+            ([value, g]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setGrade(Number(value))}
+                className={
+                  grade === Number(value)
+                    ? "rounded-xl border border-brand-600 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-800"
+                    : "rounded-xl border border-neutral-200 px-4 py-2 text-sm hover:border-brand-400"
+                }
+              >
+                {g.title} · {g.price.toLocaleString("ru-RU")} ₽
+              </button>
+            ),
+          )}
+        </div>
+      </div>
       <Textarea
         rows={2}
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="Комментарий модерации (виден психологу при отказе)"
       />
+      {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-3">
-        <Button disabled={pending || status === "approved"} onClick={() => decide("approved")}>
-          Одобрить
+        <Button disabled={pending || !grade} onClick={() => decide("approved")}>
+          {status === "approved" ? "Сохранить грейд" : "Одобрить"}
         </Button>
         <Button
           variant="destructive"

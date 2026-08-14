@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { CabinetHeader } from "@/components/site";
 import { canClientChange, formatSlot, isPast, TZ_LABEL } from "@/lib/datetime";
 import { currentAccount } from "@/lib/auth";
+import { gradePriceLabel } from "@/lib/grades";
 import {
   BookingActions,
   BookingSection,
@@ -245,7 +246,7 @@ export default async function ClientCabinetPage() {
                 <div className="text-xl font-semibold">{chosen.psy.name}</div>
                 <div className="text-neutral-500">{chosen.psy.approach}</div>
                 <div className="mt-1 text-sm text-neutral-600">
-                  {chosen.psy.price || "стоимость уточняется"}
+                  {gradePriceLabel(chosen.psy.grade) ?? "стоимость уточняется"}
                 </div>
                 {chosen.psy.slug && (
                   <Link
@@ -364,8 +365,9 @@ export default async function ClientCabinetPage() {
           <section className="rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="text-lg font-bold">Оплата</h2>
             <p className="mt-2 text-neutral-600">
-              Сессии{chosen.psy.price ? ` стоят ${chosen.psy.price} и` : ""} оплачиваются напрямую
-              специалисту, как вы договоритесь.
+              Сессии
+              {gradePriceLabel(chosen.psy.grade) ? ` стоят ${gradePriceLabel(chosen.psy.grade)} и` : ""}{" "}
+              оплачиваются напрямую специалисту, как вы договоритесь.
             </p>
             <p className="mt-2 text-sm text-neutral-400">
               Онлайн-оплата на платформе появится позже.

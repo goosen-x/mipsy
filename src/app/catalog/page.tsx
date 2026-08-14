@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, psychologists, reviews, topics } from "@/db";
+import { gradePriceLabel } from "@/lib/grades";
 import { SiteFooter, SiteHeader } from "@/components/site";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -205,7 +206,7 @@ export default async function CatalogPage({
                     </div>
                     <div className="mt-3 text-sm text-neutral-600">
                       {p.experienceYears != null && <>Опыт {p.experienceYears} лет · </>}
-                      {p.price || "цена уточняется"}
+                      {gradePriceLabel(p.grade) ?? "цена уточняется"}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {(p.topicSlugs ?? []).slice(0, 3).map((s) => (

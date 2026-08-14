@@ -15,6 +15,7 @@ import {
 import { currentAccountId, isAdmin, linkAccount } from "@/lib/auth";
 import { bookSlotForRequest, releaseSlot } from "@/lib/booking";
 import { isEmail, normalizeEmail } from "@/lib/auth-core";
+import { gradeTitle, isGrade } from "@/lib/grades";
 import { messages, notify, subjects } from "@/lib/notify";
 import { logAdmin } from "@/lib/logs";
 import { errorLog } from "@/db";
@@ -304,13 +305,20 @@ export async function moderatePsychologist(
   id: number,
   decision: "approved" | "rejected",
   notes: string,
-): Promise<{ ok: boolean }> {
+  grade?: number,
+): Promise<{ ok: boolean; error?: string }> {
   await guard();
+  // Одобрение без грейда невозможно: цена сессии определяется только грейдом,
+  // и профиль без него показывал бы клиенту «стоимость уточняется».
+  if (decision === "approved" && !isGrade(grade)) {
+    return { ok: false, error: "Выберите грейд — от него зависит цена сессии" };
+  }
+
   const [psy] = await db
     .select({ id: psychologists.id, name: psychologists.name, slug: psychologists.slug })
     .from(psychologists)
     .where(eq(psychologists.id, id));
-  if (!psy) return { ok: false };
+  if (!psy) return { ok: false, error: "Заявка не найдена" };
 
   await db
     .update(psychologists)
@@ -319,6 +327,7 @@ export async function moderatePsychologist(
       moderationNotes: notes?.trim() || null,
       slug: decision === "approved" ? (psy.slug ?? slugify(psy.name, psy.id)) : psy.slug,
       needsReview: false,
+      ...(decision === "approved" && isGrade(grade) ? { grade } : {}),
     })
     .where(eq(psychologists.id, id));
 
@@ -343,7 +352,10 @@ export async function moderatePsychologist(
   await logAdmin(decision === "approved" ? "одобрил психолога" : "отклонил психолога", {
     type: "psychologist",
     id,
-    detail: notes?.trim() || undefined,
+    detail:
+      [decision === "approved" && isGrade(grade) && `грейд: ${gradeTitle(grade)}`, notes?.trim()]
+        .filter(Boolean)
+        .join(", ") || undefined,
   });
   revalidatePath(`/admin/psy/${id}`);
   revalidatePath("/admin/psy");

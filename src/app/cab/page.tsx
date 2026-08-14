@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { CabinetHeader } from "@/components/site";
 import { formatSlot, isPast } from "@/lib/datetime";
 import { currentAccount } from "@/lib/auth";
+import { gradePriceLabel, gradeTitle } from "@/lib/grades";
 import { CalendarFeed } from "./calendar";
 import { ProfileForm } from "./profile-form";
 import { OutcomeControl, Schedule } from "./schedule";
@@ -115,6 +116,12 @@ export default async function CabinetPage() {
               <Link href={`/p/${psy.slug}`} className="font-medium text-brand-700 underline">
                 mipsy…/p/{psy.slug}
               </Link>
+              {psy.grade && (
+                <>
+                  {" · "}грейд «{gradeTitle(psy.grade)}» — сессия {gradePriceLabel(psy.grade)},
+                  цену назначает платформа
+                </>
+              )}
             </p>
           )}
           {psy.moderationStatus === "rejected" && (
@@ -212,7 +219,6 @@ export default async function CabinetPage() {
                 photoUrl: psy.photoUrl ?? "",
                 approach: psy.approach ?? "",
                 format: psy.format ?? "",
-                price: psy.price ?? "",
                 about: psy.about ?? "",
                 topicSlugs: psy.topicSlugs ?? [],
                 howSessions: psy.howSessions ?? "",
