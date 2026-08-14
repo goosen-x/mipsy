@@ -39,6 +39,7 @@ export type LoginOutcome =
   | "wrong_code"
   | "expired"
   | "blocked"
+  | "hidden"
   | "signed_in";
 
 /**

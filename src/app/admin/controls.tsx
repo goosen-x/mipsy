@@ -25,6 +25,8 @@ import {
   moderatePsychologist,
   moderateReview,
   sendProposals,
+  setAccountHidden,
+  setPsychologistHidden,
   updateRequest,
   updateTicket,
 } from "./actions";
@@ -451,6 +453,75 @@ export function FreeSlotButton({ requestId, slotId }: { requestId: number; slotI
     >
       отменить
     </Button>
+  );
+}
+
+/** Переключатель «скрыт/виден» — общая механика для психолога и аккаунта. */
+function HiddenToggle({
+  hidden,
+  hideLabel,
+  showLabel,
+  confirmText,
+  onToggle,
+}: {
+  hidden: boolean;
+  hideLabel: string;
+  showLabel: string;
+  confirmText: string;
+  onToggle: (hidden: boolean) => Promise<{ ok: boolean; error?: string }>;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <Button
+      variant={hidden ? "outline" : "ghost"}
+      size="sm"
+      disabled={pending}
+      onClick={() => {
+        if (!hidden && !confirm(confirmText)) return;
+        startTransition(async () => {
+          const res = await onToggle(!hidden);
+          if (!res.ok) toast.error(res.error ?? "Не получилось");
+          else {
+            toast.success(hidden ? "Снова виден" : "Скрыт");
+            router.refresh();
+          }
+        });
+      }}
+    >
+      {pending ? "…" : hidden ? showLabel : hideLabel}
+    </Button>
+  );
+}
+
+export function PsyHiddenControl({ psyId, hidden }: { psyId: number; hidden: boolean }) {
+  return (
+    <HiddenToggle
+      hidden={hidden}
+      hideLabel="Скрыть с витрины"
+      showLabel="Показать на витрине"
+      confirmText="Скрыть психолога? Он пропадёт из каталога и автоподбора, страница отдаст 404. Существующие записи останутся."
+      onToggle={(h) => setPsychologistHidden(psyId, h)}
+    />
+  );
+}
+
+export function AccountHiddenControl({
+  accountId,
+  hidden,
+}: {
+  accountId: number;
+  hidden: boolean;
+}) {
+  return (
+    <HiddenToggle
+      hidden={hidden}
+      hideLabel="Скрыть пользователя"
+      showLabel="Разблокировать пользователя"
+      confirmText="Скрыть пользователя? Он не сможет войти в кабинет, его сессии перестанут работать. Данные не удаляются."
+      onToggle={(h) => setAccountHidden(accountId, h)}
+    />
   );
 }
 

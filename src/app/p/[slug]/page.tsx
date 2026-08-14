@@ -18,7 +18,13 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
   const [psy] = await db
     .select()
     .from(psychologists)
-    .where(and(eq(psychologists.slug, slug), eq(psychologists.moderationStatus, "approved")));
+    .where(
+      and(
+        eq(psychologists.slug, slug),
+        eq(psychologists.moderationStatus, "approved"),
+        eq(psychologists.hidden, false),
+      ),
+    );
   if (!psy) notFound();
 
   const topicTitles =

@@ -50,7 +50,23 @@ export async function signOut(): Promise<void> {
 
 export async function currentAccountId(): Promise<number | null> {
   const store = await cookies();
-  return readSession(store.get(SESSION_COOKIE)?.value, secret());
+  const id = readSession(store.get(SESSION_COOKIE)?.value, secret());
+  if (!id) return null;
+  // Скрытый админом аккаунт разлогинен везде, даже с валидной кукой.
+  const [row] = await db
+    .select({ hidden: accounts.hidden })
+    .from(accounts)
+    .where(eq(accounts.id, id));
+  return row && !row.hidden ? id : null;
+}
+
+/** Скрыт ли аккаунт с этой почтой. Наружу об этом никогда не сообщаем. */
+export async function isEmailHidden(rawEmail: string): Promise<boolean> {
+  const [row] = await db
+    .select({ hidden: accounts.hidden })
+    .from(accounts)
+    .where(eq(accounts.email, normalizeEmail(rawEmail)));
+  return Boolean(row?.hidden);
 }
 
 export type Account = {

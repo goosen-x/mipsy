@@ -4,6 +4,7 @@ import {
   accountExists,
   codeRequestsThrottled,
   homePathFor,
+  isEmailHidden,
   issueLoginCode,
   issueSignupCode,
   signIn,
@@ -36,6 +37,13 @@ export async function requestLoginCode(
       error:
         "Мы уже отправили несколько писем на этот адрес. Проверьте почту и папку «Спам» — новый код можно запросить через час.",
     };
+  }
+
+  // Скрытый аккаунт: делаем вид, что письмо ушло, — снаружи это неотличимо
+  // от обычного входа, но код не выписывается и не отправляется.
+  if (await isEmailHidden(email)) {
+    await logLogin(email, "hidden");
+    return { ok: true, sentTo: maskEmail(email) };
   }
 
   const issued = await issueLoginCode(email);

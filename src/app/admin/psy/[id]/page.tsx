@@ -5,7 +5,7 @@ import { db, psychologists } from "@/db";
 import { Badge } from "@/components/ui/badge";
 import { gradePriceLabel, gradeTitle } from "@/lib/grades";
 import { label, MODERATION_STATUS_LABELS } from "@/lib/labels";
-import { ModerationControl } from "../../controls";
+import { ModerationControl, PsyHiddenControl } from "../../controls";
 
 export default async function OpPsyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,12 +21,20 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold">
             {psy.name} <Badge className="ml-2 align-middle">{label(MODERATION_STATUS_LABELS, psy.moderationStatus)}</Badge>
+            {psy.hidden && (
+              <Badge variant="destructive" className="ml-2 align-middle">
+                скрыт
+              </Badge>
+            )}
           </h1>
-          {psy.slug && psy.moderationStatus === "approved" && (
-            <Link href={`/p/${psy.slug}`} className="text-sm text-brand-700 underline">
-              Публичная страница →
-            </Link>
-          )}
+          <div className="flex items-center gap-3">
+            <PsyHiddenControl psyId={psy.id} hidden={psy.hidden} />
+            {psy.slug && psy.moderationStatus === "approved" && !psy.hidden && (
+              <Link href={`/p/${psy.slug}`} className="text-sm text-brand-700 underline">
+                Публичная страница →
+              </Link>
+            )}
+          </div>
         </div>
         <p className="mt-1 text-neutral-500">
           {psy.createdAt.slice(0, 16)} · тел. <span className="font-medium text-neutral-900">{psy.phone}</span>

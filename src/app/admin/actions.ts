@@ -52,6 +52,39 @@ export async function grantAdmin(rawEmail: string): Promise<{ ok: boolean; error
   return { ok: true };
 }
 
+/**
+ * Скрыть/показать психолога: скрытый пропадает из каталога и автоподбора,
+ * его страница отдаёт 404. Существующие брони не трогаются.
+ */
+export async function setPsychologistHidden(
+  id: number,
+  hidden: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  await guard();
+  await db.update(psychologists).set({ hidden }).where(eq(psychologists.id, id));
+  await logAdmin(hidden ? "скрыл психолога" : "показал психолога", { type: "psychologist", id });
+  revalidatePath(`/admin/psy/${id}`);
+  revalidatePath("/admin/psy");
+  revalidatePath("/catalog");
+  return { ok: true };
+}
+
+/** Скрыть/показать аккаунт: скрытый не может войти, сессии перестают работать. */
+export async function setAccountHidden(
+  accountId: number,
+  hidden: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  await guard();
+  if (hidden && (await currentAccountId()) === accountId) {
+    return { ok: false, error: "Себя скрыть нельзя" };
+  }
+
+  await db.update(accounts).set({ hidden }).where(eq(accounts.id, accountId));
+  await logAdmin(hidden ? "скрыл аккаунт" : "показал аккаунт", { type: "account", id: accountId });
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 export async function revokeAdmin(accountId: number): Promise<{ ok: boolean; error?: string }> {
   await guard();
   if ((await currentAccountId()) === accountId) {

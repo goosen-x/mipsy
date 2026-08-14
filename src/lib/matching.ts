@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { clientRequests, matches, psychologists } from "../db/schema.ts";
 import type { Db } from "./booking.ts";
 
@@ -84,7 +84,7 @@ export async function autoMatch(
       topicSlugs: psychologists.topicSlugs,
     })
     .from(psychologists)
-    .where(eq(psychologists.moderationStatus, "approved"));
+    .where(and(eq(psychologists.moderationStatus, "approved"), eq(psychologists.hidden, false)));
 
   const picked = candidates
     .map((psy) => ({ psy, score: scoreCandidate(psy, params.prefs, params.now) }))

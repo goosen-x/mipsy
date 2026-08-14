@@ -112,6 +112,23 @@ test("автоподбор пишет до трёх предложений и п
   assert.equal(req.status, "matched");
 });
 
+test("скрытый админом психолог не попадает в автоподбор", async () => {
+  const reqId = Number(
+    sqlite
+      .prepare("INSERT INTO client_requests (for_whom, name, pd_consent, client_token) VALUES ('self','Клиент С',1,'m3')")
+      .run().lastInsertRowid,
+  );
+  const hiddenId = addPsy("Скрытая", { topics: ["anxiety"] });
+  sqlite.prepare("UPDATE psychologists SET hidden = 1 WHERE id = ?").run(hiddenId);
+
+  const picked = await autoMatch(db, {
+    clientRequestId: reqId,
+    prefs: { topicSlugs: ["anxiety"], prefGender: "any", prefAge: "any" },
+    now: NOW,
+  });
+  assert.ok(!picked.includes(hiddenId), "скрытый не предлагается");
+});
+
 test("когда никто не подходит, заявка остаётся у админа", async () => {
   const reqId = Number(
     sqlite

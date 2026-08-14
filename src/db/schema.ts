@@ -17,6 +17,8 @@ export const accounts = sqliteTable("accounts", {
   // Роль админа. Первого админа назначает переменная ADMIN_EMAILS, дальше —
   // сами админы со страницы «Команда».
   isAdmin: integer("is_admin", { mode: "boolean" }).notNull().default(false),
+  // Скрыт админом: вход невозможен, сессии не работают. Данные не удаляются.
+  hidden: integer("hidden", { mode: "boolean" }).notNull().default(false),
 
   loginCode: text("login_code"), // шесть цифр, живут 15 минут
   loginCodeSentAt: text("login_code_sent_at"),
@@ -107,6 +109,8 @@ export const psychologists = sqliteTable("psychologists", {
   moderationNotes: text("moderation_notes"),
   // Присваивается на модерации; определяет фиксированную цену сессии (lib/grades.ts).
   grade: integer("grade"), // 1 базовый | 2 опытный | 3 ведущий
+  // Скрыт админом: нет в каталоге и автоподборе, страница 404. Брони не трогаются.
+  hidden: integer("hidden", { mode: "boolean" }).notNull().default(false),
 
   // Профиль: 7 фиксированных секций
   photoUrl: text("photo_url"),

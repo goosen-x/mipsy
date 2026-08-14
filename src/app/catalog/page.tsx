@@ -21,7 +21,7 @@ export default async function CatalogPage({
   const all = await db
     .select()
     .from(psychologists)
-    .where(eq(psychologists.moderationStatus, "approved"));
+    .where(and(eq(psychologists.moderationStatus, "approved"), eq(psychologists.hidden, false)));
   const topicList = await db.select().from(topics).orderBy(asc(topics.sort));
   const ratings =
     all.length > 0

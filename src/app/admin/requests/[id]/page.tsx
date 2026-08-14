@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, desc, eq } from "drizzle-orm";
-import { clientRequests, db, matches, psychologists, slots, topics } from "@/db";
+import { accounts, clientRequests, db, matches, psychologists, slots, topics } from "@/db";
 import { formatSlot } from "@/lib/datetime";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,6 +21,7 @@ import {
   DropProposalButton,
   FreeSlotButton,
   RequestEmailControl,
+  AccountHiddenControl,
   RequestNotesControl,
   RequestStatusControl,
   SendProposalsButton,
@@ -33,6 +34,13 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     .from(clientRequests)
     .where(eq(clientRequests.id, Number(id)));
   if (!req) notFound();
+
+  const [account] = req.accountId
+    ? await db
+        .select({ id: accounts.id, hidden: accounts.hidden })
+        .from(accounts)
+        .where(eq(accounts.id, req.accountId))
+    : [];
 
   const allTopics = await db.select().from(topics);
   const topicTitles = (req.topicSlugs ?? []).map(
@@ -106,8 +114,16 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 🚨 кризисная
               </Badge>
             )}
+            {account?.hidden && (
+              <Badge variant="destructive" className="ml-3 align-middle">
+                пользователь скрыт
+              </Badge>
+            )}
           </h1>
-          <RequestStatusControl id={req.id} status={req.status} />
+          <div className="flex items-center gap-3">
+            {account && <AccountHiddenControl accountId={account.id} hidden={account.hidden} />}
+            <RequestStatusControl id={req.id} status={req.status} />
+          </div>
         </div>
         <p className="mt-1 text-neutral-500">
           {req.createdAt.slice(0, 16)}
