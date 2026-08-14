@@ -44,7 +44,7 @@ export default async function OpRequestsPage() {
               {requests.map((r) => (
                 <TableRow key={r.id} className={r.crisisFlag ? "bg-red-50" : undefined}>
                   <TableCell>
-                    <Link href={`/op/requests/${r.id}`} className="font-medium text-brand-700 underline">
+                    <Link href={`/admin/requests/${r.id}`} className="font-medium text-brand-700 underline">
                       #{r.id}
                     </Link>
                     {r.crisisFlag && <span title="Кризисная анкета"> 🚨</span>}

@@ -4,13 +4,12 @@ import { cookies } from "next/headers";
 import { and, desc, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import { accounts, clientRequests, db, emailCodes, loginLog, psychologists } from "@/db";
 import {
-  MAX_CODE_ATTEMPTS,
-  cleanCode,
-  codeIsFresh,
+  accountPatch,
+  checkCode,
   isEmail,
-  mayAdoptSession,
   normalizeEmail,
   nowDbTime,
+  parseAdminEmails,
   readSession,
   signSession,
 } from "./auth-core";
@@ -24,8 +23,9 @@ const SESSION_COOKIE = "mipsy_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 60; // 60 дней
 
 function secret(): string {
-  // Отдельного секрета не заводим: пароль оператора уже уникален для установки.
-  return process.env.OPERATOR_PASSWORD ?? "mipsy-dev-secret";
+  // OPERATOR_PASSWORD — наследие общего пароля оператора: он подписывал сессии,
+  // поэтому остаётся запасным вариантом, чтобы действующие входы не слетели.
+  return process.env.SESSION_SECRET ?? process.env.OPERATOR_PASSWORD ?? "mipsy-dev-secret";
 }
 
 export async function signIn(accountId: number): Promise<void> {
@@ -53,21 +53,44 @@ export async function currentAccountId(): Promise<number | null> {
   return readSession(store.get(SESSION_COOKIE)?.value, secret());
 }
 
-export type Account = { id: number; email: string; name: string; phone: string | null };
+export type Account = {
+  id: number;
+  email: string;
+  name: string;
+  phone: string | null;
+  isAdmin: boolean;
+};
 
 export async function currentAccount(): Promise<Account | null> {
   const id = await currentAccountId();
   if (!id) return null;
   const [row] = await db
-    .select({ id: accounts.id, email: accounts.email, name: accounts.name, phone: accounts.phone })
+    .select({
+      id: accounts.id,
+      email: accounts.email,
+      name: accounts.name,
+      phone: accounts.phone,
+      isAdmin: accounts.isAdmin,
+    })
     .from(accounts)
     .where(eq(accounts.id, id));
   return row ?? null;
 }
 
 /**
- * Аккаунт заводится в момент первого обращения — отдельной регистрации нет:
- * анкета, заявка психолога и запись из каталога и есть регистрация.
+ * Админ — обычный аккаунт с ролью: вход тот же, по коду с почты.
+ * ADMIN_EMAILS даёт роль без записи в базе — так входит самый первый админ.
+ */
+export async function isAdmin(): Promise<boolean> {
+  const account = await currentAccount();
+  if (!account) return false;
+  return account.isAdmin || parseAdminEmails(process.env.ADMIN_EMAILS).includes(account.email);
+}
+
+/**
+ * Находит или заводит аккаунт по почте. Обычный путь создания — подтверждение
+ * кода на /login; сюда без сессии попадает только админ, открывающий доступ
+ * старой заявке. Владельцу сессии заодно уточняет имя и телефон.
  */
 export type LinkedAccount = { id: number; created: boolean };
 
@@ -85,11 +108,13 @@ export async function linkAccount(person: {
     .where(eq(accounts.email, email));
 
   if (existing) {
-    // Имя могло быть временным (часть адреса до @) — анкета или заявка его уточняют.
-    const name = person.name.trim();
-    const patch: { phone?: string; name?: string } = {};
-    if (!existing.phone && person.phone) patch.phone = person.phone;
-    if (name && name !== existing.name) patch.name = name;
+    // Имя могло быть временным (часть адреса до @) — анкета или заявка его
+    // уточняют, но только если её заполняет сам владелец кабинета.
+    const patch = accountPatch({
+      owned: (await currentAccountId()) === existing.id,
+      existing,
+      incoming: person,
+    });
     if (Object.keys(patch).length > 0) {
       await db.update(accounts).set(patch).where(eq(accounts.id, existing.id));
     }
@@ -103,20 +128,6 @@ export async function linkAccount(person: {
   return { id: created.id, created: true };
 }
 
-/**
- * Выдаёт сессию после анкеты, заявки или брони — но только тому, кто имеет на
- * неё право. Если почта чужая и уже занята, человек увидит просьбу войти по коду.
- */
-export async function adoptSession(link: LinkedAccount): Promise<boolean> {
-  const allowed = mayAdoptSession({
-    created: link.created,
-    accountId: link.id,
-    sessionAccountId: await currentAccountId(),
-  });
-  if (allowed) await signIn(link.id);
-  return allowed;
-}
-
 export async function accountExists(rawEmail: string): Promise<boolean> {
   const [row] = await db
     .select({ id: accounts.id })
@@ -125,8 +136,22 @@ export async function accountExists(rawEmail: string): Promise<boolean> {
   return Boolean(row);
 }
 
-/** Куда вести после входа: у кого есть профиль психолога — в кабинет специалиста. */
-export async function homePathFor(accountId: number): Promise<"/cab" | "/me"> {
+/**
+ * Куда вести после входа: админа — в админку, у кого есть профиль
+ * психолога — в кабинет специалиста, остальных — в кабинет клиента.
+ */
+export async function homePathFor(accountId: number): Promise<"/admin" | "/cab" | "/me"> {
+  const [account] = await db
+    .select({ email: accounts.email, isAdmin: accounts.isAdmin })
+    .from(accounts)
+    .where(eq(accounts.id, accountId));
+  if (
+    account &&
+    (account.isAdmin || parseAdminEmails(process.env.ADMIN_EMAILS).includes(account.email))
+  ) {
+    return "/admin";
+  }
+
   const [psy] = await db
     .select({ id: psychologists.id })
     .from(psychologists)
@@ -217,33 +242,24 @@ export async function verifySignupCode(
   rawCode: string,
 ): Promise<{ ok: true; accountId: number } | { ok: false; error: string; reason: VerifyReason }> {
   const email = normalizeEmail(rawEmail);
-  const code = cleanCode(rawCode);
-  const wrong = {
-    ok: false,
-    error: "Неверный код — проверьте и попробуйте ещё раз",
-    reason: "wrong_code",
-  } as const;
-
   const [pending] = await db.select().from(emailCodes).where(eq(emailCodes.email, email));
-  if (!pending || code.length !== 6) return wrong;
 
-  if (pending.attempts >= MAX_CODE_ATTEMPTS) {
-    return { ok: false, error: "Слишком много попыток. Запросите новый код.", reason: "blocked" };
-  }
-  if (!codeIsFresh(pending.sentAt)) {
-    return { ok: false, error: "Код устарел — запросите новый.", reason: "expired" };
-  }
-  if (pending.code !== code) {
-    await db
-      .update(emailCodes)
-      .set({ attempts: pending.attempts + 1 })
-      .where(eq(emailCodes.email, email));
-    return wrong;
+  const check = checkCode(pending, rawCode);
+  if (!check.ok) {
+    if (check.countAttempt && pending) {
+      await db
+        .update(emailCodes)
+        .set({ attempts: pending.attempts + 1 })
+        .where(eq(emailCodes.email, email));
+    }
+    return { ok: false, error: check.error, reason: check.reason };
   }
 
   await db.delete(emailCodes).where(eq(emailCodes.email, email));
   const link = await linkAccount({ email, name: email.split("@")[0] });
-  if (!link) return { ...wrong, error: "Не получилось открыть кабинет" };
+  if (!link) {
+    return { ok: false, error: "Не получилось открыть кабинет", reason: "wrong_code" };
+  }
   return { ok: true, accountId: link.id };
 }
 
@@ -255,13 +271,6 @@ export type VerifyResult =
 
 export async function verifyLoginCode(rawEmail: string, rawCode: string): Promise<VerifyResult> {
   const email = normalizeEmail(rawEmail);
-  const code = cleanCode(rawCode);
-  const wrong = {
-    ok: false,
-    error: "Неверный код — проверьте и попробуйте ещё раз",
-    reason: "wrong_code",
-  } as const;
-
   const [account] = await db
     .select({
       id: accounts.id,
@@ -271,20 +280,22 @@ export async function verifyLoginCode(rawEmail: string, rawCode: string): Promis
     })
     .from(accounts)
     .where(eq(accounts.email, email));
-  if (!account || code.length !== 6) return wrong;
+  if (!account) {
+    return { ok: false, error: "Неверный код — проверьте и попробуйте ещё раз", reason: "wrong_code" };
+  }
 
-  if (account.loginAttempts >= MAX_CODE_ATTEMPTS) {
-    return { ok: false, error: "Слишком много попыток. Запросите новый код.", reason: "blocked" };
-  }
-  if (!account.loginCode || !codeIsFresh(account.loginCodeSentAt)) {
-    return { ok: false, error: "Код устарел — запросите новый.", reason: "expired" };
-  }
-  if (account.loginCode !== code) {
-    await db
-      .update(accounts)
-      .set({ loginAttempts: account.loginAttempts + 1 })
-      .where(eq(accounts.id, account.id));
-    return wrong;
+  const check = checkCode(
+    { code: account.loginCode, sentAt: account.loginCodeSentAt, attempts: account.loginAttempts },
+    rawCode,
+  );
+  if (!check.ok) {
+    if (check.countAttempt) {
+      await db
+        .update(accounts)
+        .set({ loginAttempts: account.loginAttempts + 1 })
+        .where(eq(accounts.id, account.id));
+    }
+    return { ok: false, error: check.error, reason: check.reason };
   }
 
   return { ok: true, accountId: account.id };

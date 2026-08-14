@@ -14,7 +14,7 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/op/psy" className="text-sm text-neutral-500 hover:text-brand-700">
+        <Link href="/admin/psy" className="text-sm text-neutral-500 hover:text-brand-700">
           ← Все психологи
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
@@ -37,7 +37,7 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
               Кабинет: вход на mipsy…/login по адресу{" "}
               <span className="font-medium text-neutral-900">{psy.email}</span>, код приходит
               письмом — при сбое он виден в{" "}
-              <Link href="/op/notifications" className="underline">
+              <Link href="/admin/notifications" className="underline">
                 очереди уведомлений
               </Link>
               .

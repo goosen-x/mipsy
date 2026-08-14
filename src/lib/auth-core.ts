@@ -59,18 +59,72 @@ export function cleanCode(code: string | null | undefined): string {
   return String(code ?? "").replace(/\D/g, "");
 }
 
+export type CodeCheck =
+  | { ok: true }
+  | { ok: false; reason: "wrong_code" | "expired" | "blocked"; error: string; countAttempt: boolean };
+
 /**
- * Можно ли пускать в кабинет без кода после анкеты, заявки или брони.
- * Да — только если адрес нам незнаком (аккаунт создан прямо сейчас) или это
- * и есть текущая сессия. Иначе достаточно было бы вписать чужую почту, чтобы
- * попасть в чужой кабинет.
+ * Единая проверка шестизначного кода — и для входа, и для новой почты.
+ * Порядок важен: сначала лимит попыток, потом срок, потом сравнение —
+ * перебор блокируется до того, как что-то узнает о коде.
  */
-export function mayAdoptSession(params: {
-  created: boolean;
-  accountId: number;
-  sessionAccountId: number | null;
-}): boolean {
-  return params.created || params.sessionAccountId === params.accountId;
+export function checkCode(
+  pending: { code: string | null; sentAt: string | null; attempts: number } | null | undefined,
+  rawCode: string | null | undefined,
+  now: Date = new Date(),
+): CodeCheck {
+  const code = cleanCode(rawCode);
+  const wrong = {
+    ok: false,
+    reason: "wrong_code",
+    error: "Неверный код — проверьте и попробуйте ещё раз",
+    countAttempt: false,
+  } as const;
+
+  if (!pending || code.length !== 6) return wrong;
+  if (pending.attempts >= MAX_CODE_ATTEMPTS) {
+    return {
+      ok: false,
+      reason: "blocked",
+      error: "Слишком много попыток. Запросите новый код.",
+      countAttempt: false,
+    };
+  }
+  if (!pending.code || !codeIsFresh(pending.sentAt, now)) {
+    return { ok: false, reason: "expired", error: "Код устарел — запросите новый.", countAttempt: false };
+  }
+  if (pending.code !== code) return { ...wrong, countAttempt: true };
+  return { ok: true };
+}
+
+/**
+ * Что можно обновить в существующем аккаунте по данным из анкеты или заявки.
+ * Только владельцу сессии: иначе достаточно вписать чужую почту в форму,
+ * чтобы переименовать чужой аккаунт или дописать в него свой телефон.
+ */
+export function accountPatch(params: {
+  owned: boolean;
+  existing: { name: string; phone: string | null };
+  incoming: { name: string; phone?: string | null };
+}): { name?: string; phone?: string } {
+  if (!params.owned) return {};
+  const patch: { name?: string; phone?: string } = {};
+  const name = params.incoming.name.trim();
+  if (name && name !== params.existing.name) patch.name = name;
+  if (!params.existing.phone && params.incoming.phone) patch.phone = params.incoming.phone;
+  return patch;
+}
+
+/**
+ * Бутстрап админов: список почт из переменной окружения ADMIN_EMAILS.
+ * Нужен, чтобы первый админ мог войти в пустую базу; дальше роли живут
+ * на аккаунтах и раздаются со страницы «Команда».
+ */
+export function parseAdminEmails(raw: string | null | undefined): string[] {
+  return String(raw ?? "")
+    .split(/[,;\s]+/)
+    .map(normalizeEmail)
+    .filter((e) => isEmail(e));
 }
 
 /** Показываем в интерфейсе, куда ушёл код, не раскрывая адрес целиком. */

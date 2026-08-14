@@ -9,10 +9,13 @@ import path from "node:path";
 import Database from "better-sqlite3";
 
 import {
+  MAX_CODE_ATTEMPTS,
+  accountPatch,
+  checkCode,
   codeIsFresh,
   isEmail,
-  mayAdoptSession,
   nowDbTime,
+  parseAdminEmails,
   readSession,
   signSession,
 } from "../src/lib/auth-core.ts";
@@ -43,16 +46,65 @@ test("адрес почты проверяется до записи в базу
   }
 });
 
-test("чужой почтой нельзя забрать чужой кабинет", () => {
-  // Анкета, заявка психолога и бронь заводят аккаунт по введённому адресу.
-  // Пускать внутрь без кода можно только владельца.
-  const rule = (created, sessionAccountId) =>
-    mayAdoptSession({ created, accountId: 7, sessionAccountId });
+test("проверка кода: перебор блокируется раньше, чем сравнивается код", () => {
+  const now = new Date("2026-08-13T12:00:00Z");
+  const pending = { code: "123456", sentAt: nowDbTime(now), attempts: 0 };
 
-  assert.equal(rule(true, null), true, "новый адрес — впускаем сразу");
-  assert.equal(rule(false, 7), true, "это и есть текущая сессия");
-  assert.equal(rule(false, null), false, "почта занята, а мы никто — только код");
-  assert.equal(rule(false, 8), false, "вошли под другим аккаунтом — только код");
+  assert.deepEqual(checkCode(pending, "123456", now), { ok: true });
+  assert.deepEqual(checkCode(pending, "12 34-56", now), { ok: true }, "цифры вычищаются от мусора");
+
+  const wrong = checkCode(pending, "654321", now);
+  assert.equal(wrong.ok, false);
+  assert.equal(wrong.reason, "wrong_code");
+  assert.equal(wrong.countAttempt, true, "неверная попытка идёт в счёт");
+
+  const short = checkCode(pending, "123", now);
+  assert.equal(short.countAttempt, false, "обрезанный ввод попытку не тратит");
+
+  const blocked = checkCode({ ...pending, attempts: MAX_CODE_ATTEMPTS }, "123456", now);
+  assert.equal(blocked.reason, "blocked", "после лимита не пускает даже верный код");
+
+  const stale = checkCode(
+    { ...pending, sentAt: "2026-08-13 11:40:00" },
+    "123456",
+    now,
+  );
+  assert.equal(stale.reason, "expired");
+  assert.equal(checkCode({ ...pending, code: null }, "123456", now).reason, "expired");
+  assert.equal(checkCode(null, "123456", now).reason, "wrong_code", "нет кода — нет утечки, есть ли аккаунт");
+});
+
+test("данные аккаунта обновляет только его владелец", () => {
+  const existing = { name: "ivan", phone: null };
+  const incoming = { name: "Иван Петров", phone: "+79001234567" };
+
+  // Кто-то вписал чужую почту в анкету — аккаунт не переименовывается.
+  assert.deepEqual(accountPatch({ owned: false, existing, incoming }), {});
+
+  assert.deepEqual(accountPatch({ owned: true, existing, incoming }), {
+    name: "Иван Петров",
+    phone: "+79001234567",
+  });
+  assert.deepEqual(
+    accountPatch({ owned: true, existing: { name: "Иван Петров", phone: "+7900" }, incoming }),
+    {},
+    "телефон не перезаписывается, имя не трогается без изменений",
+  );
+  assert.deepEqual(
+    accountPatch({ owned: true, existing, incoming: { name: "   " } }),
+    {},
+    "пустое имя не затирает старое",
+  );
+});
+
+test("ADMIN_EMAILS разбирается в чистый список почт", () => {
+  assert.deepEqual(parseAdminEmails("Boss@Example.com, second@example.com"), [
+    "boss@example.com",
+    "second@example.com",
+  ]);
+  assert.deepEqual(parseAdminEmails(" a@b.ru;c@d.ru "), ["a@b.ru", "c@d.ru"]);
+  assert.deepEqual(parseAdminEmails(undefined), []);
+  assert.deepEqual(parseAdminEmails("мусор, x@y.ru"), ["x@y.ru"], "не-почта отбрасывается");
 });
 
 // --- перенос существующей базы на аккаунты ---
@@ -195,6 +247,19 @@ test("коды для новых адресов лежат отдельно от
     .all()
     .map((c) => c.name);
   assert.deepEqual(columns, ["email", "code", "sent_at", "attempts"]);
+});
+
+test("роль админа на аккаунте, журнал действий — именной", () => {
+  const isAdminCol = db
+    .prepare("SELECT dflt_value FROM pragma_table_info('accounts') WHERE name = 'is_admin'")
+    .get();
+  assert.ok(isAdminCol, "у аккаунтов есть is_admin");
+  assert.equal(isAdminCol.dflt_value, "0", "по умолчанию никто не админ");
+
+  const actorCol = db
+    .prepare("SELECT name FROM pragma_table_info('admin_log') WHERE name = 'actor_account_id'")
+    .get();
+  assert.ok(actorCol, "admin_log записывает, кто именно действовал");
 });
 
 test("секретные коды доступа из старой схемы удалены", () => {

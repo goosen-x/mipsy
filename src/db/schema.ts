@@ -14,6 +14,9 @@ export const accounts = sqliteTable("accounts", {
   email: text("email").notNull().unique(), // всегда в нижнем регистре
   name: text("name").notNull(),
   phone: text("phone"),
+  // Роль админа. Первого админа назначает переменная ADMIN_EMAILS, дальше —
+  // сами админы со страницы «Команда».
+  isAdmin: integer("is_admin", { mode: "boolean" }).notNull().default(false),
 
   loginCode: text("login_code"), // шесть цифр, живут 15 минут
   loginCodeSentAt: text("login_code_sent_at"),
@@ -266,6 +269,8 @@ export const adminLog = sqliteTable("admin_log", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
+  // Кто именно из админов действовал. У старых записей времён общего пароля пусто.
+  actorAccountId: integer("actor_account_id").references(() => accounts.id),
   action: text("action").notNull(),
   targetType: text("target_type"), // request | psychologist | review | ticket | notification
   targetId: integer("target_id"),

@@ -50,7 +50,7 @@ export default async function SupportPage() {
                 )}
                 {t.clientRequestId && (
                   <Link
-                    href={`/op/requests/${t.clientRequestId}`}
+                    href={`/admin/requests/${t.clientRequestId}`}
                     className="text-brand-700 underline"
                   >
                     заявка #{t.clientRequestId}

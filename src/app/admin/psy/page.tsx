@@ -43,7 +43,7 @@ export default async function OpPsyListPage() {
               {list.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
-                    <Link href={`/op/psy/${p.id}`} className="font-medium text-brand-700 underline">
+                    <Link href={`/admin/psy/${p.id}`} className="font-medium text-brand-700 underline">
                       #{p.id}
                     </Link>
                   </TableCell>

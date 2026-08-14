@@ -95,7 +95,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/op" className="text-sm text-neutral-500 hover:text-brand-700">
+        <Link href="/admin" className="text-sm text-neutral-500 hover:text-brand-700">
           ← Все заявки
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
@@ -142,7 +142,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
             <p className="mt-1 text-xs text-neutral-400">
               Клиент входит на mipsy…/login по этому адресу — код приходит письмом. В кабинете он
               выбирает время и может попросить переподбор. Если письмо не дошло, код виден в{" "}
-              <Link href="/op/notifications" className="underline">
+              <Link href="/admin/notifications" className="underline">
                 очереди уведомлений
               </Link>
               .
@@ -255,7 +255,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
       </section>
 
       <section className="rounded-2xl bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-bold">Пометки оператора</h2>
+        <h2 className="text-lg font-bold">Пометки админа</h2>
         <div className="mt-3">
           <RequestNotesControl id={req.id} notes={req.operatorNotes ?? ""} />
         </div>

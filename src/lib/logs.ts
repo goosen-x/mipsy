@@ -1,6 +1,7 @@
 import "server-only";
 import { lt } from "drizzle-orm";
 import { adminLog, db, errorLog, loginLog } from "@/db";
+import { currentAccountId } from "./auth";
 
 /** Журнал ошибок приложения — читается в админке, чтобы не лезть в docker logs. */
 export async function logError(params: {
@@ -66,13 +67,14 @@ function sqlDaysAgo(days: number): string {
   return new Date(Date.now() - days * 86400000).toISOString().slice(0, 19).replace("T", " ");
 }
 
-/** Журнал действий администратора: что оператор делал с данными людей. */
+/** Журнал действий администратора: кто и что делал с данными людей. */
 export async function logAdmin(
   action: string,
   target?: { type: string; id?: number; detail?: string },
 ): Promise<void> {
   try {
     await db.insert(adminLog).values({
+      actorAccountId: await currentAccountId(),
       action,
       targetType: target?.type ?? null,
       targetId: target?.id ?? null,

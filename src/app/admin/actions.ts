@@ -2,45 +2,65 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import {
+  accounts,
   clientRequests,
   db,
   matches,
   notifications,
   psychologists,
   reviews,
-  slots,
   supportTickets,
 } from "@/db";
-import { isOperator, OP_COOKIE, opPasswordHash } from "@/lib/op-auth";
-import { linkAccount } from "@/lib/auth";
+import { currentAccountId, isAdmin, linkAccount } from "@/lib/auth";
+import { bookSlotForRequest, releaseSlot } from "@/lib/booking";
 import { isEmail, normalizeEmail } from "@/lib/auth-core";
 import { messages, notify, subjects } from "@/lib/notify";
 import { logAdmin } from "@/lib/logs";
 import { errorLog } from "@/db";
 
-export async function opLogin(password: string): Promise<{ ok: boolean; error?: string }> {
-  const hash = opPasswordHash();
-  if (!hash) return { ok: false, error: "OPERATOR_PASSWORD не задан на сервере" };
-  const { createHash } = await import("node:crypto");
-  if (createHash("sha256").update(password).digest("hex") !== hash) {
-    return { ok: false, error: "Неверный пароль" };
+async function guard() {
+  if (!(await isAdmin())) throw new Error("Нет доступа");
+}
+
+/**
+ * Роль выдаётся аккаунту, который уже существует: человек сначала входит по
+ * коду с почты, потом его делают админом. Так роль не появится у адреса,
+ * которым никто не владеет.
+ */
+export async function grantAdmin(rawEmail: string): Promise<{ ok: boolean; error?: string }> {
+  await guard();
+  const email = normalizeEmail(rawEmail);
+  if (!isEmail(email)) return { ok: false, error: "Проверьте адрес почты" };
+
+  const [account] = await db
+    .select({ id: accounts.id, isAdmin: accounts.isAdmin })
+    .from(accounts)
+    .where(eq(accounts.email, email));
+  if (!account) {
+    return {
+      ok: false,
+      error: "Аккаунта с этой почтой нет. Пусть человек сначала войдёт на сайт по коду — /login",
+    };
   }
-  const store = await cookies();
-  store.set(OP_COOKIE, hash, { httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/" });
-  revalidatePath("/op");
+  if (account.isAdmin) return { ok: false, error: "Этот аккаунт уже админ" };
+
+  await db.update(accounts).set({ isAdmin: true }).where(eq(accounts.id, account.id));
+  await logAdmin("выдал права админа", { type: "account", id: account.id, detail: email });
+  revalidatePath("/admin/team");
   return { ok: true };
 }
 
-export async function opLogout() {
-  const store = await cookies();
-  store.delete(OP_COOKIE);
-  revalidatePath("/op");
-}
+export async function revokeAdmin(accountId: number): Promise<{ ok: boolean; error?: string }> {
+  await guard();
+  if ((await currentAccountId()) === accountId) {
+    return { ok: false, error: "Себя разжаловать нельзя — попросите другого админа" };
+  }
 
-async function guard() {
-  if (!(await isOperator())) throw new Error("Нет доступа");
+  await db.update(accounts).set({ isAdmin: false }).where(eq(accounts.id, accountId));
+  await logAdmin("снял права админа", { type: "account", id: accountId });
+  revalidatePath("/admin/team");
+  return { ok: true };
 }
 
 export async function updateRequest(
@@ -49,7 +69,7 @@ export async function updateRequest(
 ): Promise<{ ok: boolean; error?: string }> {
   await guard();
 
-  // Заявкам, заведённым до личных кабинетов, оператор может дописать почту —
+  // Заявкам, заведённым до личных кабинетов, админ может дописать почту —
   // без неё человек не сможет войти.
   let accountId: number | null = null;
   if (data.email !== undefined && data.email.trim()) {
@@ -91,13 +111,13 @@ export async function updateRequest(
       .filter(Boolean)
       .join(", "),
   });
-  revalidatePath(`/op/requests/${id}`);
-  revalidatePath("/op");
+  revalidatePath(`/admin/requests/${id}`);
+  revalidatePath("/admin");
   return { ok: true };
 }
 
 /**
- * Подбор: оператор предлагает клиенту 2–3 специалистов, клиент выбирает сам.
+ * Подбор: админ предлагает клиенту 2–3 специалистов, клиент выбирает сам.
  * Повторный вызов добавляет ещё одного к предложенным.
  */
 export async function assignPsychologist(
@@ -133,12 +153,12 @@ export async function assignPsychologist(
   await db.update(clientRequests).set({ status: "matched" }).where(eq(clientRequests.id, requestId));
 
   await logAdmin("предложил психолога", { type: "request", id: requestId, detail: `психолог #${psychologistId}` });
-  revalidatePath(`/op/requests/${requestId}`);
-  revalidatePath("/op");
+  revalidatePath(`/admin/requests/${requestId}`);
+  revalidatePath("/admin");
   return { ok: true };
 }
 
-/** Оператор отправляет клиенту подборку целиком, когда набрал варианты. */
+/** Админ отправляет клиенту подборку целиком, когда набрал варианты. */
 export async function sendProposals(requestId: number): Promise<{ ok: boolean; error?: string }> {
   await guard();
   const [client] = await db
@@ -174,7 +194,7 @@ export async function sendProposals(requestId: number): Promise<{ ok: boolean; e
   });
 
   await logAdmin("отправил подборку клиенту", { type: "request", id: requestId });
-  revalidatePath(`/op/requests/${requestId}`);
+  revalidatePath(`/admin/requests/${requestId}`);
   return { ok: true };
 }
 
@@ -184,7 +204,7 @@ export async function dropProposal(
 ): Promise<{ ok: boolean }> {
   await guard();
   await db.update(matches).set({ active: false, chosen: false }).where(eq(matches.id, matchId));
-  revalidatePath(`/op/requests/${requestId}`);
+  revalidatePath(`/admin/requests/${requestId}`);
   return { ok: true };
 }
 
@@ -202,7 +222,7 @@ export async function moderateReview(
     type: "review",
     id,
   });
-  revalidatePath("/op/reviews");
+  revalidatePath("/admin/reviews");
   revalidatePath("/catalog");
   return { ok: true };
 }
@@ -220,14 +240,14 @@ export async function updateTicket(
     })
     .where(eq(supportTickets.id, id));
   await logAdmin("обработал обращение", { type: "ticket", id, detail: data.status ?? "заметка" });
-  revalidatePath("/op/support");
+  revalidatePath("/admin/support");
   return { ok: true };
 }
 
 export async function markErrorsSeen(): Promise<{ ok: boolean }> {
   await guard();
   await db.update(errorLog).set({ seen: true }).where(eq(errorLog.seen, false));
-  revalidatePath("/op/errors");
+  revalidatePath("/admin/errors");
   return { ok: true };
 }
 
@@ -238,36 +258,27 @@ export async function markNotificationSent(id: number): Promise<{ ok: boolean }>
     .update(notifications)
     .set({ status: "sent", sentAt: new Date().toISOString().slice(0, 16).replace("T", " ") })
     .where(eq(notifications.id, id));
-  revalidatePath("/op/notifications");
+  revalidatePath("/admin/notifications");
   return { ok: true };
 }
 
-// Оператор записывает клиента в свободное окно психолога (обычно по телефону).
+// Админ записывает клиента в свободное окно психолога (обычно по телефону).
 export async function bookSlotForClient(
   requestId: number,
   slotId: number,
 ): Promise<{ ok: boolean; error?: string }> {
   await guard();
-  const [slot] = await db.select().from(slots).where(eq(slots.id, slotId));
-  if (!slot) return { ok: false, error: "Окно не найдено" };
-  if (slot.status !== "free") return { ok: false, error: "Окно уже занято" };
+  const result = await bookSlotForRequest(db, { slotId, clientRequestId: requestId });
+  if (!result.ok) return result;
 
-  await db
-    .update(slots)
-    .set({ status: "booked", clientRequestId: requestId })
-    .where(and(eq(slots.id, slotId), eq(slots.status, "free")));
-
-  revalidatePath(`/op/requests/${requestId}`);
+  revalidatePath(`/admin/requests/${requestId}`);
   return { ok: true };
 }
 
 export async function freeSlot(requestId: number, slotId: number): Promise<{ ok: boolean }> {
   await guard();
-  await db
-    .update(slots)
-    .set({ status: "free", clientRequestId: null })
-    .where(eq(slots.id, slotId));
-  revalidatePath(`/op/requests/${requestId}`);
+  await releaseSlot(db, slotId);
+  revalidatePath(`/admin/requests/${requestId}`);
   return { ok: true };
 }
 
@@ -334,8 +345,8 @@ export async function moderatePsychologist(
     id,
     detail: notes?.trim() || undefined,
   });
-  revalidatePath(`/op/psy/${id}`);
-  revalidatePath("/op/psy");
+  revalidatePath(`/admin/psy/${id}`);
+  revalidatePath("/admin/psy");
   revalidatePath("/");
   return { ok: true };
 }
