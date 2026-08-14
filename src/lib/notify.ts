@@ -16,6 +16,7 @@ export type NotifyKind =
   | "matched"
   | "moderation"
   | "review"
+  | "paid"
   | "login";
 
 type NotifyInput = {
@@ -190,6 +191,8 @@ export const messages = {
     `Клиент ${clientName} отменил встречу ${formatSlot(startsAt)} менее чем за 24 часа. По правилам платформы стоимость сессии удерживается — клиент оплачивает её вам, как обычную. Время снова свободно.`,
   psyRescheduledLate: (clientName: string, startsAt: string) =>
     `Клиент ${clientName} перенёс встречу на ${formatSlot(startsAt)} менее чем за 24 часа до прежнего времени. По правилам платформы стоимость прежней сессии удерживается — клиент оплачивает её вам, как обычную. Кабинет: ${SITE_URL}/cab`,
+  clientPaid: (psyName: string, startsAt: string) =>
+    `Оплата получена: специалист подтвердил оплату сессии ${formatSlot(startsAt)} с ${psyName}. Ждём вас на встрече!\n\nВаши записи: ${SITE_URL}/me\n\nКоманда mipsy`,
   psyModerated: (approved: boolean) =>
     approved
       ? `Ваш профиль одобрен и опубликован. Откройте расписание, чтобы клиенты могли записаться: ${SITE_URL}/cab`
@@ -209,6 +212,7 @@ export const subjects = {
   cancelled: "mipsy: встреча отменена",
   reminder: "mipsy: напоминание о встрече",
   review: "mipsy: как прошла встреча?",
+  paid: "mipsy: оплата сессии получена",
   moderation: "mipsy: решение по вашей заявке",
   login: "mipsy: код для входа",
 };

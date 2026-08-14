@@ -145,7 +145,7 @@ export async function releaseSlot(db: Db, slotId: number): Promise<void> {
 export async function setSlotPaid(
   db: Db,
   params: { slotId: number; psychologistId: number; paid: boolean; now?: Date },
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: true; slot: SlotRow } | { ok: false; error: string }> {
   const [slot] = await db.select().from(slots).where(eq(slots.id, params.slotId));
   if (!slot || slot.psychologistId !== params.psychologistId) {
     return { ok: false, error: "Встреча не найдена" };
@@ -162,7 +162,7 @@ export async function setSlotPaid(
         : null,
     })
     .where(eq(slots.id, params.slotId));
-  return { ok: true };
+  return { ok: true, slot };
 }
 
 export type CancelResult =

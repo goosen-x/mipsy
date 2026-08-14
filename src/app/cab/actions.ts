@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { clientRequests, db, psychologists } from "@/db";
 import { currentAccountId } from "@/lib/auth";
-import { markOutcome, openSlots, removePsySlot, setSlotPaid } from "@/lib/booking";
+import { markOutcome, openSlots, psyContact, removePsySlot, setSlotPaid } from "@/lib/booking";
 import { messages, notify, subjects } from "@/lib/notify";
 import { CONTACTS_ERROR, containsContacts, publicProfileText } from "@/lib/rules";
 
@@ -140,11 +140,38 @@ export async function markSlotPaid(
   if (!psy) return NO_SESSION;
 
   const result = await setSlotPaid(db, { slotId, psychologistId: psy.id, paid });
-  if (result.ok) {
-    revalidatePath("/cab");
-    revalidatePath("/me");
+  if (!result.ok) return result;
+
+  // Клиенту — подтверждение письмом; снятие отметки писем не рождает.
+  if (paid && result.slot.clientRequestId) {
+    const [client] = await db
+      .select({
+        name: clientRequests.name,
+        phone: clientRequests.phone,
+        email: clientRequests.email,
+      })
+      .from(clientRequests)
+      .where(eq(clientRequests.id, result.slot.clientRequestId));
+    const psyFull = await psyContact(db, psy.id);
+    if (client && psyFull) {
+      await notify({
+        kind: "paid",
+        recipientRole: "client",
+        recipientName: client.name,
+        recipientPhone: client.phone,
+        recipientEmail: client.email,
+        subject: subjects.paid,
+        body: messages.clientPaid(psyFull.name, result.slot.startsAt),
+        clientRequestId: result.slot.clientRequestId,
+        psychologistId: psy.id,
+        slotId,
+      });
+    }
   }
-  return result;
+
+  revalidatePath("/cab");
+  revalidatePath("/me");
+  return { ok: true };
 }
 
 /** Перевыпуск ссылки календаря: старый фид перестаёт открываться сразу. */
