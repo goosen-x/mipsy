@@ -43,7 +43,13 @@ export async function bookFirstSession(
       meetingUrl: psychologists.meetingUrl,
     })
     .from(psychologists)
-    .where(and(eq(psychologists.slug, slug), eq(psychologists.moderationStatus, "approved")));
+    .where(
+      and(
+        eq(psychologists.slug, slug),
+        eq(psychologists.moderationStatus, "approved"),
+        eq(psychologists.hidden, false),
+      ),
+    );
   if (!psy) return { ok: false, error: "Специалист не найден" };
 
   const token = randomUUID();
@@ -54,7 +60,10 @@ export async function bookFirstSession(
       accountId: account.id,
       name,
       email,
-      story: data.note?.trim() || null,
+      // Телефон известен из аккаунта (если человек оставлял его в анкете) —
+      // иначе уведомления по этой заявке навсегда остались бы без SMS-канала.
+      phone: account.phone,
+      story: data.note?.trim().slice(0, 4000) || null,
       pdConsent: true,
       status: "matched",
       clientToken: token,

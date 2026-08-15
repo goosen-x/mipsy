@@ -10,6 +10,7 @@ import { gradePriceLabel, gradeTitle } from "@/lib/grades";
 import { CalendarFeed } from "./calendar";
 import { ProfileForm } from "./profile-form";
 import { OutcomeControl, PaidControl, Schedule } from "./schedule";
+import { PsySupportForm } from "./support";
 
 const SITE_URL = process.env.SITE_URL ?? "https://mipsy.mskacademy.ru";
 
@@ -188,7 +189,11 @@ export default async function CabinetPage() {
                       {s.status === "done" && " · состоялась"}
                       {s.status === "no_show" && " · клиент не пришёл"}
                     </span>
-                    {s.status === "booked" && <OutcomeControl slotId={s.id} />}
+                    <span className="flex items-center gap-2">
+                      {/* Оплату часто отмечают уже после сессии — переключатель нужен и здесь. */}
+                      {s.status !== "no_show" && <PaidControl slotId={s.id} paid={Boolean(s.paidAt)} />}
+                      {s.status === "booked" && <OutcomeControl slotId={s.id} />}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -240,6 +245,16 @@ export default async function CabinetPage() {
 
               }}
             />
+          </div>
+        </section>
+
+        <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-bold">Поддержка</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Спорная запись, неявка клиента, вопрос по платформе — напишите, оператор разберётся.
+          </p>
+          <div className="mt-4">
+            <PsySupportForm />
           </div>
         </section>
 

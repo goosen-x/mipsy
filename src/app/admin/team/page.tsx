@@ -4,10 +4,13 @@ import { currentAccountId } from "@/lib/auth";
 import { parseAdminEmails } from "@/lib/auth-core";
 import { Badge } from "@/components/ui/badge";
 import { TeamControls, RevokeButton } from "./controls";
+import { requireAdmin } from "../require-admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamPage() {
+  await requireAdmin();
+
   const myId = await currentAccountId();
   const admins = await db
     .select({

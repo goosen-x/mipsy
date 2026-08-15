@@ -2,10 +2,14 @@ import { desc, eq } from "drizzle-orm";
 import { db, psychologists, reviews } from "@/db";
 import { Badge } from "@/components/ui/badge";
 import { ReviewModeration } from "../controls";
+import { requireAdmin } from "../require-admin";
+import { formatDbTime } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReviewsPage() {
+  await requireAdmin();
+
   const rows = await db
     .select({
       id: reviews.id,
@@ -44,7 +48,7 @@ export default async function ReviewsPage() {
                 <span className="text-accent-500">{"★".repeat(r.rating)}</span>
                 <span className="font-medium text-neutral-900">{r.authorName}</span>
                 <span>о специалисте {r.psyName}</span>
-                <span>{r.createdAt.slice(0, 16)}</span>
+                <span>{formatDbTime(r.createdAt)}</span>
               </div>
               {r.body && <p className="mt-2 whitespace-pre-line">{r.body}</p>}
               <div className="mt-4">

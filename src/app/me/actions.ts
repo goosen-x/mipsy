@@ -2,7 +2,7 @@
 
 import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { clientRequests, db, matches, reviews, supportTickets } from "@/db";
+import { accounts, clientRequests, db, matches, reviews, supportTickets } from "@/db";
 import { accountRequestIds, currentAccountId } from "@/lib/auth";
 import {
   cancelClientBooking,
@@ -12,13 +12,18 @@ import {
   rescheduleClientBooking,
   takeSlot,
 } from "@/lib/booking";
+import { deactivateMatches } from "@/lib/matching";
 import { meetingInvite, messages, notify, psyMeetingInvite, subjects } from "@/lib/notify";
 
 type Client = { id: number; name: string; phone: string | null; email: string | null };
 
 const NO_SESSION = { ok: false, error: "Войдите в кабинет заново" } as const;
 
-/** Текущее обращение вошедшего человека — самое свежее. */
+/**
+ * Текущее обращение вошедшего человека — самое свежее. Контакты добираются из
+ * аккаунта: заявка могла быть создана без телефона (бронь из каталога) или со
+ * старой почтой, а источник правды о контактах — аккаунт.
+ */
 async function client(): Promise<Client | null> {
   const accountId = await currentAccountId();
   if (!accountId) return null;
@@ -28,12 +33,21 @@ async function client(): Promise<Client | null> {
       name: clientRequests.name,
       phone: clientRequests.phone,
       email: clientRequests.email,
+      accountPhone: accounts.phone,
+      accountEmail: accounts.email,
     })
     .from(clientRequests)
+    .innerJoin(accounts, eq(clientRequests.accountId, accounts.id))
     .where(eq(clientRequests.accountId, accountId))
     .orderBy(desc(clientRequests.id))
     .limit(1);
-  return row ?? null;
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    phone: row.phone ?? row.accountPhone,
+    email: row.accountEmail ?? row.email,
+  };
 }
 
 /** Все обращения аккаунта: запись могла остаться от прошлого подбора. */
@@ -240,6 +254,9 @@ export async function requestRematch(reason: string): Promise<{ ok: boolean; err
     .update(clientRequests)
     .set({ status: "rematch", rematchReason: String(reason ?? "").trim() || null })
     .where(eq(clientRequests.id, c.id));
+  // Прежние предложения гаснут: иначе старый психолог остаётся «выбранным»,
+  // занимает лимит подборки и продолжает показываться в кабинете.
+  await deactivateMatches(db, c.id);
 
   // Брони снимаются — психолог должен узнать, что время снова свободно.
   for (const freed of await freeBookedSlotsOf(db, c.id)) {
@@ -271,7 +288,9 @@ export async function leaveReview(
 ): Promise<{ ok: boolean; error?: string }> {
   const c = await client();
   if (!c) return NO_SESSION;
-  if (!(rating >= 1 && rating <= 5)) return { ok: false, error: "Поставьте оценку от 1 до 5" };
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return { ok: false, error: "Поставьте оценку от 1 до 5" };
+  }
 
   const slot = await clientSlot(db, slotId, await myRequestIds());
   if (!slot) return { ok: false, error: "Встреча не найдена" };
@@ -285,14 +304,20 @@ export async function leaveReview(
     .where(eq(reviews.slotId, slotId));
   if (existing) return { ok: false, error: "Отзыв об этой встрече уже оставлен" };
 
-  await db.insert(reviews).values({
-    psychologistId: slot.psychologistId,
-    clientRequestId: slot.clientRequestId ?? c.id,
-    slotId,
-    rating,
-    body: String(body ?? "").trim() || null,
-    authorName: c.name,
-  });
+  // Уникальный индекс на slot_id — последняя линия обороны от двойного отзыва
+  // при двух параллельных запросах (check-then-insert их не ловит).
+  try {
+    await db.insert(reviews).values({
+      psychologistId: slot.psychologistId,
+      clientRequestId: slot.clientRequestId ?? c.id,
+      slotId,
+      rating,
+      body: String(body ?? "").trim().slice(0, 2000) || null,
+      authorName: c.name,
+    });
+  } catch {
+    return { ok: false, error: "Отзыв об этой встрече уже оставлен" };
+  }
 
   revalidatePath("/me");
   revalidatePath("/admin/reviews");
@@ -306,7 +331,7 @@ export async function createTicket(
 ): Promise<{ ok: boolean; error?: string }> {
   const c = await client();
   if (!c) return NO_SESSION;
-  const text = String(body ?? "").trim();
+  const text = String(body ?? "").trim().slice(0, 4000);
   if (text.length < 5) return { ok: false, error: "Опишите, что случилось" };
 
   const psy = await chosenPsychologist(db, c.id);

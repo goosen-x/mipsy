@@ -2,6 +2,8 @@ import { desc, eq } from "drizzle-orm";
 import { db, loginLog, notifications } from "@/db";
 import { Badge } from "@/components/ui/badge";
 import { MarkSentButton } from "../controls";
+import { requireAdmin } from "../require-admin";
+import { formatDbTime } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,9 @@ const KIND_LABELS: Record<string, string> = {
   matched: "подбор",
   moderation: "модерация",
   review: "просьба об отзыве",
+  paid: "оплата получена",
+  rematch: "переподбор",
+  no_show: "неявка",
   login: "код для входа",
 };
 
@@ -32,6 +37,8 @@ const LOGIN_OUTCOMES: Record<string, { label: string; tone: string }> = {
 };
 
 export default async function NotificationsPage() {
+  await requireAdmin();
+
   const pending = await db
     .select()
     .from(notifications)
@@ -82,7 +89,7 @@ export default async function NotificationsPage() {
                     </a>
                   )
                 )}
-                <span>{n.createdAt.slice(0, 16)}</span>
+                <span>{formatDbTime(n.createdAt)}</span>
               </div>
               <p className="mt-3 whitespace-pre-line rounded-xl bg-neutral-50 p-3 text-sm">
                 {n.body}
@@ -131,7 +138,7 @@ export default async function NotificationsPage() {
             };
             return (
               <li key={l.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-white p-3 shadow-sm">
-                <span className="text-neutral-500">{l.createdAt.slice(0, 16)}</span>
+                <span className="text-neutral-500">{formatDbTime(l.createdAt)}</span>
                 <span className="font-medium">{l.email}</span>
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${outcome.tone}`}>
                   {outcome.label}
@@ -149,7 +156,7 @@ export default async function NotificationsPage() {
           <ul className="mt-3 space-y-2 text-sm">
             {sent.map((n) => (
               <li key={n.id} className="rounded-xl bg-white p-3 shadow-sm">
-                <span className="text-neutral-500">{n.sentAt ?? n.createdAt.slice(0, 16)} · </span>
+                <span className="text-neutral-500">{formatDbTime(n.sentAt ?? n.createdAt)} · </span>
                 <span className="font-medium">{n.recipientName}</span>
                 <span className="text-neutral-500"> · {KIND_LABELS[n.kind] ?? n.kind}</span>
               </li>

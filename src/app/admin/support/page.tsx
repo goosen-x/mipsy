@@ -3,6 +3,8 @@ import { desc } from "drizzle-orm";
 import { db, supportTickets } from "@/db";
 import { Badge } from "@/components/ui/badge";
 import { TicketControls } from "../controls";
+import { requireAdmin } from "../require-admin";
+import { formatDbTime } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default async function SupportPage() {
+  await requireAdmin();
+
   const tickets = await db.select().from(supportTickets).orderBy(desc(supportTickets.createdAt));
   const open = tickets.filter((t) => t.status !== "closed");
   const closed = tickets.filter((t) => t.status === "closed");
@@ -56,7 +60,7 @@ export default async function SupportPage() {
                     заявка #{t.clientRequestId}
                   </Link>
                 )}
-                <span>{t.createdAt.slice(0, 16)}</span>
+                <span>{formatDbTime(t.createdAt)}</span>
               </div>
               <p className="mt-3 whitespace-pre-line">{t.body}</p>
               <div className="mt-4">
@@ -78,7 +82,7 @@ export default async function SupportPage() {
           <ul className="mt-3 space-y-2 text-sm">
             {closed.map((t) => (
               <li key={t.id} className="rounded-xl bg-white p-4 shadow-sm">
-                <span className="text-neutral-500">{t.createdAt.slice(0, 16)} · </span>
+                <span className="text-neutral-500">{formatDbTime(t.createdAt)} · </span>
                 <span className="font-medium">{t.name}</span>
                 <span className="text-neutral-500">
                   {" "}

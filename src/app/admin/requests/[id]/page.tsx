@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { accounts, clientRequests, db, matches, psychologists, slots, topics } from "@/db";
-import { formatSlot } from "@/lib/datetime";
+import {formatSlot, formatDbTime } from "@/lib/datetime";
 import { Badge } from "@/components/ui/badge";
+import { requireAdmin } from "../../require-admin";
 import {
   FREQ_LABELS,
   GENDER_LABELS,
@@ -28,6 +29,8 @@ import {
 } from "../../controls";
 
 export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
+
   const { id } = await params;
   const [req] = await db
     .select()
@@ -91,7 +94,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   const candidates = await db
     .select({ id: psychologists.id, name: psychologists.name })
     .from(psychologists)
-    .where(eq(psychologists.moderationStatus, "approved"));
+    .where(and(eq(psychologists.moderationStatus, "approved"), eq(psychologists.hidden, false)));
 
   const screening: [string, string][] = [
     ["Подавленность", label(FREQ_LABELS, req.freqDown)],
@@ -126,7 +129,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
         <p className="mt-1 text-neutral-500">
-          {req.createdAt.slice(0, 16)}
+          {formatDbTime(req.createdAt)}
           {req.email && (
             <>
               {" · "}
@@ -224,7 +227,9 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                   <Badge variant={m.chosen ? "default" : m.active ? "secondary" : "outline"}>
                     {m.chosen ? "выбран клиентом" : m.active ? "предложен" : "снят"}
                   </Badge>
-                  {m.active && !m.chosen && <DropProposalButton requestId={req.id} matchId={m.id} />}
+                  {/* Снять можно любое активное предложение, включая выбранное:
+                      иначе смена специалиста упирается в тупик. */}
+                  {m.active && <DropProposalButton requestId={req.id} matchId={m.id} />}
                 </span>
               </li>
             ))}

@@ -13,7 +13,9 @@ export function normalizeEmail(value: string | null | undefined): string {
 }
 
 export function isEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[a-zа-я]{2,}$/i.test(normalizeEmail(value));
+  const email = normalizeEmail(value);
+  // 254 — предел RFC; без него в базу попадают «адреса»-простыни.
+  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[a-zа-я]{2,}$/i.test(email);
 }
 
 /** Кука сессии: «id.подпись». Подделать без секрета сервера нельзя. */

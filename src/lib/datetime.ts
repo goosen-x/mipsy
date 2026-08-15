@@ -42,6 +42,25 @@ export function formatSlot(startsAt: string): string {
   return `${d} ${MONTHS[m - 1]}, ${weekday}, ${time} ${TZ_SHORT}`;
 }
 
+/**
+ * Метки времени из базы (UTC «YYYY-MM-DD HH:MM[:SS]») — в московское для
+ * админки: раньше оператор видел сырой UTC рядом со слотами «по МСК».
+ */
+export function formatDbTime(value: string | null | undefined): string {
+  if (!value) return "—";
+  const ms = Date.parse(`${value.slice(0, 16).replace(" ", "T")}:00Z`);
+  if (Number.isNaN(ms)) return value;
+  const msk = new Date(ms + MSK_OFFSET_MIN * 60_000);
+  return `${pad(msk.getUTCDate())}.${pad(msk.getUTCMonth() + 1)} ${pad(msk.getUTCHours())}:${pad(msk.getUTCMinutes())} ${TZ_SHORT}`;
+}
+
+/** День (YYYY-MM-DD) по МСК для метки времени из базы — для группировок. */
+export function dbTimeMskDay(value: string): string {
+  const ms = Date.parse(`${value.slice(0, 16).replace(" ", "T")}:00Z`);
+  if (Number.isNaN(ms)) return value.slice(0, 10);
+  return new Date(ms + MSK_OFFSET_MIN * 60_000).toISOString().slice(0, 10);
+}
+
 export function formatDay(day: string): string {
   const [y, m, d] = day.split("-").map(Number);
   const weekday = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];

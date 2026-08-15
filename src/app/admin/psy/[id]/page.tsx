@@ -6,8 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { gradePriceLabel, gradeTitle } from "@/lib/grades";
 import { label, MODERATION_STATUS_LABELS } from "@/lib/labels";
 import { ModerationControl, PsyHiddenControl } from "../../controls";
+import { requireAdmin } from "../../require-admin";
+import { formatDbTime } from "@/lib/datetime";
 
 export default async function OpPsyDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
+
   const { id } = await params;
   const [psy] = await db.select().from(psychologists).where(eq(psychologists.id, Number(id)));
   if (!psy) notFound();
@@ -37,7 +41,7 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
         <p className="mt-1 text-neutral-500">
-          {psy.createdAt.slice(0, 16)} · тел. <span className="font-medium text-neutral-900">{psy.phone}</span>
+          {formatDbTime(psy.createdAt)} · тел. <span className="font-medium text-neutral-900">{psy.phone}</span>
           {psy.email && <> · {psy.email}</>}
         </p>
         <p className="mt-2 text-sm text-neutral-500">

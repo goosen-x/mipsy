@@ -201,7 +201,7 @@ export const slots = sqliteTable("slots", {
     .references(() => psychologists.id),
   startsAt: text("starts_at").notNull(), // локальное время психолога, "YYYY-MM-DDTHH:mm"
   durationMin: integer("duration_min").notNull().default(50),
-  status: text("status").notNull().default("free"), // free | booked | done | cancelled
+  status: text("status").notNull().default("free"), // free | booked | done | no_show
   clientRequestId: integer("client_request_id").references(() => clientRequests.id),
   isIntroCall: integer("is_intro_call", { mode: "boolean" }).notNull().default(false),
   meetingLink: text("meeting_link"),
@@ -218,7 +218,7 @@ export const notifications = sqliteTable("notifications", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-  kind: text("kind").notNull(), // booked | rescheduled | cancelled | reminder | matched | moderation | review | login
+  kind: text("kind").notNull(), // booked | rescheduled | cancelled | reminder | matched | moderation | review | paid | rematch | no_show | login
   channel: text("channel").notNull().default("sms"), // sms | email
   recipientRole: text("recipient_role").notNull(), // client | psychologist
   recipientName: text("recipient_name").notNull(),
@@ -226,7 +226,7 @@ export const notifications = sqliteTable("notifications", {
   recipientEmail: text("recipient_email"),
   subject: text("subject"),
   body: text("body").notNull(),
-  status: text("status").notNull().default("pending"), // pending | sent | failed
+  status: text("status").notNull().default("pending"), // pending | sent (при сбое остаётся pending, причина — в error)
   sentAt: text("sent_at"),
   error: text("error"),
   clientRequestId: integer("client_request_id").references(() => clientRequests.id),
@@ -260,7 +260,7 @@ export const loginLog = sqliteTable("login_log", {
     .default(sql`(datetime('now'))`),
   email: text("email").notNull(), // ровно то, что человек ввёл, в нижнем регистре
   outcome: text("outcome").notNull(),
-  // bad_email | no_account | sent | delivery_failed | wrong_code | expired | blocked | signed_in
+  // bad_email | sent | sent_unknown | throttled | delivery_failed | wrong_code | expired | blocked | hidden | verified_new | signed_in
   detail: text("detail"),
 });
 

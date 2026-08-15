@@ -17,6 +17,8 @@ export type NotifyKind =
   | "moderation"
   | "review"
   | "paid"
+  | "rematch"
+  | "no_show"
   | "login";
 
 type NotifyInput = {
@@ -191,6 +193,12 @@ export const messages = {
     `Клиент ${clientName} отменил встречу ${formatSlot(startsAt)} менее чем за 24 часа. По правилам платформы стоимость сессии удерживается — клиент оплачивает её вам, как обычную. Время снова свободно.`,
   psyRescheduledLate: (clientName: string, startsAt: string) =>
     `Клиент ${clientName} перенёс встречу на ${formatSlot(startsAt)} менее чем за 24 часа до прежнего времени. По правилам платформы стоимость прежней сессии удерживается — клиент оплачивает её вам, как обычную. Кабинет: ${SITE_URL}/cab`,
+  clientPsyRetired: () =>
+    `К сожалению, ваш специалист больше не принимает на платформе. Ближайшие записи отменены, оплаченные сессии не сгорают — мы уже подбираем вам нового психолога, подборка появится в кабинете: ${SITE_URL}/me\n\nЕсли есть вопросы — напишите в поддержку из кабинета, разберём лично.\n\nКоманда mipsy`,
+  clientNoShow: (psyName: string, startsAt: string) =>
+    `Специалист ${psyName} отметил, что встреча ${formatSlot(startsAt)} не состоялась (неявка). Если это ошибка или у вас был форс-мажор — напишите в поддержку из кабинета, разберёмся: ${SITE_URL}/me`,
+  psySlotFreed: (clientName: string, startsAt: string) =>
+    `Оператор платформы снял запись клиента ${clientName} на ${formatSlot(startsAt)}. Время снова свободно. Вопросы — ответом на это письмо.`,
   clientPaid: (psyName: string, startsAt: string) =>
     `Оплата получена: специалист подтвердил оплату сессии ${formatSlot(startsAt)} с ${psyName}. Ждём вас на встрече!\n\nВаши записи: ${SITE_URL}/me\n\nКоманда mipsy`,
   psyModerated: (approved: boolean) =>
@@ -213,6 +221,8 @@ export const subjects = {
   reminder: "mipsy: напоминание о встрече",
   review: "mipsy: как прошла встреча?",
   paid: "mipsy: оплата сессии получена",
+  rematch: "mipsy: подбираем вам нового специалиста",
+  noShow: "mipsy: встреча не состоялась",
   moderation: "mipsy: решение по вашей заявке",
   login: "mipsy: код для входа",
 };

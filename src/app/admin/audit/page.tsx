@@ -1,10 +1,14 @@
 import { desc, eq } from "drizzle-orm";
 import { accounts, adminLog, db } from "@/db";
 import { Badge } from "@/components/ui/badge";
+import { requireAdmin } from "../require-admin";
+import { formatDbTime } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
 export default async function AuditPage() {
+  await requireAdmin();
+
   const rows = await db
     .select({
       id: adminLog.id,
@@ -38,7 +42,7 @@ export default async function AuditPage() {
               key={r.id}
               className="flex flex-wrap items-center gap-3 rounded-xl bg-white p-3 text-sm shadow-sm"
             >
-              <span className="text-neutral-400">{r.createdAt.slice(0, 16)}</span>
+              <span className="text-neutral-400">{formatDbTime(r.createdAt)}</span>
               <span className="font-medium">{r.actorName ?? "—"}</span>
               <Badge variant="secondary">{r.action}</Badge>
               {r.targetType && (

@@ -11,6 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { label, PROBLEM_LABELS, REQUEST_STATUS_LABELS } from "@/lib/labels";
+import { requireAdmin } from "./require-admin";
+import { formatDbTime } from "@/lib/datetime";
 
 const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   new: "default",
@@ -20,6 +22,8 @@ const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "out
 };
 
 export default async function OpRequestsPage() {
+  await requireAdmin();
+
   const requests = await db.select().from(clientRequests).orderBy(desc(clientRequests.createdAt));
 
   return (
@@ -49,7 +53,7 @@ export default async function OpRequestsPage() {
                     </Link>
                     {r.crisisFlag && <span title="Кризисная анкета"> 🚨</span>}
                   </TableCell>
-                  <TableCell className="text-neutral-500">{r.createdAt.slice(0, 16)}</TableCell>
+                  <TableCell className="text-neutral-500">{formatDbTime(r.createdAt)}</TableCell>
                   <TableCell>{r.name}</TableCell>
                   <TableCell>{r.email ?? r.phone ?? "—"}</TableCell>
                   <TableCell>{label(PROBLEM_LABELS, r.mainProblem)}</TableCell>

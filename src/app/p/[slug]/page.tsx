@@ -46,12 +46,14 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
     })
     .from(reviews)
     .where(and(eq(reviews.psychologistId, psy.id), eq(reviews.status, "published")))
-    .orderBy(desc(reviews.createdAt))
-    .limit(10);
+    .orderBy(desc(reviews.createdAt));
+  // Средняя — по всем опубликованным, как в каталоге: одна и та же цифра на
+  // соседних экранах. Показываем только последние десять текстов.
   const avg =
     published.length > 0
       ? (published.reduce((sum, r) => sum + r.rating, 0) / published.length).toFixed(1)
       : null;
+  const recentReviews = published.slice(0, 10);
 
   const now = new Date();
   const freeSlots = (
@@ -173,7 +175,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
         {published.length > 0 && (
           <Section title="Отзывы">
             <ul className="space-y-4">
-              {published.map((r) => (
+              {recentReviews.map((r) => (
                 <li key={r.id} className="rounded-2xl border p-4">
                   <div className="flex items-center gap-3 text-sm">
                     <span className="text-accent-500">{"★".repeat(r.rating)}</span>

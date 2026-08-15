@@ -1,10 +1,13 @@
 import { and, eq, isNotNull } from "drizzle-orm";
 import { clientRequests, db, matches, psychologists, slots } from "@/db";
-import { isPast, nowMsk } from "@/lib/datetime";
+import { dbTimeMskDay, isPast, nowMsk } from "@/lib/datetime";
+import { requireAdmin } from "../require-admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function StatsPage() {
+  await requireAdmin();
+
   const requests = await db.select().from(clientRequests);
   const allMatches = await db.select().from(matches);
   const allSlots = await db.select().from(slots);
@@ -38,10 +41,12 @@ export default async function StatsPage() {
   }));
 
   // Заявки по дням за две недели.
+  // Дни считаем по МСК с обеих сторон: created_at в базе — UTC, и без
+  // конвертации заявки после 21:00 UTC падали «во вчера».
   const days: { day: string; count: number }[] = [];
   for (let i = 13; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 86400000).toISOString().slice(0, 10);
-    days.push({ day: d, count: requests.filter((r) => r.createdAt.startsWith(d)).length });
+    const d = nowMsk(new Date(now.getTime() - i * 86400000)).slice(0, 10);
+    days.push({ day: d, count: requests.filter((r) => dbTimeMskDay(r.createdAt) === d).length });
   }
   const maxDay = Math.max(1, ...days.map((d) => d.count));
 

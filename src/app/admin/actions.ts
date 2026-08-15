@@ -10,18 +10,48 @@ import {
   notifications,
   psychologists,
   reviews,
+  slots,
   supportTickets,
 } from "@/db";
 import { currentAccountId, isAdmin, linkAccount } from "@/lib/auth";
-import { bookSlotForRequest, releaseSlot } from "@/lib/booking";
+import { bookSlotForRequest, freeBookedSlotsOf, psyContact, releaseSlot } from "@/lib/booking";
+import { retirePsychologist } from "@/lib/matching";
 import { isEmail, normalizeEmail } from "@/lib/auth-core";
 import { gradeTitle, isGrade } from "@/lib/grades";
-import { messages, notify, subjects } from "@/lib/notify";
+import { meetingInvite, messages, notify, psyMeetingInvite, subjects } from "@/lib/notify";
 import { logAdmin } from "@/lib/logs";
 import { errorLog } from "@/db";
 
 async function guard() {
   if (!(await isAdmin())) throw new Error("Нет доступа");
+}
+
+// Статусы принимаются только из белого списка: опечатка в клиентском коде не
+// должна заводить заявку в состояние, которого не знает ни один экран.
+const REQUEST_STATUSES = new Set(["new", "called", "matched", "rematch", "rejected"]);
+const TICKET_STATUSES = new Set(["new", "in_progress", "closed"]);
+
+/**
+ * Каскад снятия психолога с клиентов + письма: предложения гаснут, будущие
+ * брони освобождаются, заявки уходят в переподбор, клиенты узнают.
+ */
+async function retireAndNotify(psychologistId: number): Promise<number> {
+  const { clients } = await retirePsychologist(db, psychologistId);
+  for (const c of clients) {
+    await notify({
+      kind: "rematch",
+      recipientRole: "client",
+      recipientName: c.name,
+      recipientPhone: c.phone,
+      recipientEmail: c.email,
+      subject: subjects.rematch,
+      body: messages.clientPsyRetired(),
+      clientRequestId: c.requestId,
+      psychologistId,
+      slotId: c.freedSlot?.id,
+    });
+  }
+  return clients.length;
 }
 
 /**
@@ -62,7 +92,16 @@ export async function setPsychologistHidden(
 ): Promise<{ ok: boolean; error?: string }> {
   await guard();
   await db.update(psychologists).set({ hidden }).where(eq(psychologists.id, id));
-  await logAdmin(hidden ? "скрыл психолога" : "показал психолога", { type: "psychologist", id });
+
+  // Скрытие с активными клиентами не оставляет их в подвешенном состоянии.
+  let affected = 0;
+  if (hidden) affected = await retireAndNotify(id);
+
+  await logAdmin(hidden ? "скрыл психолога" : "показал психолога", {
+    type: "psychologist",
+    id,
+    detail: affected > 0 ? `клиентов отправлено на переподбор: ${affected}` : undefined,
+  });
   revalidatePath(`/admin/psy/${id}`);
   revalidatePath("/admin/psy");
   revalidatePath("/catalog");
@@ -80,6 +119,33 @@ export async function setAccountHidden(
   }
 
   await db.update(accounts).set({ hidden }).where(eq(accounts.id, accountId));
+
+  // Клиент больше не может войти и отменить встречи — снимаем его будущие
+  // брони и предупреждаем психологов, иначе им гарантирована неявка.
+  if (hidden) {
+    const reqs = await db
+      .select({ id: clientRequests.id, name: clientRequests.name })
+      .from(clientRequests)
+      .where(eq(clientRequests.accountId, accountId));
+    for (const req of reqs) {
+      for (const freed of await freeBookedSlotsOf(db, req.id)) {
+        if (!freed.psy) continue;
+        await notify({
+          kind: "cancelled",
+          recipientRole: "psychologist",
+          recipientName: freed.psy.name,
+          recipientPhone: freed.psy.phone,
+          recipientEmail: freed.psy.email,
+          subject: subjects.cancelled,
+          body: messages.psySlotFreed(req.name, freed.slot.startsAt),
+          clientRequestId: req.id,
+          psychologistId: freed.psy.id,
+          slotId: freed.slot.id,
+        });
+      }
+    }
+  }
+
   await logAdmin(hidden ? "скрыл аккаунт" : "показал аккаунт", { type: "account", id: accountId });
   revalidatePath("/admin");
   return { ok: true };
@@ -124,6 +190,9 @@ export async function updateRequest(
     }
   }
 
+  if (data.status !== undefined && !REQUEST_STATUSES.has(data.status)) {
+    return { ok: false, error: "Неизвестный статус заявки" };
+  }
   // Пустой set() drizzle не примет — обновляем, только если есть что менять.
   if (data.status !== undefined || data.operatorNotes !== undefined) {
     await db
@@ -161,10 +230,15 @@ export async function assignPsychologist(
 ): Promise<{ ok: boolean; error?: string }> {
   await guard();
   const [psy] = await db
-    .select({ id: psychologists.id, status: psychologists.moderationStatus })
+    .select({
+      id: psychologists.id,
+      status: psychologists.moderationStatus,
+      hidden: psychologists.hidden,
+    })
     .from(psychologists)
     .where(eq(psychologists.id, psychologistId));
   if (!psy || psy.status !== "approved") return { ok: false, error: "Психолог не одобрен" };
+  if (psy.hidden) return { ok: false, error: "Психолог скрыт с витрины — сначала верните его" };
 
   const current = await db
     .select({ id: matches.id, psychologistId: matches.psychologistId })
@@ -238,6 +312,7 @@ export async function dropProposal(
 ): Promise<{ ok: boolean }> {
   await guard();
   await db.update(matches).set({ active: false, chosen: false }).where(eq(matches.id, matchId));
+  await logAdmin("снял предложение психолога", { type: "request", id: requestId });
   revalidatePath(`/admin/requests/${requestId}`);
   return { ok: true };
 }
@@ -264,8 +339,11 @@ export async function moderateReview(
 export async function updateTicket(
   id: number,
   data: { status?: string; operatorNotes?: string },
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   await guard();
+  if (data.status !== undefined && !TICKET_STATUSES.has(data.status)) {
+    return { ok: false, error: "Неизвестный статус обращения" };
+  }
   await db
     .update(supportTickets)
     .set({
@@ -297,6 +375,7 @@ export async function markNotificationSent(id: number): Promise<{ ok: boolean }>
 }
 
 // Админ записывает клиента в свободное окно психолога (обычно по телефону).
+// Стороны узнают так же, как при самостоятельной брони: письма + приглашения.
 export async function bookSlotForClient(
   requestId: number,
   slotId: number,
@@ -304,14 +383,111 @@ export async function bookSlotForClient(
   await guard();
   const result = await bookSlotForRequest(db, { slotId, clientRequestId: requestId });
   if (!result.ok) return result;
+  const slot = result.slot;
 
+  const [client] = await db
+    .select({ name: clientRequests.name, phone: clientRequests.phone, email: clientRequests.email })
+    .from(clientRequests)
+    .where(eq(clientRequests.id, requestId));
+  const psy = await psyContact(db, slot.psychologistId);
+  if (client && psy) {
+    await notify({
+      kind: "booked",
+      recipientRole: "client",
+      recipientName: client.name,
+      recipientPhone: client.phone,
+      recipientEmail: client.email,
+      subject: subjects.booked,
+      body: messages.clientBooked(psy.name, slot.startsAt, psy.meetingUrl),
+      attachments: [
+        meetingInvite({
+          slotId,
+          startsAt: slot.startsAt,
+          durationMin: slot.durationMin,
+          psyName: psy.name,
+          meetingLink: psy.meetingUrl,
+        }),
+      ],
+      clientRequestId: requestId,
+      psychologistId: psy.id,
+      slotId,
+    });
+    await notify({
+      kind: "booked",
+      recipientRole: "psychologist",
+      recipientName: psy.name,
+      recipientPhone: psy.phone,
+      recipientEmail: psy.email,
+      subject: subjects.booked,
+      body: messages.psyBooked(client.name, slot.startsAt),
+      attachments: [
+        psyMeetingInvite({
+          slotId,
+          startsAt: slot.startsAt,
+          durationMin: slot.durationMin,
+          clientName: client.name,
+          meetingLink: psy.meetingUrl,
+        }),
+      ],
+      clientRequestId: requestId,
+      psychologistId: psy.id,
+      slotId,
+    });
+  }
+
+  await logAdmin("записал клиента на встречу", { type: "request", id: requestId, detail: slot.startsAt });
   revalidatePath(`/admin/requests/${requestId}`);
   return { ok: true };
 }
 
-export async function freeSlot(requestId: number, slotId: number): Promise<{ ok: boolean }> {
+export async function freeSlot(
+  requestId: number,
+  slotId: number,
+): Promise<{ ok: boolean; error?: string }> {
   await guard();
+  const [slot] = await db.select().from(slots).where(eq(slots.id, slotId));
+  if (!slot || slot.clientRequestId !== requestId) return { ok: false, error: "Запись не найдена" };
+  if (slot.status !== "booked") {
+    return { ok: false, error: "Снять можно только активную запись — прошедшие встречи не трогаем" };
+  }
+
   await releaseSlot(db, slotId);
+
+  const [client] = await db
+    .select({ name: clientRequests.name, phone: clientRequests.phone, email: clientRequests.email })
+    .from(clientRequests)
+    .where(eq(clientRequests.id, requestId));
+  const psy = await psyContact(db, slot.psychologistId);
+  if (client) {
+    await notify({
+      kind: "cancelled",
+      recipientRole: "client",
+      recipientName: client.name,
+      recipientPhone: client.phone,
+      recipientEmail: client.email,
+      subject: subjects.cancelled,
+      body: messages.clientCancelled(psy?.name ?? "специалистом", slot.startsAt),
+      clientRequestId: requestId,
+      psychologistId: slot.psychologistId,
+      slotId,
+    });
+  }
+  if (psy) {
+    await notify({
+      kind: "cancelled",
+      recipientRole: "psychologist",
+      recipientName: psy.name,
+      recipientPhone: psy.phone,
+      recipientEmail: psy.email,
+      subject: subjects.cancelled,
+      body: messages.psySlotFreed(client?.name ?? "клиент", slot.startsAt),
+      clientRequestId: requestId,
+      psychologistId: psy.id,
+      slotId,
+    });
+  }
+
+  await logAdmin("снял запись клиента", { type: "request", id: requestId, detail: slot.startsAt });
   revalidatePath(`/admin/requests/${requestId}`);
   return { ok: true };
 }
@@ -348,7 +524,12 @@ export async function moderatePsychologist(
   }
 
   const [psy] = await db
-    .select({ id: psychologists.id, name: psychologists.name, slug: psychologists.slug })
+    .select({
+      id: psychologists.id,
+      name: psychologists.name,
+      slug: psychologists.slug,
+      moderationStatus: psychologists.moderationStatus,
+    })
     .from(psychologists)
     .where(eq(psychologists.id, id));
   if (!psy) return { ok: false, error: "Заявка не найдена" };
@@ -363,6 +544,12 @@ export async function moderatePsychologist(
       ...(decision === "approved" && isGrade(grade) ? { grade } : {}),
     })
     .where(eq(psychologists.id, id));
+
+  // Отзыв допуска у работавшего специалиста — не тихая смена статуса:
+  // его клиентов отправляем на переподбор и предупреждаем письмом.
+  if (decision === "rejected" && psy.moderationStatus === "approved") {
+    await retireAndNotify(id);
+  }
 
   const [full] = await db
     .select({

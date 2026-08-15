@@ -3,7 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { clientRequests, db, psychologists } from "@/db";
+import { clientRequests, db, psychologists, supportTickets } from "@/db";
 import { currentAccountId } from "@/lib/auth";
 import { markOutcome, openSlots, psyContact, removePsySlot, setSlotPaid } from "@/lib/booking";
 import { messages, notify, subjects } from "@/lib/notify";
@@ -95,6 +95,29 @@ export async function markSlotOutcome(
   if (!result.ok) return result;
   const slot = result.slot;
 
+  // Неявка — с последствиями (стоимость сессии), молчать о ней нельзя.
+  if (outcome === "no_show" && slot.clientRequestId) {
+    const [client] = await db
+      .select({ name: clientRequests.name, phone: clientRequests.phone, email: clientRequests.email })
+      .from(clientRequests)
+      .where(eq(clientRequests.id, slot.clientRequestId));
+    const contact = await psyContact(db, psy.id);
+    if (client && contact) {
+      await notify({
+        kind: "no_show",
+        recipientRole: "client",
+        recipientName: client.name,
+        recipientPhone: client.phone,
+        recipientEmail: client.email,
+        subject: subjects.noShow,
+        body: messages.clientNoShow(contact.name, slot.startsAt),
+        clientRequestId: slot.clientRequestId,
+        psychologistId: psy.id,
+        slotId,
+      });
+    }
+  }
+
   if (outcome === "done" && slot.clientRequestId) {
     const [client] = await db
       .select({
@@ -169,6 +192,31 @@ export async function markSlotPaid(
 
   revalidatePath("/cab");
   revalidatePath("/me");
+  return { ok: true };
+}
+
+/** Обращение психолога в поддержку: спорные записи, неявки, вопросы платформы. */
+export async function createPsyTicket(
+  kind: "question" | "complaint",
+  body: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const psy = await me();
+  if (!psy) return NO_SESSION;
+  const text = String(body ?? "").trim().slice(0, 4000);
+  if (text.length < 5) return { ok: false, error: "Опишите, что случилось" };
+
+  const contact = await psyContact(db, psy.id);
+  await db.insert(supportTickets).values({
+    fromRole: "psychologist",
+    kind,
+    name: contact?.name ?? "психолог",
+    phone: contact?.phone,
+    email: contact?.email,
+    body: text,
+    psychologistId: psy.id,
+  });
+
+  revalidatePath("/admin/support");
   return { ok: true };
 }
 

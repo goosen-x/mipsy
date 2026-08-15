@@ -2,10 +2,14 @@ import { desc, eq } from "drizzle-orm";
 import { db, errorLog } from "@/db";
 import { Badge } from "@/components/ui/badge";
 import { MarkErrorsSeen } from "../controls";
+import { requireAdmin } from "../require-admin";
+import { formatDbTime } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
 export default async function ErrorsPage() {
+  await requireAdmin();
+
   const unseen = await db
     .select()
     .from(errorLog)
@@ -46,7 +50,7 @@ export default async function ErrorsPage() {
             <li key={e.id} className="rounded-2xl bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-500">
                 <Badge variant="outline">{e.source}</Badge>
-                <span>{e.createdAt.slice(0, 16)}</span>
+                <span>{formatDbTime(e.createdAt)}</span>
                 {e.path && <code className="text-brand-700">{e.path}</code>}
               </div>
               <p className="mt-2 font-medium">{e.message}</p>
@@ -66,7 +70,7 @@ export default async function ErrorsPage() {
           <ul className="mt-3 space-y-2 text-sm">
             {seen.map((e) => (
               <li key={e.id} className="rounded-xl bg-white p-3 shadow-sm">
-                <span className="text-neutral-500">{e.createdAt.slice(0, 16)} · </span>
+                <span className="text-neutral-500">{formatDbTime(e.createdAt)} · </span>
                 <span>{e.message}</span>
               </li>
             ))}

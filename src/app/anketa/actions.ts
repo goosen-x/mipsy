@@ -39,13 +39,17 @@ export async function submitAnketa(payload: AnketaPayload): Promise<AnketaResult
     return { ok: false, error: "Войдите в кабинет — подбор психолога запускается оттуда" };
   }
 
-  const name = payload.name?.trim();
+  const name = payload.name?.trim().slice(0, 200);
   // Телефон нужен для срочной связи: кризисные заявки и случаи, когда письмо
   // остаётся без ответа, — почтой не решаются.
   const phone = normalizePhone(payload.phone);
   if (!name) return { ok: false, error: "Укажите имя" };
   if (!isValidPhone(phone)) return { ok: false, error: "Проверьте номер телефона" };
   if (!payload.pdConsent) return { ok: false, error: "Нужно согласие на обработку данных" };
+  // Возраст форма ограничивает, но серверу форма — не защита.
+  const age = Number.isInteger(payload.age) && payload.age! >= 16 && payload.age! <= 100
+    ? payload.age
+    : null;
 
   // Имя и телефон аккаунта анкета уточняет (имя могло быть заглушкой из адреса).
   await linkAccount({ email: account.email, name, phone });
@@ -59,7 +63,7 @@ export async function submitAnketa(payload: AnketaPayload): Promise<AnketaResult
     email: account.email,
     forWhom: "self",
     gender: payload.gender,
-    age: payload.age,
+    age,
     therapyExperience: payload.therapyExperience,
     mainProblem: payload.mainProblem,
     topicSlugs: payload.topicSlugs ?? [],
@@ -71,7 +75,7 @@ export async function submitAnketa(payload: AnketaPayload): Promise<AnketaResult
     prefGender: payload.prefGender,
     prefAge: payload.prefAge,
     preferredTime: payload.preferredTime ?? [],
-    story: payload.story?.trim() || null,
+    story: payload.story?.trim().slice(0, 4000) || null,
     name,
     phone,
     pdConsent: true,
@@ -86,7 +90,9 @@ export async function submitAnketa(payload: AnketaPayload): Promise<AnketaResult
     prefGender: payload.prefGender,
     prefAge: payload.prefAge,
   };
-  const proposed = await autoMatch(db, { clientRequestId: req.id, prefs });
+  // Кризисная анкета не уходит в самозапись: сначала приоритетный звонок
+  // оператора, подбор — после разговора.
+  const proposed = crisisFlag ? [] : await autoMatch(db, { clientRequestId: req.id, prefs });
 
   return { ok: true, matched: proposed.length, catalogUrl: catalogUrlFor(prefs) };
 }

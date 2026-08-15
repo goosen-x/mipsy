@@ -83,6 +83,7 @@ export default async function ClientCabinetPage() {
       status: slots.status,
       meetingLink: slots.meetingLink,
       paidAt: slots.paidAt,
+      psychologistId: slots.psychologistId,
       psyName: psychologists.name,
     })
     .from(slots)
@@ -114,21 +115,33 @@ export default async function ClientCabinetPage() {
         )
     : [];
 
-  const freeSlots = chosen
+  // Свободные окна нужны для двух вещей: запись к выбранному специалисту и
+  // перенос существующих броней. Бронь могла быть у другого психолога (запись
+  // из каталога, прошлый подбор) — перенос предлагает окна именно её специалиста.
+  const slotPsyIds = [
+    ...new Set([...(chosen ? [chosen.psy.id] : []), ...upcoming.map((s) => s.psychologistId)]),
+  ];
+  const freeSlots = slotPsyIds.length
     ? (
         await db
           .select()
           .from(slots)
-          .where(and(eq(slots.psychologistId, chosen.psy.id), eq(slots.status, "free")))
+          .where(and(inArray(slots.psychologistId, slotPsyIds), eq(slots.status, "free")))
           .orderBy(asc(slots.startsAt))
       ).filter((s) => !isPast(s.startsAt, now))
     : [];
-  const calendarSlots = freeSlots.map((s) => ({
-    id: s.id,
-    startsAt: s.startsAt,
-    durationMin: s.durationMin,
-    isIntroCall: s.isIntroCall,
-  }));
+  const toCalendar = (list: typeof freeSlots) =>
+    list.map((s) => ({
+      id: s.id,
+      startsAt: s.startsAt,
+      durationMin: s.durationMin,
+      isIntroCall: s.isIntroCall,
+    }));
+  const calendarSlots = chosen
+    ? toCalendar(freeSlots.filter((s) => s.psychologistId === chosen.psy.id))
+    : [];
+  const freeSlotsByPsy = (psyId: number) =>
+    toCalendar(freeSlots.filter((s) => s.psychologistId === psyId));
 
   return (
     <div className="min-h-screen bg-brand-50/40">
@@ -280,8 +293,8 @@ export default async function ClientCabinetPage() {
             </div>
             {proposals.length > 1 && (
               <p className="mt-3 text-xs text-neutral-500">
-                Вы выбрали из {proposals.length} предложенных. Пока не записались — можно выбрать
-                другого специалиста ниже.
+                Вы выбрали из {proposals.length} предложенных. Передумали? Попросите другого
+                специалиста в разделе «Психолог не подошёл?» внизу страницы.
               </p>
             )}
           </section>
@@ -332,7 +345,7 @@ export default async function ClientCabinetPage() {
                       slotId={s.id}
                       startsAt={s.startsAt}
                       canChange={canClientChange(s.startsAt, now)}
-                      freeSlots={calendarSlots}
+                      freeSlots={freeSlotsByPsy(s.psychologistId)}
                     />
                   </div>
                 </li>
