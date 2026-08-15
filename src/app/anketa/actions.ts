@@ -1,7 +1,8 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { db, clientRequests } from "@/db";
+import { inArray } from "drizzle-orm";
+import { db, clientRequests, psychologists } from "@/db";
 import { currentAccount, linkAccount } from "@/lib/auth";
 import { autoMatch, catalogUrlFor } from "@/lib/matching";
 import { isCrisisAnswer, isValidPhone, normalizePhone } from "@/lib/rules";
@@ -27,8 +28,17 @@ export type AnketaPayload = {
   pdConsent: boolean;
 };
 
+export type ProposedPsy = {
+  slug: string | null;
+  name: string;
+  photoUrl: string | null;
+  approach: string | null;
+  experienceYears: number | null;
+  grade: number | null;
+};
+
 export type AnketaResult =
-  | { ok: true; matched: number; catalogUrl: string }
+  | { ok: true; matched: number; proposed: ProposedPsy[]; catalogUrl: string }
   | { ok: false; error: string };
 
 export async function submitAnketa(payload: AnketaPayload): Promise<AnketaResult> {
@@ -94,5 +104,26 @@ export async function submitAnketa(payload: AnketaPayload): Promise<AnketaResult
   // оператора, подбор — после разговора.
   const proposed = crisisFlag ? [] : await autoMatch(db, { clientRequestId: req.id, prefs });
 
-  return { ok: true, matched: proposed.length, catalogUrl: catalogUrlFor(prefs) };
+  // Карточки подобранных — прямо на финальный экран анкеты, в порядке подбора.
+  const cards =
+    proposed.length === 0
+      ? []
+      : await db
+          .select({
+            id: psychologists.id,
+            slug: psychologists.slug,
+            name: psychologists.name,
+            photoUrl: psychologists.photoUrl,
+            approach: psychologists.approach,
+            experienceYears: psychologists.experienceYears,
+            grade: psychologists.grade,
+          })
+          .from(psychologists)
+          .where(inArray(psychologists.id, proposed));
+  const ordered = proposed
+    .map((id) => cards.find((c) => c.id === id))
+    .filter((c): c is (typeof cards)[number] => c !== undefined)
+    .map(({ id: _id, ...card }) => card);
+
+  return { ok: true, matched: proposed.length, proposed: ordered, catalogUrl: catalogUrlFor(prefs) };
 }

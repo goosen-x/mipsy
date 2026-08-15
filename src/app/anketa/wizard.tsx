@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Hint, OptionButton, Question, Shell } from "@/components/wizard";
 import { cn } from "@/lib/utils";
 import { isValidPhone } from "@/lib/rules";
-import { submitAnketa, type AnketaPayload } from "./actions";
+import { gradePriceLabel } from "@/lib/grades";
+import { submitAnketa, type AnketaPayload, type ProposedPsy } from "./actions";
 
 type Topic = { slug: string; title: string };
 
@@ -64,6 +65,27 @@ function countWords(s: string) {
   return s.trim().split(/\s+/).filter(Boolean).length;
 }
 
+// Черновик анкеты переживает случайное обновление страницы. Живёт в localStorage
+// до успешной отправки; ключ включает почту, чтобы черновик не достался другому
+// аккаунту на том же устройстве.
+const DRAFT_VERSION = 1;
+
+function draftKey(email: string) {
+  return `mipsy-anketa-draft:${email}`;
+}
+
+function loadDraft(email: string): { state: State; stepIdx: number } | null {
+  try {
+    const raw = localStorage.getItem(draftKey(email));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.version !== DRAFT_VERSION || typeof parsed.stepIdx !== "number") return null;
+    return { state: parsed.state as State, stepIdx: parsed.stepIdx };
+  } catch {
+    return null;
+  }
+}
+
 export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string }) {
   const [state, setState] = useState<State>({
     gender: null,
@@ -87,7 +109,34 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
   const [stepIdx, setStepIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [done, setDone] = useState<{ matched: number; catalogUrl: string } | null>(null);
+  // Черновик читается после маунта: на сервере localStorage нет.
+  const [restored, setRestored] = useState(false);
+
+  useEffect(() => {
+    const draft = loadDraft(email);
+    if (draft) {
+      setState((prev) => ({ ...prev, ...draft.state }));
+      setStepIdx(draft.stepIdx);
+    }
+    setRestored(true);
+  }, [email]);
+
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      localStorage.setItem(
+        draftKey(email),
+        JSON.stringify({ version: DRAFT_VERSION, state, stepIdx }),
+      );
+    } catch {
+      // нет места или приватный режим — анкета работает и без черновика
+    }
+  }, [restored, email, state, stepIdx]);
+  const [done, setDone] = useState<{
+    matched: number;
+    proposed: ProposedPsy[];
+    catalogUrl: string;
+  } | null>(null);
 
   // Кризисный экран вставляется в маршрут сразу после вопроса о самоповреждении,
   // если ответ — не «никогда».
@@ -107,7 +156,9 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
     return s;
   }, [state.freqSelfHarm]);
 
-  const step = steps[stepIdx];
+  // Черновик мог сохранить индекс глубже текущего маршрута (кризисный экран
+  // вставляется условно) — не даём выйти за последний шаг.
+  const step = steps[Math.min(stepIdx, steps.length - 1)];
   const progress = Math.round((stepIdx / steps.length) * 100);
 
   function set<K extends keyof State>(key: K, value: State[K]) {
@@ -152,8 +203,12 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
     };
     startTransition(async () => {
       const res = await submitAnketa(payload);
-      if (res.ok) setDone({ matched: res.matched, catalogUrl: res.catalogUrl });
-      else setError(res.error ?? "Что-то пошло не так, попробуйте ещё раз");
+      if (res.ok) {
+        try {
+          localStorage.removeItem(draftKey(email));
+        } catch {}
+        setDone({ matched: res.matched, proposed: res.proposed, catalogUrl: res.catalogUrl });
+      } else setError(res.error ?? "Что-то пошло не так, попробуйте ещё раз");
     });
   }
 
@@ -162,21 +217,59 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
       <Shell progress={100} onBack={null} footer={<CrisisFooter />}>
         <h1 className="text-3xl font-bold">Спасибо, {state.name}!</h1>
         <p className="mt-4 text-lg text-neutral-600">
-          Мы уже подобрали по вашим ответам{" "}
-          {done.matched === 1 ? "специалиста" : `${done.matched} специалистов`} — посмотрите
-          профили в кабинете, выберите того, кто откликнется, и запишитесь на первую встречу.
+          Мы подобрали по вашим ответам{" "}
+          {done.matched === 1 ? "специалиста" : `${done.matched} специалистов`}. Откройте профиль,
+          выберите время и запишитесь на первую встречу — эта же подборка ждёт вас в кабинете.
         </p>
+        <div className="mt-6 space-y-3">
+          {done.proposed.map((p) => (
+            <div
+              key={p.slug ?? p.name}
+              className="flex items-center gap-4 rounded-2xl border border-neutral-200 bg-white p-4"
+            >
+              {p.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.photoUrl}
+                  alt={p.name}
+                  className="h-16 w-16 shrink-0 rounded-xl object-cover"
+                />
+              ) : (
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-xl font-bold text-brand-700">
+                  {p.name.slice(0, 1)}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold">{p.name}</div>
+                <div className="truncate text-sm text-neutral-500">
+                  {[
+                    p.approach,
+                    p.experienceYears != null ? `опыт ${p.experienceYears} лет` : null,
+                    gradePriceLabel(p.grade),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+              </div>
+              {p.slug && (
+                <Button asChild size="sm" className="shrink-0">
+                  <Link href={`/p/${p.slug}`}>Профиль и запись</Link>
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button asChild size="lg">
-            <Link href="/me">Посмотреть подобранных</Link>
+          <Button asChild variant="outline">
+            <Link href="/me">Перейти в кабинет</Link>
           </Button>
-          <Button asChild variant="outline" size="lg">
+          <Button asChild variant="outline">
             <Link href={done.catalogUrl}>Выбрать самому в каталоге</Link>
           </Button>
         </div>
         <p className="mt-4 text-sm text-neutral-500">
-          В каталоге уже включены фильтры по вашим ответам. Если никто не откликнется — напишите
-          нам из кабинета, оператор подберёт вручную.
+          В каталоге уже включены фильтры по вашим ответам. Если никто не подойдёт — напишите нам
+          из кабинета, оператор подберёт вручную.
         </p>
       </Shell>
     );

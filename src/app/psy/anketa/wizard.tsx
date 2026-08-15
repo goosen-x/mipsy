@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,30 @@ export function PsyApplicationWizard({ email }: { email: string }) {
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [pending, startTransition] = useTransition();
+  // Черновик переживает случайное обновление страницы; загруженные файлы уже
+  // лежат на сервере, поэтому восстанавливаем и их список.
+  const draftKey = `mipsy-psy-draft:${email}`;
+  const [restored, setRestored] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d?.form) setForm((prev) => ({ ...prev, ...d.form }));
+        if (Array.isArray(d?.docs)) setDocs(d.docs);
+        if (typeof d?.stepIdx === "number") setStepIdx(Math.min(d.stepIdx, STEPS.length - 1));
+      }
+    } catch {}
+    setRestored(true);
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ form, docs, stepIdx }));
+    } catch {}
+  }, [restored, draftKey, form, docs, stepIdx]);
 
   const step = STEPS[stepIdx];
   const progress = Math.round((stepIdx / STEPS.length) * 100);
@@ -69,8 +93,12 @@ export function PsyApplicationWizard({ email }: { email: string }) {
         supervision: form.supervision,
         personalTherapy: form.personalTherapy,
       });
-      if (res.ok) setSent(true);
-      else setError(res.error);
+      if (res.ok) {
+        try {
+          localStorage.removeItem(draftKey);
+        } catch {}
+        setSent(true);
+      } else setError(res.error);
     });
   }
 
