@@ -7,6 +7,7 @@ import { CabinetHeader } from "@/components/site";
 import { canClientChange, formatSlot, isPast, TZ_LABEL } from "@/lib/datetime";
 import { currentAccount } from "@/lib/auth";
 import { gradePriceLabel } from "@/lib/grades";
+import { label, REQUEST_STATUS_LABELS } from "@/lib/labels";
 import {
   BookingActions,
   BookingSection,
@@ -438,7 +439,7 @@ export default async function ClientCabinetPage() {
               {myRequests.slice(1).map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center gap-2">
                   <span>{r.createdAt.slice(0, 10)}</span>
-                  <Badge variant="secondary">{r.status}</Badge>
+                  <Badge variant="secondary">{label(REQUEST_STATUS_LABELS, r.status)}</Badge>
                   {r.mainProblem && <span className="text-neutral-500">{r.mainProblem}</span>}
                 </li>
               ))}
@@ -475,7 +476,7 @@ export default async function ClientCabinetPage() {
 
         <p className="pb-4 text-center text-xs text-neutral-400">
           Вход в кабинет — по адресу {account.email} и коду из письма. Статус обращения:{" "}
-          <Badge variant="secondary">{req.status}</Badge>
+          <Badge variant="secondary">{label(REQUEST_STATUS_LABELS, req.status)}</Badge>
         </p>
       </main>
     </div>
