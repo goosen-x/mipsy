@@ -1,6 +1,7 @@
-import { and, eq } from "drizzle-orm";
-import { clientRequests, matches, psychologists } from "../db/schema.ts";
-import type { Db } from "./booking.ts";
+import { and, eq, gte, inArray } from "drizzle-orm";
+import { clientRequests, matches, psychologists, slots } from "../db/schema.ts";
+import { releaseSlot, type Db, type PsyContact, type SlotRow } from "./booking.ts";
+import { nowMsk } from "./datetime.ts";
 
 /**
  * Автоподбор по анкете: сразу после отправки клиент видит до трёх подходящих
@@ -71,6 +72,99 @@ export function catalogUrlFor(prefs: MatchPrefs): string {
  * сам, chosen не ставим) и переводит заявку в matched. Никто не подошёл —
  * заявка остаётся new, дальше действует админ.
  */
+/**
+ * Переподбор начинается с чистого листа: все активные предложения заявки
+ * гаснут. Без этого старый психолог остаётся «выбранным», занимает лимит
+ * из трёх вариантов и продолжает показываться клиенту.
+ */
+export async function deactivateMatches(db: Db, clientRequestId: number): Promise<void> {
+  await db
+    .update(matches)
+    .set({ active: false, chosen: false })
+    .where(and(eq(matches.clientRequestId, clientRequestId), eq(matches.active, true)));
+}
+
+export type RetiredClient = {
+  requestId: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  freedSlot: SlotRow | null;
+};
+
+/**
+ * Снятие психолога с витрины (скрытие или отзыв допуска) не должно бросать
+ * его клиентов в подвешенном состоянии: активные предложения гаснут, будущие
+ * брони освобождаются, заявки уходят в переподбор. Возвращает, кому писать.
+ */
+export async function retirePsychologist(
+  db: Db,
+  psychologistId: number,
+  now?: Date,
+): Promise<{ psy: PsyContact | null; clients: RetiredClient[] }> {
+  const [psy] = await db
+    .select({
+      id: psychologists.id,
+      name: psychologists.name,
+      phone: psychologists.phone,
+      email: psychologists.email,
+      meetingUrl: psychologists.meetingUrl,
+    })
+    .from(psychologists)
+    .where(eq(psychologists.id, psychologistId));
+
+  const activeMatches = await db
+    .select({ id: matches.id, clientRequestId: matches.clientRequestId })
+    .from(matches)
+    .where(and(eq(matches.psychologistId, psychologistId), eq(matches.active, true)));
+  const futureBooked = await db
+    .select()
+    .from(slots)
+    .where(
+      and(
+        eq(slots.psychologistId, psychologistId),
+        eq(slots.status, "booked"),
+        gte(slots.startsAt, nowMsk(now)),
+      ),
+    );
+
+  const requestIds = [
+    ...new Set([
+      ...activeMatches.map((m) => m.clientRequestId),
+      ...futureBooked.map((s) => s.clientRequestId).filter((id): id is number => id !== null),
+    ]),
+  ];
+  if (requestIds.length === 0) return { psy: psy ?? null, clients: [] };
+
+  await db
+    .update(matches)
+    .set({ active: false, chosen: false })
+    .where(and(eq(matches.psychologistId, psychologistId), eq(matches.active, true)));
+  for (const slot of futureBooked) await releaseSlot(db, slot.id);
+  await db
+    .update(clientRequests)
+    .set({ status: "rematch", rematchReason: "специалист больше не принимает на платформе" })
+    .where(inArray(clientRequests.id, requestIds));
+
+  const rows = await db
+    .select({
+      requestId: clientRequests.id,
+      name: clientRequests.name,
+      phone: clientRequests.phone,
+      email: clientRequests.email,
+    })
+    .from(clientRequests)
+    .where(inArray(clientRequests.id, requestIds));
+
+  return {
+    psy: psy ?? null,
+    clients: rows.map((r) => ({
+      ...r,
+      freedSlot: futureBooked.find((s) => s.clientRequestId === r.requestId) ?? null,
+    })),
+  };
+}
+
 export async function autoMatch(
   db: Db,
   params: { clientRequestId: number; prefs: MatchPrefs; limit?: number; now?: Date },
@@ -95,13 +189,18 @@ export async function autoMatch(
 
   if (picked.length === 0) return [];
 
-  await db.insert(matches).values(
-    picked.map(({ psy }) => ({
-      clientRequestId: params.clientRequestId,
-      psychologistId: psy.id,
-      note: "автоподбор по анкете",
-    })),
-  );
+  // Идемпотентно: при двойном сабмите анкеты уникальный индекс активной пары
+  // «заявка-психолог» не даст задвоить предложения.
+  await db
+    .insert(matches)
+    .values(
+      picked.map(({ psy }) => ({
+        clientRequestId: params.clientRequestId,
+        psychologistId: psy.id,
+        note: "автоподбор по анкете",
+      })),
+    )
+    .onConflictDoNothing();
   await db
     .update(clientRequests)
     .set({ status: "matched" })

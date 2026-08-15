@@ -36,6 +36,16 @@ let db;
 let psy1; // с постоянной ссылкой на видеовстречу
 let psy2;
 
+// Схема требует уникальности «психолог + время», поэтому каждый вызов сдвигает
+// время на минуту: PAST остаётся в прошлом (окно до 12:00 МСК), SOON — ближе
+// суток, FUTURE — далеко впереди.
+let slotSeq = 0;
+function shifted(startsAt) {
+  const d = new Date(`${startsAt}:00Z`);
+  d.setUTCMinutes(d.getUTCMinutes() + (slotSeq++ % 110));
+  return d.toISOString().slice(0, 16);
+}
+
 function addSlot(psyId, startsAt, extra = {}) {
   const { status = "free", clientRequestId = null, isIntroCall = 0, meetingLink = null } = extra;
   return Number(
@@ -43,7 +53,7 @@ function addSlot(psyId, startsAt, extra = {}) {
       .prepare(
         "INSERT INTO slots (psychologist_id, starts_at, duration_min, status, client_request_id, is_intro_call, meeting_link) VALUES (?,?,50,?,?,?,?)",
       )
-      .run(psyId, startsAt, status, clientRequestId, isIntroCall, meetingLink).lastInsertRowid,
+      .run(psyId, shifted(startsAt), status, clientRequestId, isIntroCall, meetingLink).lastInsertRowid,
   );
 }
 

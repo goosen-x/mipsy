@@ -1,9 +1,9 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 // Расширения в путях обязательны: модуль импортируют и Next, и node --test.
 import * as schema from "../db/schema.ts";
 import { matches, psychologists, slots } from "../db/schema.ts";
-import { canClientChange, isPast } from "./datetime.ts";
+import { canClientChange, isPast, nowMsk } from "./datetime.ts";
 
 /**
  * Жизненный цикл слота: free → booked → done | no_show, и обратно в free при
@@ -95,18 +95,19 @@ export async function takeSlot(
   if (slot.status !== "free") return { ok: false, error: "Это время уже заняли" };
   if (isPast(slot.startsAt, params.now)) return { ok: false, error: "Это время уже прошло" };
 
+  const isIntroCall = params.isIntroCall ?? slot.isIntroCall;
+  const meetingLink = params.psychologist.meetingUrl;
   const res = (await db
     .update(slots)
-    .set({
-      status: "booked",
-      clientRequestId: params.clientRequestId,
-      isIntroCall: params.isIntroCall ?? slot.isIntroCall,
-      meetingLink: params.psychologist.meetingUrl,
-    })
+    .set({ status: "booked", clientRequestId: params.clientRequestId, isIntroCall, meetingLink })
     .where(and(eq(slots.id, params.slotId), eq(slots.status, "free")))) as unknown as RunResult;
   if (res.changes === 0) return { ok: false, error: "Это время только что заняли" };
 
-  return { ok: true, slot: { ...slot, status: "booked", clientRequestId: params.clientRequestId } };
+  // Возвращаем слот таким, каким он стал, — а не до-апдейтную копию.
+  return {
+    ok: true,
+    slot: { ...slot, status: "booked", clientRequestId: params.clientRequestId, isIntroCall, meetingLink },
+  };
 }
 
 /** Бронь по заявке, когда психолог заранее неизвестен, — путь оператора. */
@@ -136,6 +137,25 @@ export async function releaseSlot(db: Db, slotId: number): Promise<void> {
       paidAt: null,
     })
     .where(eq(slots.id, slotId));
+}
+
+/**
+ * Условное освобождение: срабатывает, только если бронь ещё жива. Это атомарный
+ * guard против гонок «две отмены/два переноса параллельно» — вторая операция
+ * получает false и не трогает уже изменённый слот.
+ */
+async function releaseBookedSlot(db: Db, slotId: number): Promise<boolean> {
+  const res = (await db
+    .update(slots)
+    .set({
+      status: "free",
+      clientRequestId: null,
+      isIntroCall: false,
+      meetingLink: null,
+      paidAt: null,
+    })
+    .where(and(eq(slots.id, slotId), eq(slots.status, "booked")))) as unknown as RunResult;
+  return res.changes > 0;
 }
 
 /**
@@ -181,6 +201,11 @@ export async function cancelClientBooking(
 ): Promise<CancelResult> {
   const slot = await clientSlot(db, params.slotId, params.requestIds);
   if (!slot || slot.status !== "booked") return { ok: false, error: "Запись не найдена" };
+  // Прошедшую встречу нельзя «отменить» задним числом — иначе клиент стирает
+  // бронь до того, как специалист отметит неявку.
+  if (isPast(slot.startsAt, params.now)) {
+    return { ok: false, error: "Встреча уже прошла — её итог отмечает специалист" };
+  }
   const late = !canClientChange(slot.startsAt, params.now);
   if (late && !params.allowLate) {
     return {
@@ -190,7 +215,7 @@ export async function cancelClientBooking(
     };
   }
 
-  await releaseSlot(db, slot.id);
+  if (!(await releaseBookedSlot(db, slot.id))) return { ok: false, error: "Запись не найдена" };
   return { ok: true, slot, psy: await psyContact(db, slot.psychologistId), late };
 }
 
@@ -217,6 +242,9 @@ export async function rescheduleClientBooking(
   if (!from || from.status !== "booked" || from.clientRequestId === null) {
     return { ok: false, error: "Запись не найдена" };
   }
+  if (isPast(from.startsAt, params.now)) {
+    return { ok: false, error: "Встреча уже прошла — её итог отмечает специалист" };
+  }
   const late = !canClientChange(from.startsAt, params.now);
   if (late && !params.allowLate) {
     return {
@@ -238,27 +266,42 @@ export async function rescheduleClientBooking(
   });
   if (!taken.ok) return taken;
 
+  // Старую бронь освобождаем условно: если параллельная отмена/перенос успели
+  // раньше, откатываем только что занятое окно — двух броней не останется.
+  if (!(await releaseBookedSlot(db, from.id))) {
+    await releaseSlot(db, taken.slot.id);
+    return { ok: false, error: "Запись не найдена" };
+  }
   // Оплата привязана к сессии, а не к окну: при переносе она едет следом.
   if (from.paidAt) {
     await db.update(slots).set({ paidAt: from.paidAt }).where(eq(slots.id, taken.slot.id));
   }
-  await releaseSlot(db, from.id);
   return { ok: true, from, to: taken.slot, psy, late };
 }
 
-/** Снять все брони обращения (переподбор). Возвращает, кого предупредить. */
+/**
+ * Снять все будущие брони обращения (переподбор). Прошедшие не трогаем:
+ * их итог и оплату ещё должен зафиксировать специалист.
+ */
 export async function freeBookedSlotsOf(
   db: Db,
   clientRequestId: number,
+  now?: Date,
 ): Promise<{ slot: SlotRow; psy: PsyContact | null }[]> {
   const booked = await db
     .select()
     .from(slots)
-    .where(and(eq(slots.clientRequestId, clientRequestId), eq(slots.status, "booked")));
+    .where(
+      and(
+        eq(slots.clientRequestId, clientRequestId),
+        eq(slots.status, "booked"),
+        gte(slots.startsAt, nowMsk(now)),
+      ),
+    );
 
   const freed: { slot: SlotRow; psy: PsyContact | null }[] = [];
   for (const slot of booked) {
-    await releaseSlot(db, slot.id);
+    if (!(await releaseBookedSlot(db, slot.id))) continue;
     freed.push({ slot, psy: await psyContact(db, slot.psychologistId) });
   }
   return freed;
@@ -278,11 +321,20 @@ export async function markOutcome(
   if (slot.status !== "booked") return { ok: false, error: "Эту встречу нельзя отметить" };
   if (!isPast(slot.startsAt, params.now)) return { ok: false, error: "Встреча ещё не прошла" };
 
-  await db.update(slots).set({ status: params.outcome }).where(eq(slots.id, params.slotId));
+  // Условный UPDATE: параллельная попытка не перепишет уже поставленный исход.
+  const res = (await db
+    .update(slots)
+    .set({ status: params.outcome })
+    .where(and(eq(slots.id, params.slotId), eq(slots.status, "booked")))) as unknown as RunResult;
+  if (res.changes === 0) return { ok: false, error: "Эту встречу нельзя отметить" };
   return { ok: true, slot };
 }
 
-/** Психолог убирает своё свободное окно. Занятое трогать нельзя. */
+/**
+ * Психолог убирает своё свободное окно. Только свободное: занятое требует
+ * отмены, а состоявшееся/неявка — история сессий, её не стирают (к тому же
+ * на done-слот может ссылаться отзыв).
+ */
 export async function removePsySlot(
   db: Db,
   params: { slotId: number; psychologistId: number },
@@ -294,10 +346,19 @@ export async function removePsySlot(
   if (slot.status === "booked") {
     return { ok: false, error: "На это время записан клиент — отмену согласуйте с оператором" };
   }
+  if (slot.status !== "free") {
+    return { ok: false, error: "Прошедшие встречи удалить нельзя — это история сессий" };
+  }
 
   await db
     .delete(slots)
-    .where(and(eq(slots.id, params.slotId), eq(slots.psychologistId, params.psychologistId)));
+    .where(
+      and(
+        eq(slots.id, params.slotId),
+        eq(slots.psychologistId, params.psychologistId),
+        eq(slots.status, "free"),
+      ),
+    );
   return { ok: true };
 }
 
@@ -320,12 +381,21 @@ export async function openSlots(
     now?: Date;
   },
 ): Promise<OpenSlotsResult> {
+  // Дата валидируется в оба конца: «2026-13-01» проходит регэксп, но не
+  // существует, а «2027-02-31» молча превратилась бы в 3 марта.
   if (!/^\d{4}-\d{2}-\d{2}$/.test(params.date)) return { ok: false, error: "Проверьте дату" };
-  const times = (params.times ?? []).filter((t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t));
+  const base = new Date(`${params.date}T00:00:00Z`);
+  if (Number.isNaN(base.getTime()) || base.toISOString().slice(0, 10) !== params.date) {
+    return { ok: false, error: "Проверьте дату" };
+  }
+
+  const times = [...new Set((params.times ?? []).filter((t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t)))];
   if (times.length === 0) return { ok: false, error: "Добавьте хотя бы одно время" };
 
+  const durationMin = Math.round(params.durationMin || 50);
+  if (durationMin < 20 || durationMin > 180) return { ok: false, error: "Проверьте длительность" };
+
   const weeks = Math.min(Math.max(params.repeatWeeks || 1, 1), 8);
-  const base = new Date(`${params.date}T00:00:00Z`);
   const rows: (typeof slots.$inferInsert)[] = [];
 
   for (let w = 0; w < weeks; w++) {
@@ -336,19 +406,15 @@ export async function openSlots(
       rows.push({
         psychologistId: params.psychologistId,
         startsAt,
-        durationMin: params.durationMin || 50,
+        durationMin,
         isIntroCall: params.isIntroCall,
       });
     }
   }
 
-  const existing = await db
-    .select({ startsAt: slots.startsAt })
-    .from(slots)
-    .where(eq(slots.psychologistId, params.psychologistId));
-  const taken = new Set(existing.map((s) => s.startsAt));
-  const fresh = rows.filter((r) => !taken.has(r.startsAt));
-  if (fresh.length > 0) await db.insert(slots).values(fresh);
-
-  return { ok: true, added: fresh.length };
+  if (rows.length === 0) return { ok: true, added: 0 };
+  // Уникальный индекс (psychologist_id, starts_at) закрывает гонку двух
+  // параллельных вызовов — дубликаты молча пропускаются, added честный.
+  const res = (await db.insert(slots).values(rows).onConflictDoNothing()) as unknown as RunResult;
+  return { ok: true, added: res.changes };
 }
