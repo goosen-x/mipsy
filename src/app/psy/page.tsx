@@ -1,10 +1,7 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
 import { SiteFooter, SiteHeader } from "@/components/site";
-import { currentAccount } from "@/lib/auth";
-import { PsyApplicationForm } from "./form";
 
 export const metadata = { title: "Психологам — mipsy" };
-export const dynamic = "force-dynamic";
 
 const TERMS = [
   {
@@ -21,12 +18,7 @@ const TERMS = [
   },
 ];
 
-export default async function PsyPage() {
-  // Заявка — за входом: сначала специалист подтверждает почту, потом
-  // рассказывает о себе. Так заявка не окажется привязанной к чужому адресу.
-  const account = await currentAccount();
-  if (!account) redirect("/login?next=%2Fpsy");
-
+export default function PsyPage() {
   return (
     <>
       <SiteHeader />
@@ -67,10 +59,16 @@ export default async function PsyPage() {
 
         <h2 className="mt-12 text-2xl font-bold">Заявка на модерацию</h2>
         <p className="mt-2 text-neutral-500">
-          Заполните то, что есть — недостающее уточним при созвоне.
+          Несколько коротких шагов: о себе, образование и сканы документов. Понадобится войти по
+          коду с почты — по ней же вы будете входить в кабинет.
         </p>
         <div className="mt-6">
-          <PsyApplicationForm email={account.email} />
+          <Link
+            href="/psy/anketa"
+            className="inline-block rounded-lg bg-brand-600 px-6 py-3 font-medium text-white hover:bg-brand-700"
+          >
+            Подать заявку
+          </Link>
         </div>
       </main>
       <SiteFooter />

@@ -5,9 +5,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Hint, OptionButton, Question, Shell } from "@/components/wizard";
 import { cn } from "@/lib/utils";
 import { isValidPhone } from "@/lib/rules";
 import { submitAnketa, type AnketaPayload } from "./actions";
@@ -159,7 +159,7 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
 
   if (done && done.matched > 0) {
     return (
-      <Shell progress={100} onBack={null}>
+      <Shell progress={100} onBack={null} footer={<CrisisFooter />}>
         <h1 className="text-3xl font-bold">Спасибо, {state.name}!</h1>
         <p className="mt-4 text-lg text-neutral-600">
           Мы уже подобрали по вашим ответам{" "}
@@ -184,7 +184,7 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
 
   if (done) {
     return (
-      <Shell progress={100} onBack={null}>
+      <Shell progress={100} onBack={null} footer={<CrisisFooter />}>
         <h1 className="text-3xl font-bold">Спасибо, {state.name}!</h1>
         <p className="mt-4 text-lg text-neutral-600">
           Анкета у нас. Под ваши пожелания сейчас нет свободного специалиста, поэтому подбором
@@ -205,7 +205,7 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
   }
 
   return (
-    <Shell progress={progress} onBack={stepIdx > 0 ? back : null}>
+    <Shell progress={progress} onBack={stepIdx > 0 ? back : null} footer={<CrisisFooter />}>
       {step === "gender" && (
         <Question title="Ваш пол?">
           {[
@@ -560,90 +560,15 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
   );
 }
 
-function Shell({
-  children,
-  progress,
-  onBack,
-}: {
-  children: React.ReactNode;
-  progress: number;
-  onBack: (() => void) | null;
-}) {
+/** Подвал с экстренными контактами — специфика клиентской анкеты. */
+function CrisisFooter() {
   return (
-    <div className="min-h-screen bg-brand-50/50">
-      <header className="mx-auto flex max-w-xl items-center justify-between px-4 py-4">
-        <button
-          type="button"
-          onClick={onBack ?? undefined}
-          className={cn(
-            "text-sm text-neutral-500 hover:text-brand-700",
-            !onBack && "invisible",
-          )}
-        >
-          ← Назад
-        </button>
-        <Link href="/" className="text-xl font-bold text-brand-700">
-          mipsy
-        </Link>
-      </header>
-      <div className="mx-auto max-w-xl px-4">
-        <Progress value={progress} className="h-1.5" />
-        <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm sm:p-8">{children}</div>
-        <p className="py-6 text-center text-xs text-neutral-400">
-          Если помощь нужна срочно —{" "}
-          <Link href="/crisis" className="underline">
-            телефоны экстренной поддержки
-          </Link>
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function Question({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold">{title}</h1>
-      {subtitle && <p className="mt-2 text-neutral-500">{subtitle}</p>}
-      <div className="mt-6 space-y-2">{children}</div>
-    </div>
-  );
-}
-
-function OptionButton({
-  children,
-  onClick,
-  active,
-  disabled,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  active?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "flex w-full items-center justify-between rounded-xl border px-4 py-3.5 text-left text-base transition-colors",
-        active
-          ? "border-brand-600 bg-brand-50 font-medium text-brand-800"
-          : "border-neutral-200 hover:border-brand-400",
-        disabled && "cursor-not-allowed opacity-50 hover:border-neutral-200",
-      )}
-    >
-      {children}
-    </button>
+    <p className="py-6 text-center text-xs text-neutral-400">
+      Если помощь нужна срочно —{" "}
+      <Link href="/crisis" className="underline">
+        телефоны экстренной поддержки
+      </Link>
+    </p>
   );
 }
 
@@ -692,12 +617,6 @@ function FreqQuestion({
       ))}
       {hint && <Hint>{hint}</Hint>}
     </Question>
-  );
-}
-
-function Hint({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mt-4 rounded-xl bg-brand-50 p-4 text-sm text-brand-800">{children}</div>
   );
 }
 
