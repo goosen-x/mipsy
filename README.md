@@ -24,6 +24,7 @@ actions), SQLite + Drizzle, Docker на VPS. Продуктовые решени
   анализ 7 конкурентов (SmartMental, Alter, Ясно, Zigmund.Online, PsyPsy, B17,
   Profi.ru): что формирует доверие, что берём в гипотезы MVP, что не переносим
   на старт. Ключевые выводы для MVP — внизу файла.
+- [`docs/research/oplaty-provajdery.md`](docs/research/oplaty-provajdery.md) — оплаты через платформу: конкуренты, юрсхемы, провайдеры, план внедрения.
 - [`docs/research/dopusk-referensy.md`](docs/research/dopusk-referensy.md) — критерии допуска специалистов у референсов.
 - [`docs/research/katalog-ux.md`](docs/research/katalog-ux.md) — UX каталогов людей, редизайн карточек.
 - [`docs/research/kalendar-sloty-sinhronizaciya.md`](docs/research/kalendar-sloty-sinhronizaciya.md) — календарь, слоты, синхронизация.
