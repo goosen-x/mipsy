@@ -44,26 +44,27 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen bg-neutral-50">
       <header className="border-b bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-6">
-            <Link href="/admin" className="flex items-center gap-2 text-lg font-bold text-brand-700">
-              <span aria-hidden className="h-3 w-3 rounded-full bg-brand-600" />
-              mipsy · админ
-            </Link>
-            <nav className="flex gap-4 text-sm">
-              {NAV.map(([href, title]) => (
-                <Link key={href} href={href} className="text-neutral-600 hover:text-brand-700">
-                  {title}
-                </Link>
-              ))}
-            </nav>
-          </div>
-          <form action={signOutAction} className="flex items-center gap-3">
-            <span className="text-sm text-neutral-400">{account.name}</span>
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3">
+          <Link
+            href="/admin"
+            className="flex shrink-0 items-center gap-2 text-lg font-bold text-brand-700"
+          >
+            <span aria-hidden className="h-3 w-3 rounded-full bg-brand-600" />
+            mipsy · админ
+          </Link>
+          <form action={signOutAction} className="order-1 flex items-center gap-3 sm:order-2">
+            <span className="hidden text-sm text-neutral-400 sm:inline">{account.name}</span>
             <Button variant="ghost" size="sm" type="submit">
               Выйти
             </Button>
           </form>
+          <nav className="order-2 flex w-full gap-4 overflow-x-auto pb-1 text-sm whitespace-nowrap sm:order-1 sm:w-auto sm:flex-wrap sm:overflow-visible sm:pb-0">
+            {NAV.map(([href, title]) => (
+              <Link key={href} href={href} className="text-neutral-600 hover:text-brand-700">
+                {title}
+              </Link>
+            ))}
+          </nav>
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>

@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { currentAccountId, homePathFor } from "@/lib/auth";
 import { signOutAction } from "@/app/logout/actions";
+import { MobileNav } from "./mobile-nav";
 
 export async function SiteHeader() {
   const accountId = await currentAccountId();
   const cabinet = accountId ? await homePathFor(accountId) : null;
 
   return (
-    <header className="border-b border-neutral-100">
+    <header className="relative border-b border-neutral-100">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
         <Link
           href="/"
@@ -16,7 +17,7 @@ export async function SiteHeader() {
           <span aria-hidden className="h-3.5 w-3.5 rounded-full bg-brand-600" />
           mipsy
         </Link>
-        <nav className="flex items-center gap-6 text-sm">
+        <nav className="hidden items-center gap-6 text-sm sm:flex">
           <Link href="/catalog" className="text-neutral-600 hover:text-brand-700">
             Психологи
           </Link>
@@ -39,6 +40,7 @@ export async function SiteHeader() {
             </Link>
           )}
         </nav>
+        <MobileNav cabinet={cabinet} />
       </div>
     </header>
   );
@@ -51,13 +53,16 @@ export function CabinetHeader({ title, wide }: { title: string; wide?: boolean }
       <div
         className={`mx-auto flex ${wide ? "max-w-4xl" : "max-w-3xl"} items-center justify-between px-4 py-4`}
       >
-        <Link href="/" className="flex items-center gap-2 text-xl font-bold text-brand-700">
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-2 text-xl font-bold text-brand-700"
+        >
           <span aria-hidden className="h-3 w-3 rounded-full bg-brand-600" />
           mipsy
         </Link>
-        <div className="flex items-center gap-4 text-sm text-neutral-500">
-          <span>{title}</span>
-          <form action={signOutAction}>
+        <div className="flex min-w-0 items-center gap-4 text-sm text-neutral-500">
+          <span className="truncate">{title}</span>
+          <form action={signOutAction} className="shrink-0">
             <button type="submit" className="text-neutral-500 underline hover:text-brand-700">
               Выйти
             </button>
