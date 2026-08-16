@@ -19,6 +19,17 @@
 - `-e SESSION_SECRET=…` — секрет подписи сессий кабинетов; после его смены все входы слетают и людям придётся войти заново. Для совместимости со старыми установками, где секретом был пароль оператора, поддерживается запасной `OPERATOR_PASSWORD` — если задан только он, сессии остаются живыми.
 - `-e SITE_URL=https://mipsy.mskacademy.ru` — подставляется в ссылки внутри писем и SMS.
 - SMS: `-e SMS_LOGIN=… -e SMS_PASSWORD=… [-e SMS_SENDER=…]` (провайдер smsc.ru). Без них уведомления копятся в `/admin/notifications`, админ отправляет вручную.
+- Оплаты (тестовый контур, два провайдера параллельно — выбираем один):
+  `-e YOOKASSA_SHOP_ID=… -e YOOKASSA_SECRET_KEY=test_…` (тестовый магазин:
+  https://yookassa.ru/joinups?createTestShop=true, ключ в ЛК → Интеграция → Ключи API;
+  там же указать URL уведомлений `https://mipsy.mskacademy.ru/api/payments/yookassa`,
+  события payment.succeeded и payment.canceled) и
+  `-e CLOUDPAYMENTS_PUBLIC_ID=pk_… -e CLOUDPAYMENTS_API_SECRET=…` (ЛК CloudPayments →
+  Сайты: Public ID и API Secret; в настройках уведомлений включить check и pay на
+  `https://mipsy.mskacademy.ru/api/payments/cloudpayments`, формат по умолчанию,
+  HMAC включён). Без переменных кнопки оплаты в кабинете клиента не показываются.
+  Тестовые карты: ЮKassa `5555 5555 5555 4477`, CloudPayments `4242 4242 4242 4242`
+  (любой срок в будущем, любой CVV).
 - Загруженные фото психологов лежат в `/root/mipsy-data/uploads` (тот же volume, что и база) и отдаются роутом `/uploads/[name]`.
 
 ## Бэкапы

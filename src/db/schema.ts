@@ -290,3 +290,24 @@ export const adminLog = sqliteTable("admin_log", {
   targetId: integer("target_id"),
   detail: text("detail"),
 });
+
+/**
+ * Платежи за сессии через платёжных провайдеров. Тестовый контур: ЮKassa и
+ * CloudPayments подключены параллельно, провайдера выбирает клиент — по итогам
+ * теста останется один. Сумма — в рублях, по грейду специалиста.
+ */
+export const payments = sqliteTable("payments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  slotId: integer("slot_id")
+    .notNull()
+    .references(() => slots.id),
+  accountId: integer("account_id").references(() => accounts.id),
+  amount: integer("amount").notNull(), // рубли
+  provider: text("provider").notNull(), // yookassa | cloudpayments
+  providerPaymentId: text("provider_payment_id"), // id на стороне провайдера
+  status: text("status").notNull().default("pending"), // pending | succeeded | canceled
+  testMode: integer("test_mode", { mode: "boolean" }).notNull().default(false),
+});

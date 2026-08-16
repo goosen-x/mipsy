@@ -8,6 +8,8 @@ import { canClientChange, formatSlot, isPast, TZ_LABEL } from "@/lib/datetime";
 import { currentAccount } from "@/lib/auth";
 import { gradePriceLabel } from "@/lib/grades";
 import { label, REQUEST_STATUS_LABELS } from "@/lib/labels";
+import { enabledProviders } from "@/lib/payments";
+import { PayButtons } from "./pay";
 import {
   BookingActions,
   BookingSection,
@@ -85,12 +87,15 @@ export default async function ClientCabinetPage() {
       paidAt: slots.paidAt,
       psychologistId: slots.psychologistId,
       psyName: psychologists.name,
+      psyGrade: psychologists.grade,
     })
     .from(slots)
     .innerJoin(psychologists, eq(slots.psychologistId, psychologists.id))
     .where(inArray(slots.clientRequestId, requestIds))
     .orderBy(asc(slots.startsAt));
   const upcoming = mySlots.filter((s) => s.status === "booked" && !isPast(s.startsAt, now));
+  // Кнопки оплаты видны, только когда настроен хотя бы один платёжный провайдер.
+  const payProviders = enabledProviders();
   // Прошедшее целиком: состоявшиеся, неявки и брони, где специалист ещё не
   // отметил итог, — свежие сверху.
   const past = mySlots
@@ -348,6 +353,13 @@ export default async function ClientCabinetPage() {
                       freeSlots={freeSlotsByPsy(s.psychologistId)}
                     />
                   </div>
+                  {!s.paidAt && gradePriceLabel(s.psyGrade) && (
+                    <PayButtons
+                      slotId={s.id}
+                      priceLabel={gradePriceLabel(s.psyGrade)!}
+                      providers={payProviders}
+                    />
+                  )}
                 </li>
               ))}
             </ul>
