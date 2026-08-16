@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
-import { db, psychologists, reviews, topics } from "@/db";
+import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
+import { db, psychologists, reviews, slots, topics } from "@/db";
+import { formatSlot, nowMsk } from "@/lib/datetime";
 import { gradePriceLabel } from "@/lib/grades";
 import { SiteFooter, SiteHeader } from "@/components/site";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata = { title: "Психологи — mipsy" };
 export const dynamic = "force-dynamic";
@@ -64,6 +64,39 @@ export default async function CatalogPage({
     }
     return true;
   });
+
+  // Ближайшие свободные окна: сильнейший CTA карточки (ресёрч katalog-ux) и
+  // порядок выдачи — специалисты с ближайшим временем выше.
+  const free =
+    all.length > 0
+      ? await db
+          .select({ psychologistId: slots.psychologistId, startsAt: slots.startsAt })
+          .from(slots)
+          .where(
+            and(
+              eq(slots.status, "free"),
+              gte(slots.startsAt, nowMsk()),
+              inArray(slots.psychologistId, all.map((p) => p.id)),
+            ),
+          )
+          .orderBy(asc(slots.startsAt))
+      : [];
+  const nearest = (id: number) => {
+    const s = free.filter((x) => x.psychologistId === id);
+    return s.length === 0 ? null : { startsAt: s[0].startsAt, count: s.length };
+  };
+  const sorted = [...list].sort((a, b) => {
+    const na = nearest(a.id)?.startsAt ?? "9999";
+    const nb = nearest(b.id)?.startsAt ?? "9999";
+    return na < nb ? -1 : na > nb ? 1 : 0;
+  });
+
+  // Первое предложение «О себе» — голос специалиста на карточке.
+  const firstSentence = (text: string | null) => {
+    if (!text) return null;
+    const s = text.trim().split(/(?<=[.!?])\s+/)[0] ?? "";
+    return s.length > 10 ? (s.length > 160 ? `${s.slice(0, 157)}…` : s) : null;
+  };
 
   const topicTitle = (slug: string) => topicList.find((t) => t.slug === slug)?.title ?? slug;
   const q = (patch: Record<string, string | undefined>) => {
@@ -167,63 +200,102 @@ export default async function CatalogPage({
             </Button>
           </div>
         ) : (
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {list.map((p) => (
-              <Link key={p.id} href={`/p/${p.slug}`}>
-                <Card className="h-full transition-colors hover:border-brand-400">
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-3">
-                      {p.photoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.photoUrl}
-                          alt={p.name}
-                          className="h-14 w-14 rounded-xl object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-brand-100 text-xl font-bold text-brand-700">
-                          {p.name.slice(0, 1)}
-                        </div>
-                      )}
-                      <div>
-                        <div className="font-semibold">{p.name}</div>
-                        <div className="text-sm text-neutral-500">{p.approach}</div>
+          <div className="mt-8 space-y-4">
+            {sorted.map((p) => {
+              const r = ratings.find((x) => x.psychologistId === p.id);
+              const near = nearest(p.id);
+              const say = firstSentence(p.about);
+              const themes = p.topicSlugs ?? [];
+              return (
+                // Компоновка (референс Ясно): фото-портрет → досье → колонка
+                // решения (цена, рейтинг, ближайшее окно, кнопка). Раскладка
+                // полей одинаковая во всех карточках — так их сравнивают.
+                <div
+                  key={p.id}
+                  className="flex flex-col gap-5 rounded-2xl border border-neutral-200 p-4 transition-colors hover:border-brand-400 sm:flex-row sm:p-5"
+                >
+                  <Link href={`/p/${p.slug}`} className="shrink-0">
+                    {p.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={p.photoUrl}
+                        alt={p.name}
+                        className="h-64 w-full rounded-xl object-cover sm:h-60 sm:w-52"
+                      />
+                    ) : (
+                      <div className="flex h-64 w-full items-center justify-center rounded-xl bg-brand-100 text-7xl font-bold text-brand-700 sm:h-60 sm:w-52">
+                        {p.name.slice(0, 1)}
                       </div>
+                    )}
+                  </Link>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <Link
+                        href={`/p/${p.slug}`}
+                        className="text-lg font-bold hover:text-brand-700"
+                      >
+                        {p.name}
+                      </Link>
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700"
+                        title="Дипломы и опыт проверены при модерации"
+                      >
+                        ✓ Диплом проверен
+                      </span>
                     </div>
-                    <div className="mt-3 text-sm text-neutral-600">
-                      {p.experienceYears != null && <>Опыт {p.experienceYears} лет · </>}
-                      {gradePriceLabel(p.grade) ?? "цена уточняется"}
+                    <div className="mt-1 text-sm text-neutral-600">
+                      {[p.approach, p.experienceYears != null ? `опыт ${p.experienceYears} лет` : null]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {(p.topicSlugs ?? []).slice(0, 3).map((s) => (
-                        <span
-                          key={s}
-                          className="rounded-full bg-brand-50 px-2.5 py-1 text-xs text-brand-800"
-                        >
+                    {say && (
+                      <p className="mt-3 line-clamp-2 text-sm text-neutral-600 italic">«{say}»</p>
+                    )}
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
+                      {themes.slice(0, 3).map((s) => (
+                        <span key={s} className="rounded-full bg-brand-50 px-2.5 py-1 text-brand-800">
                           {topicTitle(s)}
                         </span>
                       ))}
+                      {themes.length > 3 && (
+                        <span className="text-neutral-500">и ещё {themes.length - 3}</span>
+                      )}
                     </div>
-                    <div className="mt-3 flex items-center justify-between">
-                      {(() => {
-                        const r = ratings.find((x) => x.psychologistId === p.id);
-                        return r ? (
-                          <span className="text-sm">
-                            <span className="text-accent-500">★</span> {Number(r.avg).toFixed(1)}{" "}
-                            <span className="text-neutral-400">({r.count})</span>
-                          </span>
-                        ) : (
-                          <Badge variant="secondary">Новый специалист</Badge>
-                        );
-                      })()}
-                      <span className="text-sm font-medium text-accent-600">
-                        Выбрать время →
-                      </span>
+                  </div>
+
+                  <div className="flex shrink-0 flex-col gap-2.5 border-neutral-100 sm:w-52 sm:border-l sm:pl-5">
+                    <div className="text-sm font-semibold">
+                      Сессия 50 минут
+                      <div className="text-base">{gradePriceLabel(p.grade) ?? "цена уточняется"}</div>
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+                    <div className="text-sm">
+                      {r ? (
+                        <>
+                          <span className="text-accent-500">★</span> {Number(r.avg).toFixed(1)}{" "}
+                          <span className="text-neutral-400">({r.count})</span>
+                        </>
+                      ) : (
+                        <Badge variant="secondary">Новый специалист</Badge>
+                      )}
+                    </div>
+                    {near ? (
+                      <div className="text-xs font-medium text-emerald-700">
+                        Ближайшее время: {formatSlot(near.startsAt)}
+                        <div className="mt-0.5 font-normal text-neutral-500">
+                          {near.count} свободных окон
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-neutral-500">Свободных окон пока нет</div>
+                    )}
+                    <Button asChild size="sm" className="mt-auto sm:w-full">
+                      <Link href={`/p/${p.slug}`}>Выбрать время</Link>
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </main>
