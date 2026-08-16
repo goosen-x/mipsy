@@ -156,7 +156,7 @@ export default async function CatalogPreviewPage({
                   key={p.id}
                   className="flex flex-col gap-5 rounded-2xl border border-neutral-200 p-5 sm:flex-row"
                 >
-                  <Photo p={p} className="h-32 w-28 shrink-0 rounded-xl" />
+                  <Photo p={p} className="h-52 w-44 shrink-0 rounded-2xl" big />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <Link href={`/p/${p.slug}`} className="text-lg font-bold hover:text-brand-700">
@@ -226,7 +226,7 @@ export default async function CatalogPreviewPage({
               const day = nearestDay(p.id);
               return (
                 <div key={p.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center">
-                  <Photo p={p} className="h-16 w-16 shrink-0 rounded-xl" />
+                  <Photo p={p} className="h-28 w-28 shrink-0 rounded-xl" />
                   <div className="min-w-0 flex-1">
                     <Link href={`/p/${p.slug}`} className="font-bold hover:text-brand-700">
                       {p.name}
