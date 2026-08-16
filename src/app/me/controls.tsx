@@ -6,6 +6,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { BookingCalendar, type CalendarSlot } from "@/components/booking-calendar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatSlot } from "@/lib/datetime";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -206,11 +214,92 @@ export function BookingActions({
   const [mode, setMode] = useState<"idle" | "move">("idle");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Отмена и перенос — необратимые для клиента действия: всегда подтверждаются
+  // попапом; при <24ч в него добавляется предупреждение об удержании стоимости.
+  const [confirming, setConfirming] = useState<
+    null | { kind: "cancel" } | { kind: "move"; toId: number; toLabel: string }
+  >(null);
 
-  // <24ч до встречи: перенос и отмена возможны, но стоимость сессии
-  // удерживается — клиент подтверждает это явно.
   const LATE_WARNING =
-    "До встречи меньше 24 часов, поэтому стоимость сессии будет удержана — вы оплачиваете её специалисту, как проведённую. Продолжить?";
+    "До встречи меньше 24 часов, поэтому стоимость сессии будет удержана — вы оплачиваете её специалисту, как проведённую.";
+
+  function runCancel() {
+    startTransition(async () => {
+      const res = await cancelBooking(slotId, !canChange);
+      setConfirming(null);
+      if (!res.ok) setError(res.error ?? "Не получилось");
+      else {
+        toast.success(
+          canChange ? "Встреча отменена" : "Встреча отменена — стоимость сессии удерживается",
+        );
+        router.refresh();
+      }
+    });
+  }
+
+  function runMove(toId: number) {
+    startTransition(async () => {
+      const res = await rescheduleSlot(slotId, toId, !canChange);
+      setConfirming(null);
+      if (!res.ok) setError(res.error ?? "Не получилось перенести");
+      else {
+        setMode("idle");
+        toast.success("Встреча перенесена — психолог уже знает");
+        router.refresh();
+      }
+    });
+  }
+
+  const confirmDialog = (
+    <Dialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {confirming?.kind === "cancel" ? "Отменить встречу?" : "Перенести встречу?"}
+          </DialogTitle>
+          <DialogDescription asChild>
+            <div className="space-y-2">
+              {confirming?.kind === "cancel" ? (
+                <p>
+                  Встреча {formatSlot(startsAt)} будет отменена, окно освободится, психолог получит
+                  уведомление.
+                </p>
+              ) : (
+                <p>
+                  Встреча {formatSlot(startsAt)} переедет на{" "}
+                  <span className="font-medium text-neutral-900">
+                    {confirming?.kind === "move" ? confirming.toLabel : ""}
+                  </span>
+                  . Психолог получит уведомление, придёт письмо с новым приглашением.
+                </p>
+              )}
+              {!canChange && (
+                <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900">{LATE_WARNING}</p>
+              )}
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" disabled={pending} onClick={() => setConfirming(null)}>
+            Оставить как есть
+          </Button>
+          <Button
+            variant={confirming?.kind === "cancel" ? "destructive" : "default"}
+            disabled={pending}
+            onClick={() =>
+              confirming?.kind === "cancel" ? runCancel() : confirming && runMove(confirming.toId)
+            }
+          >
+            {pending
+              ? "Сохраняем…"
+              : confirming?.kind === "cancel"
+                ? "Да, отменить"
+                : "Да, перенести"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 
   if (mode === "move") {
     return (
@@ -243,14 +332,13 @@ export function BookingActions({
               slots={freeSlots}
               submitLabel="Перенести встречу"
               onBook={async (toId) => {
-                if (!canChange && !confirm(LATE_WARNING)) return { ok: true };
-                const res = await rescheduleSlot(slotId, toId, !canChange);
-                if (res.ok) {
-                  setMode("idle");
-                  toast.success("Встреча перенесена — психолог уже знает");
-                  router.refresh();
-                }
-                return res;
+                const to = freeSlots.find((s) => s.id === toId);
+                setConfirming({
+                  kind: "move",
+                  toId,
+                  toLabel: to ? formatSlot(to.startsAt) : "выбранное время",
+                });
+                return { ok: true };
               }}
             />
             <p className="mt-3 text-xs text-neutral-500">
@@ -266,6 +354,7 @@ export function BookingActions({
             </p>
           </>
         )}
+        {confirmDialog}
       </div>
     );
   }
@@ -280,25 +369,12 @@ export function BookingActions({
           variant="ghost"
           size="sm"
           disabled={pending}
-          onClick={() => {
-            if (!canChange && !confirm(LATE_WARNING)) return;
-            startTransition(async () => {
-              const res = await cancelBooking(slotId, !canChange);
-              if (!res.ok) setError(res.error ?? "Не получилось");
-              else {
-                toast.success(
-                  canChange
-                    ? "Встреча отменена"
-                    : "Встреча отменена — стоимость сессии удерживается",
-                );
-                router.refresh();
-              }
-            });
-          }}
+          onClick={() => setConfirming({ kind: "cancel" })}
         >
           {pending ? "Отменяем…" : "Отменить"}
         </Button>
       </div>
+      {confirmDialog}
       {!canChange && (
         <p className="max-w-64 text-right text-xs text-neutral-500">
           До встречи меньше суток: перенос и отмена — с удержанием стоимости сессии, спорный
