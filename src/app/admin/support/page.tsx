@@ -5,6 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { TicketControls } from "../controls";
 import { requireAdmin } from "../require-admin";
 import { formatDbTime } from "@/lib/datetime";
+import { ReplyForm } from "./reply-form";
+
+const ROLE_LABELS: Record<string, string> = {
+  client: "от клиента",
+  psychologist: "от психолога",
+  guest: "с сайта, без входа",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -45,13 +52,14 @@ export default async function SupportPage() {
                 <Badge variant={t.kind === "complaint" ? "destructive" : "secondary"}>
                   {t.kind === "complaint" ? "жалоба" : "вопрос"}
                 </Badge>
-                <span>{t.fromRole === "client" ? "от клиента" : "от психолога"}</span>
+                <span>{ROLE_LABELS[t.fromRole] ?? t.fromRole}</span>
                 <span className="font-medium text-neutral-900">{t.name}</span>
                 {t.phone && (
                   <a href={`tel:${t.phone}`} className="text-brand-700 underline">
                     {t.phone}
                   </a>
                 )}
+                {t.email && <span>{t.email}</span>}
                 {t.clientRequestId && (
                   <Link
                     href={`/admin/requests/${t.clientRequestId}`}
@@ -63,13 +71,25 @@ export default async function SupportPage() {
                 <span>{formatDbTime(t.createdAt)}</span>
               </div>
               <p className="mt-3 whitespace-pre-line">{t.body}</p>
-              <div className="mt-4">
+              {t.operatorNotes && (
+                <p className="mt-2 text-xs whitespace-pre-line text-neutral-500">
+                  {t.operatorNotes}
+                </p>
+              )}
+              <div className="mt-4 space-y-3">
                 <TicketControls
                   id={t.id}
                   status={t.status}
                   notes={t.operatorNotes ?? ""}
                   statusLabels={STATUS_LABELS}
                 />
+                {t.email ? (
+                  <ReplyForm ticketId={t.id} email={t.email} />
+                ) : (
+                  <p className="text-xs text-neutral-400">
+                    Почты нет — ответить можно только по телефону.
+                  </p>
+                )}
               </div>
             </li>
           ))}

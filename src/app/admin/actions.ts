@@ -356,6 +356,52 @@ export async function updateTicket(
   return { ok: true };
 }
 
+/**
+ * Ответ на обращение письмом. Текст уходит на почту из тикета, копия остаётся
+ * в заметках оператора; новое обращение при этом переходит «в работу».
+ */
+export async function replyTicket(
+  id: number,
+  text: string,
+): Promise<{ ok: boolean; error?: string }> {
+  await guard();
+  const body = String(text ?? "").trim().slice(0, 4000);
+  if (body.length < 2) return { ok: false, error: "Напишите текст ответа" };
+
+  const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, id));
+  if (!ticket) return { ok: false, error: "Обращение не найдено" };
+  if (!ticket.email) return { ok: false, error: "У обращения нет почты — свяжитесь по телефону" };
+
+  const res = await notify({
+    kind: "support",
+    recipientRole: ticket.fromRole === "psychologist" ? "psychologist" : "client",
+    recipientName: ticket.name,
+    recipientPhone: ticket.phone,
+    recipientEmail: ticket.email,
+    subject: subjects.support,
+    body: `${body}\n\n— Поддержка mipsy\nВаше обращение: «${ticket.body.slice(0, 200)}${ticket.body.length > 200 ? "…" : ""}»`,
+    clientRequestId: ticket.clientRequestId ?? undefined,
+    psychologistId: ticket.psychologistId ?? undefined,
+  });
+
+  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+  const note = `[ответ ${stamp}] ${body}`;
+  await db
+    .update(supportTickets)
+    .set({
+      operatorNotes: ticket.operatorNotes ? `${ticket.operatorNotes}\n${note}` : note,
+      ...(ticket.status === "new" ? { status: "in_progress" } : {}),
+    })
+    .where(eq(supportTickets.id, id));
+
+  await logAdmin("ответил на обращение", { type: "ticket", id, detail: ticket.email });
+  revalidatePath("/admin/support");
+  if (!res.ok) {
+    return { ok: false, error: "Письмо не ушло — текст сохранён в заметках, видно в Уведомлениях" };
+  }
+  return { ok: true };
+}
+
 export async function markErrorsSeen(): Promise<{ ok: boolean }> {
   await guard();
   await db.update(errorLog).set({ seen: true }).where(eq(errorLog.seen, false));

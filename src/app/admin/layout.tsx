@@ -18,7 +18,6 @@ const NAV = [
   ["/admin/errors", "Ошибки"],
   ["/admin/audit", "Журнал"],
   ["/admin/team", "Команда"],
-  ["/admin/report", "Отчёт"],
 ] as const;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

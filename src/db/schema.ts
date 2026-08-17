@@ -176,7 +176,7 @@ export const supportTickets = sqliteTable("support_tickets", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-  fromRole: text("from_role").notNull(), // client | psychologist
+  fromRole: text("from_role").notNull(), // client | psychologist | guest (публичная форма /support)
   kind: text("kind").notNull(), // question | complaint
   name: text("name").notNull(),
   phone: text("phone"),

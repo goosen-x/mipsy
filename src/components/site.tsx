@@ -90,6 +90,9 @@ export function SiteFooter() {
           <Link href="/crisis" className="hover:text-brand-700">
             Срочная помощь
           </Link>
+          <Link href="/support" className="hover:text-brand-700">
+            Поддержка
+          </Link>
         </div>
       </div>
     </footer>

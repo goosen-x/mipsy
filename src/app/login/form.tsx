@@ -115,6 +115,13 @@ export function LoginForm({ next, sender }: { next?: string; sender?: string | n
                 заявке психолога.
               </li>
               <li>Письмо приходит и тем, кто у нас впервые, — отдельно регистрироваться не нужно.</li>
+              <li>
+                Так и не пришло —{" "}
+                <Link href="/support" className="font-medium text-brand-700 underline">
+                  напишите в поддержку
+                </Link>
+                , разберёмся и откроем доступ.
+              </li>
             </ul>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button

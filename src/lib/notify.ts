@@ -19,7 +19,8 @@ export type NotifyKind =
   | "paid"
   | "rematch"
   | "no_show"
-  | "login";
+  | "login"
+  | "support";
 
 type NotifyInput = {
   kind: NotifyKind;
@@ -225,4 +226,5 @@ export const subjects = {
   noShow: "mipsy: встреча не состоялась",
   moderation: "mipsy: решение по вашей заявке",
   login: "mipsy: код для входа",
+  support: "mipsy: ответ поддержки",
 };

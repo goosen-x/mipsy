@@ -94,7 +94,6 @@ flowchart LR
   IN --> AUD["/admin/audit — именной журнал действий"]
   IN --> ST["/admin/stats — воронка и загрузка расписания"]
   IN --> TM["/admin/team — роли админов"]
-  IN --> RP["/admin/report — отчёт аудита 15.08"]
   R --> BSC["bookSlotForClient() / freeSlot()<br/>записать клиента руками"]
 ```
 
