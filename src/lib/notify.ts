@@ -180,8 +180,9 @@ export const messages = {
     `Встреча с ${psyName} перенесена на ${formatSlot(startsAt)}. Подробности в кабинете: ${SITE_URL}/me`,
   clientCancelled: (psyName: string, startsAt: string) =>
     `Встреча с ${psyName} ${formatSlot(startsAt)} отменена. Выбрать другое время: ${SITE_URL}/me`,
+  // Не «завтра в HH:MM»: у встреч сразу после полуночи напоминание уходит в тот же день.
   clientReminder: (psyName: string, startsAt: string) =>
-    `Напоминаем о встрече с ${psyName} завтра в ${startsAt.split("T")[1]} ${TZ_SHORT}.`,
+    `Напоминаем о встрече с ${psyName} — ${formatSlot(startsAt)}. Подробности в кабинете: ${SITE_URL}/me`,
   clientReview: (psyName: string) =>
     `Как прошла встреча с ${psyName}? Оцените её в личном кабинете — это помогает другим людям выбрать специалиста: ${SITE_URL}/me`,
   psyBooked: (clientName: string, startsAt: string) =>
