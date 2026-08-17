@@ -18,7 +18,7 @@ import { bookSlotForRequest, freeBookedSlotsOf, psyContact, releaseSlot } from "
 import { retirePsychologist } from "@/lib/matching";
 import { isEmail, normalizeEmail } from "@/lib/auth-core";
 import { gradeTitle, isGrade } from "@/lib/grades";
-import { meetingInvite, messages, notify, psyMeetingInvite, subjects } from "@/lib/notify";
+import { meetingCancel, meetingInvite, messages, notify, psyMeetingInvite, subjects } from "@/lib/notify";
 import { logAdmin } from "@/lib/logs";
 import { errorLog } from "@/db";
 
@@ -46,6 +46,17 @@ async function retireAndNotify(psychologistId: number): Promise<number> {
       recipientEmail: c.email,
       subject: subjects.rematch,
       body: messages.clientPsyRetired(),
+      attachments: c.freedSlot
+        ? [
+            meetingCancel({
+              slotId: c.freedSlot.id,
+              clientRequestId: c.requestId,
+              startsAt: c.freedSlot.startsAt,
+              durationMin: c.freedSlot.durationMin,
+              forRole: "client",
+            }),
+          ]
+        : undefined,
       clientRequestId: c.requestId,
       psychologistId,
       slotId: c.freedSlot?.id,
@@ -138,6 +149,16 @@ export async function setAccountHidden(
           recipientEmail: freed.psy.email,
           subject: subjects.cancelled,
           body: messages.psySlotFreed(req.name, freed.slot.startsAt),
+          attachments: [
+            meetingCancel({
+              slotId: freed.slot.id,
+              clientRequestId: req.id,
+              startsAt: freed.slot.startsAt,
+              durationMin: freed.slot.durationMin,
+              forRole: "psychologist",
+              otherName: req.name,
+            }),
+          ],
           clientRequestId: req.id,
           psychologistId: freed.psy.id,
           slotId: freed.slot.id,
@@ -448,6 +469,7 @@ export async function bookSlotForClient(
       attachments: [
         meetingInvite({
           slotId,
+          clientRequestId: requestId,
           startsAt: slot.startsAt,
           durationMin: slot.durationMin,
           psyName: psy.name,
@@ -469,6 +491,7 @@ export async function bookSlotForClient(
       attachments: [
         psyMeetingInvite({
           slotId,
+          clientRequestId: requestId,
           startsAt: slot.startsAt,
           durationMin: slot.durationMin,
           clientName: client.name,
@@ -513,6 +536,16 @@ export async function freeSlot(
       recipientEmail: client.email,
       subject: subjects.cancelled,
       body: messages.clientCancelled(psy?.name ?? "специалистом", slot.startsAt),
+      attachments: [
+        meetingCancel({
+          slotId,
+          clientRequestId: requestId,
+          startsAt: slot.startsAt,
+          durationMin: slot.durationMin,
+          forRole: "client",
+          otherName: psy?.name,
+        }),
+      ],
       clientRequestId: requestId,
       psychologistId: slot.psychologistId,
       slotId,
@@ -527,6 +560,16 @@ export async function freeSlot(
       recipientEmail: psy.email,
       subject: subjects.cancelled,
       body: messages.psySlotFreed(client?.name ?? "клиент", slot.startsAt),
+      attachments: [
+        meetingCancel({
+          slotId,
+          clientRequestId: requestId,
+          startsAt: slot.startsAt,
+          durationMin: slot.durationMin,
+          forRole: "psychologist",
+          otherName: client?.name,
+        }),
+      ],
       clientRequestId: requestId,
       psychologistId: psy.id,
       slotId,

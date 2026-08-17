@@ -2,7 +2,7 @@ import { and, eq, gte, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { clientRequests, db, psychologists, slots } from "@/db";
 import { mskPlusHours } from "@/lib/datetime";
-import { buildFeed } from "@/lib/ics";
+import { bookingUid, buildFeed } from "@/lib/ics";
 
 const SITE_URL = process.env.SITE_URL ?? "https://mipsy.mskacademy.ru";
 
@@ -33,6 +33,7 @@ export async function GET(
       durationMin: slots.durationMin,
       status: slots.status,
       meetingLink: slots.meetingLink,
+      clientRequestId: slots.clientRequestId,
       clientName: clientRequests.name,
     })
     .from(slots)
@@ -49,7 +50,8 @@ export async function GET(
   const feed = buildFeed({
     name: "mipsy — встречи",
     events: rows.map((s) => ({
-      uid: `mipsy-slot-${s.id}@mipsy.mskacademy.ru`,
+      // Тот же UID, что у приглашения-вложения: подписка и письмо не плодят дублей.
+      uid: bookingUid(s.id, s.clientRequestId),
       startsAt: s.startsAt,
       durationMin: s.durationMin,
       summary: `Сессия: ${s.clientName ?? "клиент"} (mipsy)`,

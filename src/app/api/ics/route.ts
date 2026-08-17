@@ -2,7 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db, psychologists, slots } from "@/db";
 import { accountRequestIds, currentAccountId } from "@/lib/auth";
-import { buildIcs } from "@/lib/ics";
+import { bookingUid, buildIcs } from "@/lib/ics";
 
 const SITE_URL = process.env.SITE_URL ?? "https://mipsy.mskacademy.ru";
 
@@ -23,6 +23,7 @@ export async function GET(req: Request) {
       startsAt: slots.startsAt,
       durationMin: slots.durationMin,
       meetingLink: slots.meetingLink,
+      clientRequestId: slots.clientRequestId,
       psyName: psychologists.name,
     })
     .from(slots)
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
   if (!row) return new NextResponse("Not found", { status: 404 });
 
   const ics = buildIcs({
-    uid: `mipsy-slot-${slotId}@mipsy.mskacademy.ru`,
+    uid: bookingUid(slotId, row.clientRequestId),
     startsAt: row.startsAt,
     durationMin: row.durationMin,
     summary: `Встреча с психологом ${row.psyName} (mipsy)`,

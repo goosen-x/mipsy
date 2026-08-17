@@ -2,7 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db, notifications } from "@/db";
 import { formatSlot, TZ_SHORT } from "./datetime";
-import { buildIcs } from "./ics";
+import { bookingUid, buildCancelIcs, buildIcs } from "./ics";
 import { mailConfigured, sendMail, type MailAttachment } from "./mail";
 import { logError } from "./logs";
 
@@ -122,6 +122,7 @@ export async function notify(
 /** Приглашение на встречу вложением — «автоматическое формирование приглашений» из ТЗ. */
 export function meetingInvite(params: {
   slotId: number;
+  clientRequestId: number | null;
   startsAt: string;
   durationMin: number;
   psyName: string;
@@ -131,7 +132,7 @@ export function meetingInvite(params: {
     filename: "vstrecha-mipsy.ics",
     contentType: "text/calendar; charset=utf-8; method=REQUEST",
     content: buildIcs({
-      uid: `mipsy-slot-${params.slotId}@mipsy.mskacademy.ru`,
+      uid: bookingUid(params.slotId, params.clientRequestId),
       startsAt: params.startsAt,
       durationMin: params.durationMin,
       summary: `Встреча с психологом ${params.psyName} (mipsy)`,
@@ -146,6 +147,7 @@ export function meetingInvite(params: {
 /** То же приглашение глазами психолога: в его календаре событие — «сессия с клиентом». */
 export function psyMeetingInvite(params: {
   slotId: number;
+  clientRequestId: number | null;
   startsAt: string;
   durationMin: number;
   clientName: string;
@@ -155,7 +157,7 @@ export function psyMeetingInvite(params: {
     filename: "sessiya-mipsy.ics",
     contentType: "text/calendar; charset=utf-8; method=REQUEST",
     content: buildIcs({
-      uid: `mipsy-slot-${params.slotId}@mipsy.mskacademy.ru`,
+      uid: bookingUid(params.slotId, params.clientRequestId),
       startsAt: params.startsAt,
       durationMin: params.durationMin,
       summary: `Сессия: ${params.clientName} (mipsy)`,
@@ -163,6 +165,35 @@ export function psyMeetingInvite(params: {
         ? `Ссылка на встречу: ${params.meetingLink}\nКабинет: ${SITE_URL}/cab`
         : `Кабинет: ${SITE_URL}/cab`,
       url: params.meetingLink ?? `${SITE_URL}/cab`,
+    }),
+  };
+}
+
+/**
+ * Отзыв приглашения при отмене или переносе — тот же UID, METHOD:CANCEL.
+ * Вкладывается в письмо об отмене; календарь получателя убирает событие.
+ */
+export function meetingCancel(params: {
+  slotId: number;
+  clientRequestId: number | null;
+  startsAt: string;
+  durationMin: number;
+  forRole: "client" | "psychologist";
+  otherName?: string;
+}): MailAttachment {
+  const summary =
+    params.forRole === "client"
+      ? `Встреча с психологом${params.otherName ? ` ${params.otherName}` : ""} (mipsy)`
+      : `Сессия: ${params.otherName ?? "клиент"} (mipsy)`;
+  return {
+    filename: "otmena-mipsy.ics",
+    contentType: "text/calendar; charset=utf-8; method=CANCEL",
+    content: buildCancelIcs({
+      uid: bookingUid(params.slotId, params.clientRequestId),
+      startsAt: params.startsAt,
+      durationMin: params.durationMin,
+      summary,
+      description: "Встреча отменена.",
     }),
   };
 }

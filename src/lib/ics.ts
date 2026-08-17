@@ -26,7 +26,16 @@ export type IcsEvent = {
   url?: string;
 };
 
-function eventLines(e: IcsEvent, alarmText?: string): (string | null)[] {
+/**
+ * UID события — «бронь», а не «окно»: слоты переиспользуются (отмена
+ * освобождает окно для другого клиента), и отзыв старого события с UID слота
+ * убивал бы событие новой брони в том же окне.
+ */
+export function bookingUid(slotId: number, clientRequestId: number | null): string {
+  return `mipsy-slot-${slotId}-r${clientRequestId ?? 0}@mipsy.mskacademy.ru`;
+}
+
+function eventLines(e: IcsEvent, opts: { alarmText?: string; cancelled?: boolean } = {}): (string | null)[] {
   return [
     "BEGIN:VEVENT",
     `UID:${e.uid}`,
@@ -34,15 +43,18 @@ function eventLines(e: IcsEvent, alarmText?: string): (string | null)[] {
     `DTSTAMP:${toUtcStamp(e.startsAt)}`,
     `DTSTART:${toUtcStamp(e.startsAt)}`,
     `DTEND:${toUtcStamp(e.startsAt, e.durationMin)}`,
+    // Отзыв должен «победить» исходное приглашение (SEQUENCE:0 по умолчанию).
+    opts.cancelled ? "SEQUENCE:1" : null,
+    opts.cancelled ? "STATUS:CANCELLED" : null,
     `SUMMARY:${escapeText(e.summary)}`,
     `DESCRIPTION:${escapeText(e.description)}`,
     e.url ? `URL:${e.url}` : null,
-    ...(alarmText
+    ...(opts.alarmText
       ? [
           "BEGIN:VALARM",
           "TRIGGER:-PT1H",
           "ACTION:DISPLAY",
-          `DESCRIPTION:${escapeText(alarmText)}`,
+          `DESCRIPTION:${escapeText(opts.alarmText)}`,
           "END:VALARM",
         ]
       : []),
@@ -57,7 +69,25 @@ export function buildIcs(params: IcsEvent): string {
     "PRODID:-//mipsy//RU",
     "CALSCALE:GREGORIAN",
     "METHOD:REQUEST",
-    ...eventLines(params, "Встреча с психологом через час"),
+    ...eventLines(params, { alarmText: "Встреча с психологом через час" }),
+    "END:VCALENDAR",
+  ].filter(Boolean);
+  return lines.join("\r\n") + "\r\n";
+}
+
+/**
+ * Отзыв приглашения (METHOD:CANCEL) с тем же UID: календарь получателя
+ * помечает событие отменённым или убирает его. Шлём при отмене и переносе —
+ * иначе в календаре навсегда остаётся встреча, которой не будет.
+ */
+export function buildCancelIcs(params: IcsEvent): string {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//mipsy//RU",
+    "CALSCALE:GREGORIAN",
+    "METHOD:CANCEL",
+    ...eventLines(params, { cancelled: true }),
     "END:VCALENDAR",
   ].filter(Boolean);
   return lines.join("\r\n") + "\r\n";
@@ -77,7 +107,7 @@ export function buildFeed(params: { name: string; events: IcsEvent[] }): string 
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeText(params.name)}`,
     "X-PUBLISHED-TTL:PT1H",
-    ...params.events.flatMap((e) => eventLines(e, "Сессия через час")),
+    ...params.events.flatMap((e) => eventLines(e, { alarmText: "Сессия через час" })),
     "END:VCALENDAR",
   ].filter(Boolean);
   return lines.join("\r\n") + "\r\n";

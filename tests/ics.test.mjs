@@ -1,7 +1,7 @@
 // iCalendar: приглашение при брони и фид-подписка для психолога.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildFeed, buildIcs } from "../src/lib/ics.ts";
+import { bookingUid, buildCancelIcs, buildFeed, buildIcs } from "../src/lib/ics.ts";
 
 test("приглашение переводит московское время в UTC", () => {
   const ics = buildIcs({
@@ -51,4 +51,24 @@ test("пустой фид — валидный календарь без соб�
   assert.match(feed, /BEGIN:VCALENDAR/);
   assert.match(feed, /END:VCALENDAR/);
   assert.equal(feed.match(/BEGIN:VEVENT/g), null);
+});
+
+test("отзыв приглашения: METHOD:CANCEL с тем же UID и SEQUENCE выше исходного", () => {
+  const uid = bookingUid(201, 7);
+  const cancel = buildCancelIcs({
+    uid,
+    startsAt: "2026-08-20T15:00",
+    durationMin: 50,
+    summary: "Встреча",
+    description: "Встреча отменена.",
+  });
+  assert.match(cancel, /METHOD:CANCEL/);
+  assert.match(cancel, /STATUS:CANCELLED/);
+  assert.match(cancel, /SEQUENCE:1/, "выше SEQUENCE:0 исходного приглашения");
+  assert.ok(cancel.includes(`UID:${uid}`), "UID совпадает с приглашением — календарь найдёт событие");
+});
+
+test("UID уникален на бронь, а не на окно: слот переиспользуется другим клиентом", () => {
+  assert.notEqual(bookingUid(201, 7), bookingUid(201, 9), "та же встреча у разных клиентов — разные события");
+  assert.equal(bookingUid(201, 7), bookingUid(201, 7), "детерминирован");
 });

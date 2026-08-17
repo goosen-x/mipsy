@@ -13,7 +13,7 @@ import {
   takeSlot,
 } from "@/lib/booking";
 import { deactivateMatches } from "@/lib/matching";
-import { meetingInvite, messages, notify, psyMeetingInvite, subjects } from "@/lib/notify";
+import { meetingCancel, meetingInvite, messages, notify, psyMeetingInvite, subjects } from "@/lib/notify";
 
 type Client = { id: number; name: string; phone: string | null; email: string | null };
 
@@ -106,6 +106,7 @@ export async function bookSlot(slotId: number): Promise<{ ok: boolean; error?: s
     attachments: [
       meetingInvite({
         slotId,
+        clientRequestId: c.id,
         startsAt: slot.startsAt,
         durationMin: slot.durationMin,
         psyName: psy.name,
@@ -127,6 +128,7 @@ export async function bookSlot(slotId: number): Promise<{ ok: boolean; error?: s
     attachments: [
       psyMeetingInvite({
         slotId,
+        clientRequestId: c.id,
         startsAt: slot.startsAt,
         durationMin: slot.durationMin,
         clientName: c.name,
@@ -158,8 +160,11 @@ export async function rescheduleSlot(
     allowLate,
   });
   if (!moved.ok) return moved;
-  const { to, psy } = moved;
+  const { from, to, psy } = moved;
 
+  // К письму о переносе — два вложения: отзыв старого события (METHOD:CANCEL,
+  // UID прежней брони) и приглашение на новое время. Иначе в календаре
+  // получателя остаются обе встречи.
   await notify({
     kind: "rescheduled",
     recipientRole: "client",
@@ -169,8 +174,17 @@ export async function rescheduleSlot(
     subject: subjects.rescheduled,
     body: messages.clientRescheduled(psy.name, to.startsAt),
     attachments: [
+      meetingCancel({
+        slotId: from.id,
+        clientRequestId: c.id,
+        startsAt: from.startsAt,
+        durationMin: from.durationMin,
+        forRole: "client",
+        otherName: psy.name,
+      }),
       meetingInvite({
         slotId: toSlotId,
+        clientRequestId: c.id,
         startsAt: to.startsAt,
         durationMin: to.durationMin,
         psyName: psy.name,
@@ -192,8 +206,17 @@ export async function rescheduleSlot(
       ? messages.psyRescheduledLate(c.name, to.startsAt)
       : messages.psyRescheduled(c.name, to.startsAt),
     attachments: [
+      meetingCancel({
+        slotId: from.id,
+        clientRequestId: c.id,
+        startsAt: from.startsAt,
+        durationMin: from.durationMin,
+        forRole: "psychologist",
+        otherName: c.name,
+      }),
       psyMeetingInvite({
         slotId: toSlotId,
+        clientRequestId: c.id,
         startsAt: to.startsAt,
         durationMin: to.durationMin,
         clientName: c.name,
@@ -236,11 +259,46 @@ export async function cancelBooking(
       body: cancelled.late
         ? messages.psyCancelledLate(c.name, cancelled.slot.startsAt)
         : messages.psyCancelled(c.name, cancelled.slot.startsAt),
+      attachments: [
+        meetingCancel({
+          slotId,
+          clientRequestId: c.id,
+          startsAt: cancelled.slot.startsAt,
+          durationMin: cancelled.slot.durationMin,
+          forRole: "psychologist",
+          otherName: c.name,
+        }),
+      ],
       clientRequestId: c.id,
       psychologistId: psy.id,
       slotId,
     });
   }
+
+  // Подтверждение клиенту: он и так знает об отмене, но письмо несёт отзыв
+  // события — иначе встреча остаётся висеть в его календаре.
+  await notify({
+    kind: "cancelled",
+    recipientRole: "client",
+    recipientName: c.name,
+    recipientPhone: c.phone,
+    recipientEmail: c.email,
+    subject: subjects.cancelled,
+    body: messages.clientCancelled(cancelled.psy?.name ?? "специалистом", cancelled.slot.startsAt),
+    attachments: [
+      meetingCancel({
+        slotId,
+        clientRequestId: c.id,
+        startsAt: cancelled.slot.startsAt,
+        durationMin: cancelled.slot.durationMin,
+        forRole: "client",
+        otherName: cancelled.psy?.name,
+      }),
+    ],
+    clientRequestId: c.id,
+    psychologistId: cancelled.slot.psychologistId,
+    slotId,
+  });
 
   revalidatePath("/me");
   return { ok: true };
@@ -269,6 +327,16 @@ export async function requestRematch(reason: string): Promise<{ ok: boolean; err
       recipientEmail: freed.psy.email,
       subject: subjects.cancelled,
       body: messages.psyCancelled(c.name, freed.slot.startsAt),
+      attachments: [
+        meetingCancel({
+          slotId: freed.slot.id,
+          clientRequestId: c.id,
+          startsAt: freed.slot.startsAt,
+          durationMin: freed.slot.durationMin,
+          forRole: "psychologist",
+          otherName: c.name,
+        }),
+      ],
       clientRequestId: c.id,
       psychologistId: freed.psy.id,
       slotId: freed.slot.id,

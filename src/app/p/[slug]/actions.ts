@@ -100,6 +100,7 @@ export async function bookFirstSession(
     attachments: [
       meetingInvite({
         slotId,
+        clientRequestId: req.id,
         startsAt: slot.startsAt,
         durationMin: slot.durationMin,
         psyName: psy.name,
@@ -121,6 +122,7 @@ export async function bookFirstSession(
     attachments: [
       psyMeetingInvite({
         slotId,
+        clientRequestId: req.id,
         startsAt: slot.startsAt,
         durationMin: slot.durationMin,
         clientName: name,
