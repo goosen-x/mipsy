@@ -310,4 +310,6 @@ export const payments = sqliteTable("payments", {
   providerPaymentId: text("provider_payment_id"), // id на стороне провайдера
   status: text("status").notNull().default("pending"), // pending | succeeded | canceled
   testMode: integer("test_mode", { mode: "boolean" }).notNull().default(false),
+  // Когда платформа выплатила деньги психологу; ставит оператор в /admin/payments.
+  paidOutAt: text("paid_out_at"),
 });

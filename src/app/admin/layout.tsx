@@ -13,6 +13,7 @@ const NAV = [
   ["/admin/reviews", "Отзывы"],
   ["/admin/support", "Поддержка"],
   ["/admin/notifications", "Уведомления"],
+  ["/admin/payments", "Оплаты"],
   ["/admin/stats", "Аналитика"],
   ["/admin/errors", "Ошибки"],
   ["/admin/audit", "Журнал"],

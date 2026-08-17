@@ -2,7 +2,7 @@ import { and, eq, gte, inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 // Расширения в путях обязательны: модуль импортируют и Next, и node --test.
 import * as schema from "../db/schema.ts";
-import { matches, psychologists, slots } from "../db/schema.ts";
+import { matches, payments, psychologists, slots } from "../db/schema.ts";
 import { canClientChange, isPast, nowMsk } from "./datetime.ts";
 
 /**
@@ -275,6 +275,19 @@ export async function rescheduleClientBooking(
   // Оплата привязана к сессии, а не к окну: при переносе она едет следом.
   if (from.paidAt) {
     await db.update(slots).set({ paidAt: from.paidAt }).where(eq(slots.id, taken.slot.id));
+  }
+  // Платежи через платформу тоже: иначе реестр в /admin/payments увидит платёж
+  // на освобождённом окне и решит, что встреча отменена. Сужаем по плательщику —
+  // на старом окне могут висеть платежи прежних броней других клиентов.
+  const [owner] = await db
+    .select({ accountId: schema.clientRequests.accountId })
+    .from(schema.clientRequests)
+    .where(eq(schema.clientRequests.id, from.clientRequestId));
+  if (owner?.accountId) {
+    await db
+      .update(payments)
+      .set({ slotId: taken.slot.id })
+      .where(and(eq(payments.slotId, from.id), eq(payments.accountId, owner.accountId)));
   }
   return { ok: true, from, to: taken.slot, psy, late };
 }
