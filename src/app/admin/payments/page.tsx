@@ -1,5 +1,5 @@
 import { desc, eq } from "drizzle-orm";
-import { accounts, db, payments, psychologists, slots } from "@/db";
+import { accounts, db, paymentLog, payments, psychologists, slots } from "@/db";
 import { Badge } from "@/components/ui/badge";
 import { formatDbTime, formatSlot, isPast } from "@/lib/datetime";
 import { requireAdmin } from "../require-admin";
@@ -39,6 +39,8 @@ export default async function PaymentsPage() {
     .innerJoin(psychologists, eq(slots.psychologistId, psychologists.id))
     .leftJoin(accounts, eq(payments.accountId, accounts.id))
     .orderBy(desc(payments.id));
+
+  const events = await db.select().from(paymentLog).orderBy(desc(paymentLog.id)).limit(50);
 
   const now = new Date();
   const succeeded = rows.filter((r) => r.payment.status === "succeeded");
@@ -222,6 +224,39 @@ export default async function PaymentsPage() {
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      <section className="rounded-2xl bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold">Журнал событий</h2>
+        <p className="mt-1 text-sm text-neutral-500">
+          Каждый шаг платежа: создание, вебхуки провайдеров (включая отклонённые), проверка и
+          отметка оплаты. Последние 50 записей, свежие сверху.
+        </p>
+        {events.length === 0 ? (
+          <p className="mt-4 text-sm text-neutral-400">Событий ещё не было.</p>
+        ) : (
+          <ul className="mt-4 space-y-1 text-sm">
+            {events.map((e) => (
+              <li key={e.id} className="flex flex-wrap gap-x-2 border-b border-neutral-100 py-1.5">
+                <span className="whitespace-nowrap text-neutral-400">
+                  {formatDbTime(e.createdAt)}
+                </span>
+                {e.paymentId !== null && (
+                  <span className="whitespace-nowrap text-neutral-400">№{e.paymentId}</span>
+                )}
+                {e.provider && (
+                  <span className="whitespace-nowrap text-neutral-400">
+                    {PROVIDER_LABELS[e.provider] ?? e.provider}
+                  </span>
+                )}
+                <span className={e.event.includes("отклон") ? "text-amber-700" : ""}>
+                  {e.event}
+                </span>
+                {e.detail && <span className="text-neutral-500">· {e.detail}</span>}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>

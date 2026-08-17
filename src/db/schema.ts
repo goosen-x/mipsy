@@ -313,3 +313,19 @@ export const payments = sqliteTable("payments", {
   // Когда платформа выплатила деньги психологу; ставит оператор в /admin/payments.
   paidOutAt: text("paid_out_at"),
 });
+
+/**
+ * Журнал платёжных событий — каждый шаг платежа от создания до отметки на
+ * брони, включая отклонённые вебхуки. payment_id без FK и nullable: мусорный
+ * вебхук с несуществующим счётом тоже должен оставить след.
+ */
+export const paymentLog = sqliteTable("payment_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  paymentId: integer("payment_id"),
+  provider: text("provider"),
+  event: text("event").notNull(),
+  detail: text("detail"),
+});

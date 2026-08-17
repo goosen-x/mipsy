@@ -5,6 +5,7 @@ import { clientRequests, db, payments, psychologists, slots } from "@/db";
 import { currentAccount } from "@/lib/auth";
 import { formatSlot } from "@/lib/datetime";
 import { GRADES, isGrade } from "@/lib/grades";
+import { logPayment } from "@/lib/payment-log";
 import {
   cloudpaymentsConfig,
   createYookassaPayment,
@@ -62,6 +63,11 @@ export async function startPayment(slotId: number, provider: Provider): Promise<
       testMode: provider === "yookassa" ? yookassaIsTest() : false,
     })
     .returning({ id: payments.id });
+  await logPayment("платёж создан", {
+    paymentId: payment.id,
+    provider,
+    detail: `${amount} ₽, ${description}, аккаунт #${account.id}`,
+  });
 
   if (provider === "yookassa") {
     if (!yookassaConfig()) return { ok: false, error: "ЮKassa не настроена" };
@@ -71,16 +77,29 @@ export async function startPayment(slotId: number, provider: Provider): Promise<
       returnUrl: `${SITE_URL}/me`,
       metadata: { paymentId: String(payment.id), slotId: String(slotId) },
     });
-    if ("error" in res) return { ok: false, error: res.error };
+    if ("error" in res) {
+      await logPayment("провайдер отказал в создании", {
+        paymentId: payment.id,
+        provider,
+        detail: res.error,
+      });
+      return { ok: false, error: res.error };
+    }
     await db
       .update(payments)
       .set({ providerPaymentId: res.id })
       .where(eq(payments.id, payment.id));
+    await logPayment("клиент отправлен на страницу оплаты", {
+      paymentId: payment.id,
+      provider,
+      detail: `платёж ЮKassa ${res.id}`,
+    });
     return { ok: true, kind: "redirect", url: res.confirmationUrl };
   }
 
   const cp = cloudpaymentsConfig();
   if (!cp) return { ok: false, error: "CloudPayments не настроен" };
+  await logPayment("клиенту выдан виджет оплаты", { paymentId: payment.id, provider });
   return {
     ok: true,
     kind: "widget",
