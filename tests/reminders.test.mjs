@@ -85,3 +85,23 @@ test("слот с уже поставленным напоминанием не 
   const second = await dueReminders(db, NOW);
   assert.equal(second.length, 0, "напоминание не дублируется");
 });
+
+test("опрос после встречи: только прошедшие брони без итога и без повторов", async () => {
+  const { dueOutcomeSurveys } = await import("../src/lib/reminders.ts");
+  const passed = addSlot(mskPlusHours(-30, NOW)); // прошла 30 часов назад, итог не отмечен
+  addSlot(mskPlusHours(-10, NOW)); // прошла недавно — рано спрашивать
+  addSlot(mskPlusHours(-120, NOW)); // старьё за окном
+  addSlot(mskPlusHours(-31, NOW), { status: "done", clientRequestId: req1 }); // итог отмечен
+
+  const due = await dueOutcomeSurveys(db, NOW);
+  assert.equal(due.length, 1);
+  assert.equal(due[0].slotId, passed);
+  assert.equal(due[0].psyPhone, "+70000000001");
+
+  sqlite
+    .prepare(
+      "INSERT INTO notifications (kind, recipient_role, recipient_name, recipient_phone, body, slot_id) VALUES ('review','client','Клиент','+70000000002','текст',?)",
+    )
+    .run(passed);
+  assert.equal((await dueOutcomeSurveys(db, NOW)).length, 0, "опрос не дублируется");
+});

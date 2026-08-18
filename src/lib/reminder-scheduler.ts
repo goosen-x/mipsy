@@ -4,7 +4,7 @@
 import { db } from "@/db";
 import { logError } from "./logs";
 import { messages, notify, subjects } from "./notify";
-import { dueReminders } from "./reminders";
+import { dueOutcomeSurveys, dueReminders } from "./reminders";
 
 const STEP_MS = 15 * 60 * 1000;
 
@@ -26,6 +26,38 @@ async function tick(): Promise<void> {
       });
     }
     if (due.length > 0) console.log(`[reminders] поставлено напоминаний: ${due.length}`);
+
+    // Опрос после встречи без отмеченного итога: клиенту — «как прошло»,
+    // психологу — просьба отметить итог. Оба уведомления в один проход:
+    // идемпотентность держится на первом (kind=review на слоте).
+    const surveys = await dueOutcomeSurveys(db);
+    for (const s of surveys) {
+      await notify({
+        kind: "review",
+        recipientRole: "client",
+        recipientName: s.clientName,
+        recipientPhone: s.clientPhone,
+        recipientEmail: s.clientEmail,
+        subject: subjects.review,
+        body: messages.clientSurvey(s.psyName, s.startsAt),
+        clientRequestId: s.clientRequestId,
+        psychologistId: s.psychologistId,
+        slotId: s.slotId,
+      });
+      await notify({
+        kind: "outcome",
+        recipientRole: "psychologist",
+        recipientName: s.psyName,
+        recipientPhone: s.psyPhone,
+        recipientEmail: s.psyEmail,
+        subject: subjects.outcome,
+        body: messages.psyOutcomeNudge(s.clientName, s.startsAt),
+        clientRequestId: s.clientRequestId,
+        psychologistId: s.psychologistId,
+        slotId: s.slotId,
+      });
+    }
+    if (surveys.length > 0) console.log(`[reminders] опросов после встречи: ${surveys.length}`);
   } catch (e) {
     await logError({ source: "job", message: "планировщик напоминаний упал", detail: e });
   }

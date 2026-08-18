@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { label, PROBLEM_LABELS, REQUEST_STATUS_LABELS } from "@/lib/labels";
 import { requireAdmin } from "./require-admin";
-import { formatDbTime } from "@/lib/datetime";
+import { dbTimeAgeHours, formatDbTime } from "@/lib/datetime";
 
 const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   new: "default",
@@ -61,6 +61,7 @@ export default async function OpRequestsPage() {
                     <Badge variant={STATUS_TONE[r.status] ?? "default"}>
                       {label(REQUEST_STATUS_LABELS, r.status)}
                     </Badge>
+                    <SlaBadge status={r.status} createdAt={r.createdAt} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -70,4 +71,28 @@ export default async function OpRequestsPage() {
       )}
     </div>
   );
+}
+
+/**
+ * Контроль SLA: клиенту обещан звонок в течение рабочего дня. Новая заявка
+ * старше 8 часов — предупреждение, старше суток — просрочка.
+ */
+function SlaBadge({ status, createdAt }: { status: string; createdAt: string }) {
+  if (status !== "new") return null;
+  const hours = dbTimeAgeHours(createdAt);
+  if (hours >= 24) {
+    return (
+      <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+        звонок просрочен · {Math.floor(hours)} ч
+      </span>
+    );
+  }
+  if (hours >= 8) {
+    return (
+      <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+        ждёт звонка {Math.floor(hours)} ч
+      </span>
+    );
+  }
+  return null;
 }

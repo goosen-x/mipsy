@@ -20,7 +20,8 @@ export type NotifyKind =
   | "rematch"
   | "no_show"
   | "login"
-  | "support";
+  | "support"
+  | "outcome";
 
 type NotifyInput = {
   kind: NotifyKind;
@@ -216,6 +217,10 @@ export const messages = {
     `Напоминаем о встрече с ${psyName} — ${formatSlot(startsAt)}. Подробности в кабинете: ${SITE_URL}/me`,
   clientReview: (psyName: string) =>
     `Как прошла встреча с ${psyName}? Оцените её в личном кабинете — это помогает другим людям выбрать специалиста: ${SITE_URL}/me`,
+  clientSurvey: (psyName: string, startsAt: string) =>
+    `Вчера у вас была назначена встреча с ${psyName} (${formatSlot(startsAt)}). Как она прошла? Оцените её в личном кабинете: ${SITE_URL}/me\n\nЕсли встреча не состоялась или что-то пошло не так — ответьте через форму поддержки, разберёмся: ${SITE_URL}/support`,
+  psyOutcomeNudge: (clientName: string, startsAt: string) =>
+    `Встреча с клиентом ${clientName} (${formatSlot(startsAt)}) прошла, но её итог не отмечен. Отметьте в кабинете, состоялась ли она: ${SITE_URL}/cab — от этого зависят напоминания клиенту и учёт оплат.`,
   psyBooked: (clientName: string, startsAt: string) =>
     `К вам записался клиент ${clientName} на ${formatSlot(startsAt)}. Кабинет: ${SITE_URL}/cab`,
   psyRescheduled: (clientName: string, startsAt: string) =>
@@ -259,4 +264,5 @@ export const subjects = {
   moderation: "mipsy: решение по вашей заявке",
   login: "mipsy: код для входа",
   support: "mipsy: ответ поддержки",
+  outcome: "mipsy: отметьте итог встречи",
 };

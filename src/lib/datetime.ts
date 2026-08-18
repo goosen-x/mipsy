@@ -54,6 +54,13 @@ export function formatDbTime(value: string | null | undefined): string {
   return `${pad(msk.getUTCDate())}.${pad(msk.getUTCMonth() + 1)} ${pad(msk.getUTCHours())}:${pad(msk.getUTCMinutes())} ${TZ_SHORT}`;
 }
 
+/** Возраст метки времени из базы (UTC) в часах — для контроля SLA. */
+export function dbTimeAgeHours(value: string, now: Date = new Date()): number {
+  const ms = Date.parse(`${value.slice(0, 16).replace(" ", "T")}:00Z`);
+  if (Number.isNaN(ms)) return 0;
+  return Math.max(0, (now.getTime() - ms) / 3_600_000);
+}
+
 /** День (YYYY-MM-DD) по МСК для метки времени из базы — для группировок. */
 export function dbTimeMskDay(value: string): string {
   const ms = Date.parse(`${value.slice(0, 16).replace(" ", "T")}:00Z`);

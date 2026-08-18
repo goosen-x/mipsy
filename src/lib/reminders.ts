@@ -67,3 +67,61 @@ export async function dueReminders(db: Db, now: Date = new Date()): Promise<DueR
   const done = new Set(reminded.map((r) => r.slotId));
   return rows.filter((r) => !done.has(r.slotId)) as DueReminder[];
 }
+
+export type DueSurvey = DueReminder & {
+  psyPhone: string;
+  psyEmail: string | null;
+};
+
+/**
+ * Опрос после встречи, итог которой психолог не отметил: прошло больше суток,
+ * бронь так и висит в «booked». Клиента спрашиваем, как прошла встреча,
+ * психолога просим отметить итог. Окно до четырёх суток — старьё не бомбим.
+ * Идемпотентность та же: по уведомлению kind=review на слоте (при отметке
+ * «done» руками психолога письмо клиенту уходит сразу — второй раз не шлём).
+ */
+export async function dueOutcomeSurveys(db: Db, now: Date = new Date()): Promise<DueSurvey[]> {
+  const from = mskPlusHours(-96, now);
+  const to = mskPlusHours(-24, now);
+
+  const rows = await db
+    .select({
+      slotId: slots.id,
+      startsAt: slots.startsAt,
+      clientRequestId: slots.clientRequestId,
+      psychologistId: slots.psychologistId,
+      psyName: psychologists.name,
+      psyPhone: psychologists.phone,
+      psyEmail: psychologists.email,
+      clientName: clientRequests.name,
+      clientPhone: clientRequests.phone,
+      clientEmail: clientRequests.email,
+    })
+    .from(slots)
+    .innerJoin(psychologists, eq(slots.psychologistId, psychologists.id))
+    .innerJoin(clientRequests, eq(slots.clientRequestId, clientRequests.id))
+    .where(
+      and(
+        eq(slots.status, "booked"),
+        isNotNull(slots.clientRequestId),
+        gt(slots.startsAt, from),
+        lte(slots.startsAt, to),
+      ),
+    );
+  if (rows.length === 0) return [];
+
+  const surveyed = await db
+    .select({ slotId: notifications.slotId })
+    .from(notifications)
+    .where(
+      and(
+        eq(notifications.kind, "review"),
+        inArray(
+          notifications.slotId,
+          rows.map((r) => r.slotId),
+        ),
+      ),
+    );
+  const done = new Set(surveyed.map((r) => r.slotId));
+  return rows.filter((r) => !done.has(r.slotId)) as DueSurvey[];
+}
