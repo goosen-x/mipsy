@@ -339,6 +339,17 @@ export function PsyApplicationWizard({ email }: { email: string }) {
             <Row k="Почта для входа" v={email} />
           </dl>
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+          <p className="mt-3 text-xs text-neutral-500">
+            Отправляя заявку, вы соглашаетесь на{" "}
+            <a href="/soglasie" target="_blank" className="text-brand-700 underline">
+              обработку персональных данных
+            </a>{" "}
+            и с{" "}
+            <a href="/oferta" target="_blank" className="text-brand-700 underline">
+              условиями платформы
+            </a>
+            .
+          </p>
           <Button className="mt-4 w-full" size="lg" disabled={pending} onClick={submit}>
             {pending ? "Отправляем…" : "Отправить заявку"}
           </Button>

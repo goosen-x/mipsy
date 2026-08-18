@@ -634,7 +634,11 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
               onCheckedChange={(c) => set("pdConsent", c === true)}
             />
             <Label htmlFor="pd" className="text-sm font-normal leading-snug text-neutral-600">
-              Соглашаюсь на обработку персональных данных. Анкету увидят только оператор и
+              Соглашаюсь на{" "}
+              <a href="/soglasie" target="_blank" className="text-brand-700 underline">
+                обработку персональных данных
+              </a>
+              , включая сведения о состоянии из анкеты. Анкету увидят только оператор и
               подобранный психолог.
             </Label>
           </div>

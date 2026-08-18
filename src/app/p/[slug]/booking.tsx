@@ -134,8 +134,11 @@ export function ProfileBooking({
             onCheckedChange={(c) => setForm({ ...form, pdConsent: c === true })}
           />
           <Label htmlFor="pd-direct" className="text-sm font-normal leading-snug text-neutral-600">
-            Соглашаюсь на обработку персональных данных. Ваши контакты видят только оператор и
-            выбранный специалист.
+            Соглашаюсь на{" "}
+            <a href="/soglasie" target="_blank" className="text-brand-700 underline">
+              обработку персональных данных
+            </a>
+            . Ваши контакты видят только оператор и выбранный специалист.
           </Label>
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}

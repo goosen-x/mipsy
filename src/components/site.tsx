@@ -76,23 +76,39 @@ export function CabinetHeader({ title, wide }: { title: string; wide?: boolean }
 export function SiteFooter() {
   return (
     <footer className="border-t border-neutral-100 bg-neutral-50">
-      <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-8 text-sm text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <span className="font-semibold text-brand-700">mipsy</span> · подбор психолога
+      <div className="mx-auto max-w-5xl px-4 py-8 text-sm text-neutral-500">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <span className="font-semibold text-brand-700">mipsy</span> · подбор психолога
+          </div>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <Link href="/catalog" className="hover:text-brand-700">
+              Психологи
+            </Link>
+            <Link href="/psy" className="hover:text-brand-700">
+              Психологам
+            </Link>
+            <Link href="/crisis" className="hover:text-brand-700">
+              Срочная помощь
+            </Link>
+            <Link href="/support" className="hover:text-brand-700">
+              Поддержка
+            </Link>
+          </div>
         </div>
-        <div className="flex gap-6">
-          <Link href="/catalog" className="hover:text-brand-700">
-            Психологи
-          </Link>
-          <Link href="/psy" className="hover:text-brand-700">
-            Психологам
-          </Link>
-          <Link href="/crisis" className="hover:text-brand-700">
-            Срочная помощь
-          </Link>
-          <Link href="/support" className="hover:text-brand-700">
-            Поддержка
-          </Link>
+        <div className="mt-4 flex flex-col gap-2 border-t border-neutral-200 pt-4 text-xs text-neutral-400 sm:flex-row sm:items-center sm:justify-between">
+          <div>ИП Борисенко Дмитрий Александрович</div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <Link href="/oferta" className="hover:text-brand-700">
+              Пользовательское соглашение
+            </Link>
+            <Link href="/privacy" className="hover:text-brand-700">
+              Политика персональных данных
+            </Link>
+            <Link href="/soglasie" className="hover:text-brand-700">
+              Согласие на обработку
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
