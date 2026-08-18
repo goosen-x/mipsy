@@ -31,7 +31,7 @@ export default async function OpPsyListPage() {
       {list.length === 0 ? (
         <p className="mt-4 text-neutral-500">Пока пусто — заявки со страницы «Психологам» появятся здесь.</p>
       ) : (
-        <div className="mt-6 rounded-2xl bg-white shadow-sm">
+        <div className="mt-6 rounded-2xl border border-neutral-100">
           <Table>
             <TableHeader>
               <TableRow>

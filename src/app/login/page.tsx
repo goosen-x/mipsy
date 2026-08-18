@@ -16,7 +16,7 @@ export default async function LoginPage({
   if (accountId) redirect(next?.startsWith("/") ? next : await homePathFor(accountId));
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-brand-50/40 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-white px-4 py-12">
       <LoginForm next={next} sender={senderAddress()} />
     </div>
   );

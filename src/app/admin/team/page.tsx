@@ -38,7 +38,7 @@ export default async function TeamPage() {
         {admins.map((a) => (
           <li
             key={a.id}
-            className="flex flex-wrap items-center gap-3 rounded-xl bg-white p-4 text-sm shadow-sm"
+            className="flex flex-wrap items-center gap-3 border-t border-neutral-100 pt-3 text-sm"
           >
             <span className="font-medium">{a.name}</span>
             <span className="text-neutral-500">{a.email}</span>
@@ -57,7 +57,7 @@ export default async function TeamPage() {
         {envAdmins.map((email) => (
           <li
             key={email}
-            className="flex flex-wrap items-center gap-3 rounded-xl bg-white p-4 text-sm shadow-sm"
+            className="flex flex-wrap items-center gap-3 border-t border-neutral-100 pt-3 text-sm"
           >
             <span className="text-neutral-500">{email}</span>
             <Badge variant="outline">из ADMIN_EMAILS</Badge>
@@ -73,7 +73,7 @@ export default async function TeamPage() {
         )}
       </ul>
 
-      <div className="mt-8 max-w-md rounded-2xl bg-white p-6 shadow-sm">
+      <div className="mt-8 max-w-md rounded-2xl border border-neutral-100 p-6">
         <h2 className="font-bold">Добавить админа</h2>
         <p className="mt-1 text-sm text-neutral-500">
           Человек должен хотя бы раз войти на сайт по коду — тогда у него есть аккаунт.

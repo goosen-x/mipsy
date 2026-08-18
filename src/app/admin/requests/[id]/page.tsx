@@ -153,7 +153,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      <div className="rounded-2xl bg-white p-4 text-sm shadow-sm">
+      <div className="rounded-2xl border border-neutral-100 p-4 text-sm">
         {req.email ? (
           <>
             <span className="text-neutral-500">Личный кабинет: </span>
@@ -185,7 +185,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-neutral-100 p-6">
         <h2 className="text-lg font-bold">Анкета</h2>
         <dl className="mt-4 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
           <Row k="Для кого" v="Для себя" />
@@ -213,7 +213,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
         )}
       </section>
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-neutral-100 p-6">
         <h2 className="text-lg font-bold">Подбор</h2>
         {reqMatches.length > 0 && (
           <ul className="mt-3 space-y-2">
@@ -275,7 +275,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
         )}
       </section>
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-neutral-100 p-6">
         <h2 className="text-lg font-bold">Пометки админа</h2>
         <div className="mt-3">
           <RequestNotesControl id={req.id} notes={req.operatorNotes ?? ""} />

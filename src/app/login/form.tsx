@@ -42,7 +42,7 @@ export function LoginForm({ next, sender }: { next?: string; sender?: string | n
     });
 
   return (
-    <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
+    <div className="w-full max-w-md">
       <Link href="/" className="text-xl font-bold text-brand-700">
         mipsy
       </Link>

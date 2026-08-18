@@ -66,7 +66,7 @@ export default async function StatsPage() {
         <Kpi title="Записей на встречи" value={booked.length} />
       </section>
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-neutral-100 p-6">
         <h2 className="text-lg font-bold">Воронка</h2>
         <div className="mt-4 space-y-2">
           {funnel.map((f) => {
@@ -89,7 +89,7 @@ export default async function StatsPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-neutral-100 p-6">
         <h2 className="text-lg font-bold">Заявки за две недели</h2>
         <div className="mt-4 flex h-32 items-end gap-1">
           {days.map((d) => (
@@ -106,7 +106,7 @@ export default async function StatsPage() {
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-neutral-100 p-6">
           <h2 className="text-lg font-bold">Статусы заявок</h2>
           <ul className="mt-3 space-y-1 text-sm">
             {byStatus.map((s) => (
@@ -117,7 +117,7 @@ export default async function StatsPage() {
             ))}
           </ul>
         </div>
-        <div className="rounded-2xl bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-neutral-100 p-6">
           <h2 className="text-lg font-bold">Предложение</h2>
           <ul className="mt-3 space-y-1 text-sm">
             <Row k="Психологов одобрено" v={approvedPsy.length} />
@@ -140,7 +140,7 @@ function Kpi({ title, value, tone }: { title: string; value: number; tone?: "war
   const color =
     tone === "alert" ? "text-red-600" : tone === "warn" ? "text-amber-600" : "text-neutral-900";
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm">
+    <div className="border-l-2 border-brand-200 py-1 pl-4">
       <div className="text-sm text-neutral-500">{title}</div>
       <div className={`mt-1 text-3xl font-bold ${color}`}>{value}</div>
     </div>

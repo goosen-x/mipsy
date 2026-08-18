@@ -35,10 +35,10 @@ export default async function ClientCabinetPage() {
 
   if (!req) {
     return (
-      <div className="min-h-screen bg-brand-50/40">
+      <div className="min-h-screen bg-white">
         <CabinetHeader title={account.name} />
         <main className="mx-auto max-w-3xl px-4 py-12">
-          <section className="rounded-2xl bg-white p-8 shadow-sm">
+          <section>
             <h1 className="text-2xl font-bold">Здравствуйте, {account.name}!</h1>
             <p className="mt-3 text-neutral-600">
               Ваш кабинет готов. Ответьте на несколько вопросов — мы изучим их и предложим
@@ -149,11 +149,11 @@ export default async function ClientCabinetPage() {
     toCalendar(freeSlots.filter((s) => s.psychologistId === psyId));
 
   return (
-    <div className="min-h-screen bg-brand-50/40">
+    <div className="min-h-screen bg-white">
       <CabinetHeader title={req.name} />
 
-      <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-        <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <main className="mx-auto max-w-3xl space-y-12 px-4 py-10">
+        <section>
           <h1 className="text-2xl font-bold">Здравствуйте, {req.name}!</h1>
           {req.status === "new" && (
             <p className="mt-3 text-neutral-600">
@@ -199,7 +199,7 @@ export default async function ClientCabinetPage() {
 
         {/* Выбор из предложенных специалистов */}
         {proposals.length > 0 && !chosen && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <section className="border-t border-neutral-100 pt-8">
             <h2 className="text-lg font-bold">
               Мы подобрали для вас{" "}
               {proposals.length === 1 ? "специалиста" : `${proposals.length} специалистов`}
@@ -208,9 +208,9 @@ export default async function ClientCabinetPage() {
               Посмотрите профили и выберите того, кто откликнется. Если не подойдёт — бесплатно
               подберём другого.
             </p>
-            <div className="mt-5 space-y-4">
+            <div className="mt-4 divide-y divide-neutral-100">
               {proposals.map((p) => (
-                <div key={p.matchId} className="rounded-xl border p-4">
+                <div key={p.matchId} className="py-5">
                   <div className="flex flex-wrap items-start gap-4">
                     {p.psy.photoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -265,7 +265,7 @@ export default async function ClientCabinetPage() {
 
         {/* Выбранный психолог */}
         {chosen && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <section className="border-t border-neutral-100 pt-8">
             <h2 className="text-lg font-bold">Ваш психолог</h2>
             <div className="mt-4 flex flex-wrap items-center gap-4">
               {chosen.psy.photoUrl ? (
@@ -307,12 +307,12 @@ export default async function ClientCabinetPage() {
 
         {/* Встречи */}
         {upcoming.length > 0 && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <section className="border-t border-neutral-100 pt-8">
             <h2 className="text-lg font-bold">Предстоящие встречи</h2>
             <p className="mt-1 text-xs text-neutral-500">Время указано {TZ_LABEL}</p>
-            <ul className="mt-4 space-y-3">
+            <ul className="mt-2 divide-y divide-neutral-100">
               {upcoming.map((s) => (
-                <li key={s.id} className="rounded-xl border p-4">
+                <li key={s.id} className="py-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap items-center gap-2 font-medium">
@@ -368,13 +368,13 @@ export default async function ClientCabinetPage() {
 
         {/* Прошедшие встречи: состоявшиеся (с отзывом), неявки и ждущие отметки */}
         {past.length > 0 && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <section className="border-t border-neutral-100 pt-8">
             <h2 className="text-lg font-bold">Прошедшие встречи</h2>
-            <ul className="mt-4 space-y-4">
+            <ul className="mt-2 divide-y divide-neutral-100">
               {past.map((s) => {
                 const review = myReviews.find((r) => r.slotId === s.id);
                 return (
-                  <li key={s.id} className="rounded-xl border p-4">
+                  <li key={s.id} className="py-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="font-medium">{formatSlot(s.startsAt)}</div>
                       <span className="text-sm text-neutral-500">
@@ -412,7 +412,7 @@ export default async function ClientCabinetPage() {
 
         {/* Запись */}
         {chosen && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <section className="border-t border-neutral-100 pt-8">
             <h2 className="text-lg font-bold">Выберите время встречи</h2>
             {calendarSlots.length === 0 ? (
               <p className="mt-3 text-neutral-500">
@@ -429,7 +429,7 @@ export default async function ClientCabinetPage() {
 
         {/* Оплата */}
         {chosen && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <section className="border-t border-neutral-100 pt-8">
             <h2 className="text-lg font-bold">Оплата</h2>
             <p className="mt-2 text-neutral-600">
               Сессии
@@ -444,7 +444,7 @@ export default async function ClientCabinetPage() {
 
         {/* Переподбор */}
         {chosen && req.status !== "rematch" && (
-          <section id="rematch" className="rounded-2xl bg-white p-6 shadow-sm">
+          <section id="rematch" className="border-t border-neutral-100 pt-8">
             <h2 className="text-lg font-bold">Психолог не подошёл?</h2>
             <p className="mt-2 text-sm text-neutral-600">
               Это нормально и случается часто — совпасть с первого раза удаётся не всем. Мы
@@ -458,7 +458,7 @@ export default async function ClientCabinetPage() {
 
         {/* Прошлые обращения */}
         {myRequests.length > 1 && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <section className="border-t border-neutral-100 pt-8">
             <h2 className="text-lg font-bold">Прошлые обращения</h2>
             <ul className="mt-3 space-y-2 text-sm text-neutral-600">
               {myRequests.slice(1).map((r) => (
@@ -476,7 +476,7 @@ export default async function ClientCabinetPage() {
         )}
 
         {/* Поддержка */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm">
+        <section className="border-t border-neutral-100 pt-8">
           <h2 className="text-lg font-bold">Поддержка</h2>
           <p className="mt-2 text-sm text-neutral-600">
             Есть вопрос или что-то пошло не так? Напишите нам — оператор ответит на{" "}

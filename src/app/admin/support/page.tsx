@@ -46,7 +46,7 @@ export default async function SupportPage() {
           {open.map((t) => (
             <li
               key={t.id}
-              className={`rounded-2xl p-5 shadow-sm ${t.kind === "complaint" ? "border border-red-200 bg-red-50" : "bg-white"}`}
+              className={`rounded-2xl border p-5 ${t.kind === "complaint" ? "border-red-200 bg-red-50" : "border-neutral-100"}`}
             >
               <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-500">
                 <Badge variant={t.kind === "complaint" ? "destructive" : "secondary"}>
@@ -101,7 +101,7 @@ export default async function SupportPage() {
           <h2 className="mt-10 text-lg font-bold">Закрытые</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {closed.map((t) => (
-              <li key={t.id} className="rounded-xl bg-white p-4 shadow-sm">
+              <li key={t.id} className="border-t border-neutral-100 pt-3">
                 <span className="text-neutral-500">{formatDbTime(t.createdAt)} · </span>
                 <span className="font-medium">{t.name}</span>
                 <span className="text-neutral-500">

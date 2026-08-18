@@ -77,7 +77,7 @@ export default async function NotificationsPage() {
       ) : (
         <ul className="mt-4 space-y-3">
           {pending.map((n) => (
-            <li key={n.id} className="rounded-2xl bg-white p-5 shadow-sm">
+            <li key={n.id} className="border-l-2 border-brand-200 py-1 pl-4">
               <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-500">
                 <Badge variant="secondary">{KIND_LABELS[n.kind] ?? n.kind}</Badge>
                 <span>{n.recipientRole === "client" ? "клиенту" : "психологу"}</span>
@@ -139,7 +139,7 @@ export default async function NotificationsPage() {
               tone: "bg-neutral-100 text-neutral-700",
             };
             return (
-              <li key={l.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-white p-3 shadow-sm">
+              <li key={l.id} className="flex flex-wrap items-center gap-3 border-t border-neutral-100 pt-2.5">
                 <span className="text-neutral-500">{formatDbTime(l.createdAt)}</span>
                 <span className="font-medium">{l.email}</span>
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${outcome.tone}`}>
@@ -157,7 +157,7 @@ export default async function NotificationsPage() {
           <h2 className="mt-10 text-lg font-bold">Отправленные</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {sent.map((n) => (
-              <li key={n.id} className="rounded-xl bg-white p-3 shadow-sm">
+              <li key={n.id} className="border-t border-neutral-100 pt-2.5">
                 <span className="text-neutral-500">{formatDbTime(n.sentAt ?? n.createdAt)} · </span>
                 <span className="font-medium">{n.recipientName}</span>
                 <span className="text-neutral-500"> · {KIND_LABELS[n.kind] ?? n.kind}</span>

@@ -4,7 +4,6 @@ import { db, psychologists, topics } from "@/db";
 import { SiteFooter, SiteHeader } from "@/components/site";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Accordion,
   AccordionContent,
@@ -109,36 +108,33 @@ export default async function Home() {
         {/* Боли */}
         <section className="mx-auto max-w-5xl px-4 py-16">
           <h2 className="text-3xl font-bold">Знакомо?</h2>
-          <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+          <ul className="mt-8 grid gap-x-12 gap-y-5 text-lg text-neutral-700 sm:grid-cols-2">
             {PAINS.map((p) => (
-              <li key={p} className="rounded-2xl border border-neutral-200 p-5 text-neutral-700">
+              <li key={p} className="flex gap-3">
+                <span aria-hidden className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-400" />
                 {p}
               </li>
             ))}
-            <li className="rounded-2xl bg-brand-600 p-5 font-medium text-white">
-              С этим можно работать — и не в одиночку. Первый шаг занимает пять минут.
-            </li>
           </ul>
+          <p className="mt-8 text-lg font-medium text-brand-700">
+            С этим можно работать — и не в одиночку. Первый шаг занимает пять минут.
+          </p>
         </section>
 
         {/* Как это работает */}
-        <section className="bg-neutral-50">
-          <div className="mx-auto max-w-5xl px-4 py-16">
-            <h2 className="text-3xl font-bold">Как это работает</h2>
-            <ol className="mt-8 grid gap-6 sm:grid-cols-3">
-              {STEPS.map((s, i) => (
-                <Card key={s.title} className="border-0 shadow-sm">
-                  <CardContent className="p-6">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-lg font-bold text-brand-700">
-                      {i + 1}
-                    </div>
-                    <h3 className="mt-4 text-lg font-semibold">{s.title}</h3>
-                    <p className="mt-2 text-neutral-600">{s.text}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </ol>
-          </div>
+        <section className="mx-auto max-w-5xl px-4 py-16">
+          <h2 className="text-3xl font-bold">Как это работает</h2>
+          <ol className="mt-10 grid gap-10 sm:grid-cols-3">
+            {STEPS.map((s, i) => (
+              <li key={s.title}>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-lg font-bold text-brand-700">
+                  {i + 1}
+                </div>
+                <h3 className="mt-4 text-lg font-semibold">{s.title}</h3>
+                <p className="mt-2 text-neutral-600">{s.text}</p>
+              </li>
+            ))}
+          </ol>
         </section>
 
         {/* Проверка психологов — мягкая формулировка, критерии модерации ещё не зафиксированы */}
@@ -164,16 +160,14 @@ export default async function Home() {
             </div>
             <div className="mt-8 grid gap-6 sm:grid-cols-3">
               {approved.map((p) => (
-                <Link key={p.id} href={`/p/${p.slug}`}>
-                  <Card className="h-full transition-colors hover:border-brand-400">
-                    <CardContent className="p-6">
-                      <div className="text-lg font-semibold">{p.name}</div>
-                      <div className="mt-1 text-sm text-neutral-500">{p.approach}</div>
-                      <div className="mt-2 text-sm text-neutral-600">
-                        Опыт: {p.experienceYears} лет
-                      </div>
-                    </CardContent>
-                  </Card>
+                <Link
+                  key={p.id}
+                  href={`/p/${p.slug}`}
+                  className="-m-4 rounded-2xl p-4 transition-colors hover:bg-brand-50/60"
+                >
+                  <div className="text-lg font-semibold">{p.name}</div>
+                  <div className="mt-1 text-sm text-neutral-500">{p.approach}</div>
+                  <div className="mt-2 text-sm text-neutral-600">Опыт: {p.experienceYears} лет</div>
                 </Link>
               ))}
             </div>
@@ -197,7 +191,7 @@ export default async function Home() {
         </section>
 
         {/* FAQ */}
-        <section className="bg-neutral-50">
+        <section>
           <div className="mx-auto max-w-3xl px-4 py-16">
             <h2 className="text-3xl font-bold">Вопросы и ответы</h2>
             <Accordion type="single" collapsible className="mt-8">

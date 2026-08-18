@@ -40,7 +40,7 @@ export default async function AuditPage() {
           {rows.map((r) => (
             <li
               key={r.id}
-              className="flex flex-wrap items-center gap-3 rounded-xl bg-white p-3 text-sm shadow-sm"
+              className="flex flex-wrap items-center gap-3 border-t border-neutral-100 pt-2.5 text-sm"
             >
               <span className="text-neutral-400">{formatDbTime(r.createdAt)}</span>
               <span className="font-medium">{r.actorName ?? "—"}</span>

@@ -27,7 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!(await isAdmin())) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
-        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
+        <div className="w-full max-w-md rounded-2xl border border-neutral-100 p-8">
           <h1 className="text-xl font-bold">Здесь только для админов</h1>
           <p className="mt-3 text-neutral-600">
             Вы вошли как {account.email}, но у этого аккаунта нет прав админа. Если они нужны —
@@ -42,7 +42,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-white">
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3">
           <Link

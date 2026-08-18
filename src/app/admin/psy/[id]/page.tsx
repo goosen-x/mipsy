@@ -61,7 +61,7 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
         </p>
       </div>
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-neutral-100 p-6">
         <h2 className="text-lg font-bold">Заявка на модерацию</h2>
         <dl className="mt-4 space-y-3 text-sm">
           <Block k="Образование" v={psy.education} />
@@ -101,7 +101,7 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
         </div>
       )}
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-neutral-100 p-6">
         <h2 className="text-lg font-bold">Профиль (заполняет психолог)</h2>
         <dl className="mt-4 space-y-3 text-sm">
           <Block k="Подход" v={psy.approach} />
@@ -115,7 +115,7 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
         </dl>
       </section>
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-neutral-100 p-6">
         <h2 className="text-lg font-bold">Решение</h2>
         <div className="mt-4 rounded-xl bg-brand-50 p-4 text-sm">
           <div className="font-medium text-brand-800">Критерии допуска — проверьте по списку</div>

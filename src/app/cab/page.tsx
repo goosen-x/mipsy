@@ -34,10 +34,10 @@ export default async function CabinetPage() {
 
   if (!psy) {
     return (
-      <div className="min-h-screen bg-neutral-50">
+      <div className="min-h-screen bg-white">
         <CabinetHeader title={account.name} wide />
         <main className="mx-auto max-w-3xl px-4 py-12">
-          <section className="rounded-2xl bg-white p-8 shadow-sm">
+          <section>
             <h1 className="text-2xl font-bold">Кабинета специалиста пока нет</h1>
             <p className="mt-3 text-neutral-600">
               На эту почту не заведён профиль психолога. Если вы хотите работать на платформе —
@@ -104,10 +104,10 @@ export default async function CabinetPage() {
   const status = STATUS_LABELS[psy.moderationStatus] ?? STATUS_LABELS.new;
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-white">
       <CabinetHeader title={`Кабинет · ${psy.name}`} wide />
-      <main className="mx-auto max-w-4xl space-y-8 px-4 py-8">
-        <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <main className="mx-auto max-w-4xl space-y-12 px-4 py-10">
+        <section>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-2xl font-bold">Здравствуйте, {psy.name}!</h1>
             <span className={`rounded-full px-3 py-1 text-sm font-medium ${status.tone}`}>
@@ -142,16 +142,16 @@ export default async function CabinetPage() {
           )}
         </section>
 
-        <section className="rounded-2xl bg-white p-6 shadow-sm">
+        <section className="border-t border-neutral-100 pt-8">
           <h2 className="text-xl font-bold">Ваши клиенты и записи</h2>
           {myMatches.length === 0 ? (
             <p className="mt-3 text-neutral-500">
               Пока пусто. Когда оператор подберёт вам клиента, он появится здесь.
             </p>
           ) : (
-            <ul className="mt-4 space-y-3">
+            <ul className="mt-2 divide-y divide-neutral-100">
               {myMatches.map((m) => (
-                <li key={m.id} className="rounded-xl border p-4">
+                <li key={m.id} className="py-4">
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{m.clientName}</span>
                     <Badge variant={m.active ? "default" : "secondary"}>
@@ -201,7 +201,7 @@ export default async function CabinetPage() {
           )}
         </section>
 
-        <section className="rounded-2xl bg-white p-6 shadow-sm">
+        <section className="border-t border-neutral-100 pt-8">
           <h2 className="text-xl font-bold">Расписание</h2>
           <p className="mt-1 text-sm text-neutral-500">
             Откройте часы, когда готовы консультировать. Клиент сможет записаться только в открытое
@@ -213,7 +213,7 @@ export default async function CabinetPage() {
         </section>
 
         {psy.calendarToken && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <section className="border-t border-neutral-100 pt-8">
             <h2 className="text-xl font-bold">Ваш календарь</h2>
             <p className="mt-1 text-sm text-neutral-500">
               Подпишитесь на эту ссылку в Google, Яндекс или Apple Календаре — записи клиентов
@@ -225,7 +225,7 @@ export default async function CabinetPage() {
           </section>
         )}
 
-        <section className="rounded-2xl bg-white p-6 shadow-sm">
+        <section className="border-t border-neutral-100 pt-8">
           <h2 className="text-xl font-bold">Ваш профиль</h2>
           <p className="mt-1 text-sm text-neutral-500">
             Это то, что увидят клиенты. Контакты в профиле указывать нельзя — вся связь идёт через
@@ -248,7 +248,7 @@ export default async function CabinetPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl bg-white p-6 shadow-sm">
+        <section className="border-t border-neutral-100 pt-8">
           <h2 className="text-xl font-bold">Поддержка</h2>
           <p className="mt-1 text-sm text-neutral-500">
             Спорная запись, неявка клиента, вопрос по платформе — напишите, оператор разберётся.

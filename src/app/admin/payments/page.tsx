@@ -103,7 +103,7 @@ export default async function PaymentsPage() {
         />
       </section>
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-neutral-100 p-6">
         <h2 className="text-lg font-bold">Реестр выплат психологам</h2>
         <p className="mt-1 text-sm text-neutral-500">
           Сюда попадают успешные платежи за уже состоявшиеся встречи. Кнопка помечает всё готовое
@@ -169,7 +169,7 @@ export default async function PaymentsPage() {
         </section>
       )}
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-neutral-100 p-6">
         <h2 className="text-lg font-bold">Все платежи</h2>
         {rows.length === 0 ? (
           <p className="mt-4 text-sm text-neutral-400">Платежей ещё не было.</p>
@@ -227,7 +227,7 @@ export default async function PaymentsPage() {
         )}
       </section>
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-neutral-100 p-6">
         <h2 className="text-lg font-bold">Журнал событий</h2>
         <p className="mt-1 text-sm text-neutral-500">
           Каждый шаг платежа: создание, вебхуки провайдеров (включая отклонённые), проверка и
@@ -279,7 +279,7 @@ function Kpi({
   tone?: "warn";
 }) {
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm">
+    <div className="border-l-2 border-brand-200 py-1 pl-4">
       <div className="text-sm text-neutral-500">{title}</div>
       <div className={`mt-1 text-2xl font-bold ${tone === "warn" ? "text-amber-600" : ""}`}>
         {value}

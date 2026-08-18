@@ -43,7 +43,7 @@ export default async function ReviewsPage() {
       ) : (
         <ul className="mt-4 space-y-4">
           {pending.map((r) => (
-            <li key={r.id} className="rounded-2xl bg-white p-5 shadow-sm">
+            <li key={r.id} className="border-l-2 border-brand-200 py-1 pl-4">
               <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-500">
                 <span className="text-accent-500">{"★".repeat(r.rating)}</span>
                 <span className="font-medium text-neutral-900">{r.authorName}</span>
@@ -64,7 +64,7 @@ export default async function ReviewsPage() {
           <h2 className="mt-10 text-lg font-bold">Обработанные</h2>
           <ul className="mt-3 space-y-2">
             {rest.map((r) => (
-              <li key={r.id} className="rounded-xl bg-white p-4 text-sm shadow-sm">
+              <li key={r.id} className="border-t border-neutral-100 pt-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={r.status === "published" ? "secondary" : "destructive"}>
                     {r.status === "published" ? "опубликован" : "отклонён"}

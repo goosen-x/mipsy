@@ -47,7 +47,7 @@ export default async function ErrorsPage() {
       ) : (
         <ul className="mt-4 space-y-3">
           {unseen.map((e) => (
-            <li key={e.id} className="rounded-2xl bg-white p-4 shadow-sm">
+            <li key={e.id} className="border-t border-neutral-100 pt-3">
               <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-500">
                 <Badge variant="outline">{e.source}</Badge>
                 <span>{formatDbTime(e.createdAt)}</span>
@@ -69,7 +69,7 @@ export default async function ErrorsPage() {
           <h2 className="mt-10 text-lg font-bold">Просмотренные</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {seen.map((e) => (
-              <li key={e.id} className="rounded-xl bg-white p-3 shadow-sm">
+              <li key={e.id} className="border-t border-neutral-100 pt-2.5">
                 <span className="text-neutral-500">{formatDbTime(e.createdAt)} · </span>
                 <span>{e.message}</span>
               </li>
