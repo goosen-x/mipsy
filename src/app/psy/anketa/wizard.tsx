@@ -254,9 +254,14 @@ export function PsyApplicationWizard({ email }: { email: string }) {
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (!file) return;
+              e.target.value = "";
+              // До отправки: файл больше серверного лимита оборвал бы запрос.
+              if (file.size > 10 * 1024 * 1024) {
+                setError("Файл больше 10 МБ — сожмите скан или сохраните в меньшем размере");
+                return;
+              }
               const fd = new FormData();
               fd.set("doc", file);
-              e.target.value = "";
               setError(null);
               startTransition(async () => {
                 const res = await uploadEducationDoc(fd);

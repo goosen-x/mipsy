@@ -75,6 +75,12 @@ export function ProfileForm({
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
+                // До отправки: файл больше серверного лимита оборвал бы запрос.
+                if (file.size > 5 * 1024 * 1024) {
+                  setSaved(false);
+                  setError("Файл больше 5 МБ — сохраните фото в меньшем размере");
+                  return;
+                }
                 const fd = new FormData();
                 fd.set("photo", file);
                 setSaved(false);
