@@ -69,11 +69,19 @@ tar czf - --exclude node_modules --exclude .next --exclude .git --exclude data -
     'rm -rf /root/mipsy-src && mkdir -p /root/mipsy-src && tar xzf - -C /root/mipsy-src'
 
 ssh -i /root/.ssh/id_ed25519_vps root@91.197.99.37 '
-  cd /root/mipsy-src && docker build -t mipsy . &&
-  docker rm -f mipsy &&
-  docker run -d --name mipsy --restart unless-stopped -p 127.0.0.1:8081:3000 \
-    -v /root/mipsy-data:/app/data -e SESSION_SECRET=<секрет> -e ADMIN_EMAILS=<почта админа> mipsy
+  cd /root/mipsy-src && docker build -t mipsy . && /root/mipsy-run.sh
 '
+```
+
+**Запускать только через `/root/mipsy-run.sh`** — в нём лежат все переменные
+окружения боевого контейнера. Руками `docker run` не писать: скрипт начинается
+с `docker rm -f`, поэтому переменная, заданная мимо него, молча теряется при
+следующем обновлении. Так 21.08 из скрипта выпали `ADMIN_EMAILS` и ключи
+ЮKassa — до починки его запуск закрыл бы админку всем и отключил оплаты.
+Новая переменная — сначала строка в скрипте, потом запуск. Проверка:
+
+```bash
+docker inspect mipsy --format '{{range .Config.Env}}{{println .}}{{end}}' | cut -d= -f1
 ```
 
 При изменении схемы БД: `npx drizzle-kit generate` локально (создаст новый файл в `drizzle/`), закоммитить — контейнер применит его при старте. Миграция `0005_accounts.sql` заодно переносит данные: заводит аккаунты по почтам из заявок и профилей (регистр не важен, одна почта — один аккаунт) и удаляет колонки `access_code`.
