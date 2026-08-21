@@ -96,8 +96,7 @@ export function SiteFooter() {
             </Link>
           </div>
         </div>
-        <div className="mt-4 flex flex-col gap-2 border-t border-neutral-200 pt-4 text-xs text-neutral-400 sm:flex-row sm:items-center sm:justify-between">
-          <div>ИП Борисенко Дмитрий Александрович</div>
+        <div className="mt-4 flex flex-col gap-2 border-t border-neutral-200 pt-4 text-xs text-neutral-400 sm:flex-row sm:items-center sm:justify-end">
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             <Link href="/oferta" className="hover:text-brand-700">
               Пользовательское соглашение
