@@ -339,7 +339,10 @@ test("переподбор снимает все брони и говорит, �
   const s1 = addSlot(psy1, FUTURE, { status: "booked", clientRequestId: req });
   const s2 = addSlot(psy2, FUTURE2, { status: "booked", clientRequestId: req });
 
-  const freed = await freeBookedSlotsOf(db, req);
+  // Время передаём явно, как во всех тестах файла: без него функция берёт
+  // настоящее «сейчас», и слоты из констант FUTURE однажды оказываются в
+  // прошлом — тест начинает падать сам по себе, не дождавшись правок кода.
+  const freed = await freeBookedSlotsOf(db, req, NOW);
   assert.equal(freed.length, 2);
   assert.deepEqual(freed.map((f) => f.psy.name).sort(), ["Анна", "Борис"]);
   assert.equal(slotById(s1).status, "free");
