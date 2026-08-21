@@ -2,7 +2,7 @@ import "server-only";
 import { randomInt } from "node:crypto";
 import { cookies } from "next/headers";
 import { and, desc, eq, gt, inArray, lt, sql } from "drizzle-orm";
-import { accounts, clientRequests, db, emailCodes, loginLog, psychologists } from "@/db";
+import { accounts, clientRequests, db, emailCodes, loginLog } from "@/db";
 import {
   accountPatch,
   checkCode,
@@ -11,7 +11,9 @@ import {
   nowDbTime,
   parseAdminEmails,
   readSession,
+  roleConflict,
   signSession,
+  type AccountRole,
 } from "./auth-core";
 
 /**
@@ -75,6 +77,7 @@ export type Account = {
   name: string;
   phone: string | null;
   isAdmin: boolean;
+  role: AccountRole | null;
 };
 
 export async function currentAccount(): Promise<Account | null> {
@@ -87,6 +90,7 @@ export async function currentAccount(): Promise<Account | null> {
       name: accounts.name,
       phone: accounts.phone,
       isAdmin: accounts.isAdmin,
+      role: accounts.role,
     })
     .from(accounts)
     .where(eq(accounts.id, id));
@@ -144,6 +148,27 @@ export async function linkAccount(person: {
   return { id: created.id, created: true };
 }
 
+/**
+ * Занимает роль за аккаунтом перед действием, которое эту роль подразумевает:
+ * анкета и бронь — клиент, заявка психолога — специалист. Роль выбирается
+ * один раз и дальше не меняется, поэтому проверка стоит перед записью, а не
+ * после: иначе на одном адресе снова окажутся оба кабинета.
+ *
+ * Возвращает текст отказа или null, если роль занята успешно (или уже была).
+ */
+export async function claimRole(accountId: number, wanted: AccountRole): Promise<string | null> {
+  const [row] = await db
+    .select({ role: accounts.role })
+    .from(accounts)
+    .where(eq(accounts.id, accountId));
+  const conflict = roleConflict(row?.role ?? null, wanted);
+  if (conflict) return conflict;
+  if (!row?.role) {
+    await db.update(accounts).set({ role: wanted }).where(eq(accounts.id, accountId));
+  }
+  return null;
+}
+
 export async function accountExists(rawEmail: string): Promise<boolean> {
   const [row] = await db
     .select({ id: accounts.id })
@@ -153,12 +178,14 @@ export async function accountExists(rawEmail: string): Promise<boolean> {
 }
 
 /**
- * Куда вести после входа: админа — в админку, у кого есть профиль
- * психолога — в кабинет специалиста, остальных — в кабинет клиента.
+ * Куда вести после входа: админа — в админку, специалиста — в его кабинет,
+ * остальных — в кабинет клиента. Роль решает одна колонка, а не наличие
+ * профиля: раньше профиль психолога перевешивал молча, и человек с двумя
+ * ролями на одной почте попадал только в /cab.
  */
 export async function homePathFor(accountId: number): Promise<"/admin" | "/cab" | "/me"> {
   const [account] = await db
-    .select({ email: accounts.email, isAdmin: accounts.isAdmin })
+    .select({ email: accounts.email, isAdmin: accounts.isAdmin, role: accounts.role })
     .from(accounts)
     .where(eq(accounts.id, accountId));
   if (
@@ -167,12 +194,7 @@ export async function homePathFor(accountId: number): Promise<"/admin" | "/cab" 
   ) {
     return "/admin";
   }
-
-  const [psy] = await db
-    .select({ id: psychologists.id })
-    .from(psychologists)
-    .where(eq(psychologists.accountId, accountId));
-  return psy ? "/cab" : "/me";
+  return account?.role === "psychologist" ? "/cab" : "/me";
 }
 
 /** Сколько писем с кодом можно отправить на один адрес за час. */

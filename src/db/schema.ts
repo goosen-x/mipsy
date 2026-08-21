@@ -14,6 +14,10 @@ export const accounts = sqliteTable("accounts", {
   email: text("email").notNull().unique(), // всегда в нижнем регистре
   name: text("name").notNull(),
   phone: text("phone"),
+  // Одна почта — одна роль. Психолог и клиент на общем адресе уживались плохо:
+  // вход всегда вёл в кабинет специалиста, и клиентский пропадал из виду.
+  // NULL — человек вошёл, но ничего не заполнял: может стать кем угодно.
+  role: text("role", { enum: ["client", "psychologist"] }),
   // Роль админа. Первого админа назначает переменная ADMIN_EMAILS, дальше —
   // сами админы со страницы «Команда».
   isAdmin: integer("is_admin", { mode: "boolean" }).notNull().default(false),

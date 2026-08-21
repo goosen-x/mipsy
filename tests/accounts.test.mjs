@@ -17,6 +17,7 @@ import {
   nowDbTime,
   parseAdminEmails,
   readSession,
+  roleConflict,
   signSession,
 } from "../src/lib/auth-core.ts";
 
@@ -95,6 +96,19 @@ test("данные аккаунта обновляет только его вл�
     {},
     "пустое имя не затирает старое",
   );
+});
+
+test("одна почта — одна роль", () => {
+  assert.equal(roleConflict(null, "client"), null, "свободный аккаунт может стать клиентом");
+  assert.equal(roleConflict(null, "psychologist"), null, "и специалистом тоже");
+  assert.equal(roleConflict("client", "client"), null, "своя роль не мешает");
+  assert.equal(roleConflict("psychologist", "psychologist"), null);
+
+  const toPsy = roleConflict("client", "psychologist");
+  assert.match(toPsy ?? "", /другого адреса/, "клиенту отказано в заявке психолога");
+  const toClient = roleConflict("psychologist", "client");
+  assert.match(toClient ?? "", /другого адреса/, "специалисту отказано в анкете клиента");
+  assert.notEqual(toPsy, toClient, "тексты отказов разные — они про разное");
 });
 
 test("ADMIN_EMAILS разбирается в чистый список почт", () => {

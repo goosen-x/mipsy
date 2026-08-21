@@ -33,6 +33,41 @@ export default async function ClientCabinetPage() {
     .orderBy(desc(clientRequests.id));
   const req = myRequests[0];
 
+  // Аккаунт специалиста в клиентский кабинет не ходит. Исключение — заявки,
+  // оставшиеся от времён, когда обе роли жили на одной почте: их не прячем,
+  // иначе человек потеряет свои брони. Разносит такие пары админ.
+  if (account.role === "psychologist" && !req) {
+    return (
+      <div className="min-h-screen bg-white">
+        <CabinetHeader title={account.name} />
+        <main className="mx-auto max-w-3xl px-4 py-12">
+          <section>
+            <h1 className="text-2xl font-bold">Эта почта — кабинет специалиста</h1>
+            <p className="mt-3 text-neutral-600">
+              На {account.email} заведён кабинет психолога, а кабинет клиента живёт отдельно:
+              так профиль, заявки и брони не перемешиваются. Если вы хотите обратиться к
+              психологу для себя — войдите с другого адреса, это будет отдельный кабинет.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                href="/cab"
+                className="rounded-lg bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700"
+              >
+                Мой кабинет специалиста
+              </Link>
+              <Link
+                href="/login"
+                className="rounded-lg border border-neutral-200 px-5 py-2.5 font-medium hover:border-brand-400"
+              >
+                Войти с другой почты
+              </Link>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
   if (!req) {
     return (
       <div className="min-h-screen bg-white">
@@ -153,6 +188,16 @@ export default async function ClientCabinetPage() {
       <CabinetHeader title={req.name} />
 
       <main className="mx-auto max-w-3xl space-y-12 px-4 py-10">
+        {account.role === "psychologist" && (
+          // Наследие: до разделения ролей обе жили на одной почте. Заявки не
+          // прячем, но предупреждаем — новые заводятся только с другого адреса.
+          <div className="rounded-2xl bg-amber-50 p-5 text-sm text-amber-900">
+            На этой почте кабинет специалиста, а эти заявки остались от времени, когда роли
+            жили на одном адресе. Они продолжают работать, но новую анкету отсюда не подать —
+            для обращений как клиент заведите отдельный вход с другой почты. Если нужно
+            разнести — напишите в <Link href="/support" className="underline">поддержку</Link>.
+          </div>
+        )}
         <section>
           <h1 className="text-2xl font-bold">Здравствуйте, {req.name}!</h1>
           {req.status === "new" && (

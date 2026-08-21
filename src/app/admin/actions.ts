@@ -13,7 +13,7 @@ import {
   slots,
   supportTickets,
 } from "@/db";
-import { currentAccountId, isAdmin, linkAccount } from "@/lib/auth";
+import { claimRole, currentAccountId, isAdmin, linkAccount } from "@/lib/auth";
 import { bookSlotForRequest, freeBookedSlotsOf, psyContact, releaseSlot } from "@/lib/booking";
 import { retirePsychologist } from "@/lib/matching";
 import { isEmail, normalizeEmail } from "@/lib/auth-core";
@@ -202,6 +202,13 @@ export async function updateRequest(
       .where(eq(clientRequests.id, id));
     if (!req) return { ok: false, error: "Заявка не найдена" };
     const linked = await linkAccount({ email, name: req.name, phone: req.phone });
+    // Одна почта — один кабинет: заявку клиента нельзя повесить на аккаунт
+    // специалиста, иначе роли снова окажутся на общем адресе — только руками
+    // оператора, а не через сайт.
+    if (linked) {
+      const conflict = await claimRole(linked.id, "client");
+      if (conflict) return { ok: false, error: conflict };
+    }
     accountId = linked?.id ?? null;
     if (accountId) {
       await db

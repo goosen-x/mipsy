@@ -3,7 +3,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, psychologists } from "@/db";
-import { currentAccount, linkAccount } from "@/lib/auth";
+import { claimRole, currentAccount, linkAccount } from "@/lib/auth";
 import { isValidPhone, normalizePhone } from "@/lib/rules";
 
 export type PsyApplication = {
@@ -53,6 +53,12 @@ export async function submitPsyApplication(
   if (existing) {
     return { ok: false, error: "У вас уже есть заявка — она видна в кабинете специалиста, /cab" };
   }
+
+  // Одна почта — один кабинет: адрес, на котором уже есть заявки клиента,
+  // специалистом не становится. Проверяем до linkAccount, чтобы отказ не
+  // переписал человеку имя и телефон в аккаунте.
+  const conflict = await claimRole(account.id, "psychologist");
+  if (conflict) return { ok: false, error: conflict };
 
   // Имя аккаунта могло быть заглушкой из адреса почты — заявка его уточняет.
   await linkAccount({ email: account.email, name, phone });

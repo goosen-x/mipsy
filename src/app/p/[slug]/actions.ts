@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { clientRequests, db, matches, psychologists } from "@/db";
-import { currentAccount, linkAccount } from "@/lib/auth";
+import { claimRole, currentAccount, linkAccount } from "@/lib/auth";
 import { takeSlot } from "@/lib/booking";
 import { meetingInvite, messages, notify, psyMeetingInvite, subjects } from "@/lib/notify";
 
@@ -30,6 +30,11 @@ export async function bookFirstSession(
   const email = account.email;
   if (!name) return { ok: false, error: "Укажите имя" };
   if (!data.pdConsent) return { ok: false, error: "Нужно согласие на обработку данных" };
+
+  // Одна почта — один кабинет: специалист не записывается к коллеге со своего
+  // рабочего адреса, иначе на аккаунте снова окажутся обе роли.
+  const conflict = await claimRole(account.id, "client");
+  if (conflict) return { ok: false, error: conflict };
 
   // Имя аккаунта могло быть заглушкой из адреса почты — бронь его уточняет.
   await linkAccount({ email, name });

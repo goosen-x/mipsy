@@ -12,6 +12,9 @@ export default async function AnketaPage() {
   // сначала человек подтверждает почту, потом рассказывает о себе.
   const account = await currentAccount();
   if (!account) redirect("/login?next=%2Fanketa");
+  // Одна почта — один кабинет: со счёта специалиста подбор не запускается.
+  // Объяснение ждёт в /cab, здесь незачем показывать анкету ради отказа.
+  if (account.role === "psychologist") redirect("/cab");
 
   const topicList = await db.select().from(topics).orderBy(asc(topics.sort));
   return (

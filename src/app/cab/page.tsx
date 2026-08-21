@@ -39,24 +39,52 @@ export default async function CabinetPage() {
         <main className="mx-auto max-w-3xl px-4 py-12">
           <section>
             <h1 className="text-2xl font-bold">Кабинета специалиста пока нет</h1>
-            <p className="mt-3 text-neutral-600">
-              На эту почту не заведён профиль психолога. Если вы хотите работать на платформе —
-              подайте заявку, мы изучим её и позвоним.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/psy"
-                className="rounded-lg bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700"
-              >
-                Подать заявку психолога
-              </Link>
-              <Link
-                href="/me"
-                className="rounded-lg border border-neutral-200 px-5 py-2.5 font-medium hover:border-brand-400"
-              >
-                Мой кабинет клиента
-              </Link>
-            </div>
+            {account.role === "client" ? (
+              // Одна почта — один кабинет: звать подавать заявку отсюда нельзя,
+              // она всё равно будет отклонена на отправке.
+              <>
+                <p className="mt-3 text-neutral-600">
+                  На {account.email} заведён кабинет клиента, а кабинет психолога живёт
+                  отдельно — так профиль, заявки и брони не перемешиваются. Хотите работать на
+                  платформе специалистом? Войдите с другого адреса и подайте заявку оттуда.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    href="/login"
+                    className="rounded-lg bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700"
+                  >
+                    Войти с другой почты
+                  </Link>
+                  <Link
+                    href="/me"
+                    className="rounded-lg border border-neutral-200 px-5 py-2.5 font-medium hover:border-brand-400"
+                  >
+                    Мой кабинет клиента
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mt-3 text-neutral-600">
+                  На эту почту не заведён профиль психолога. Если вы хотите работать на
+                  платформе — подайте заявку, мы изучим её и позвоним.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    href="/psy"
+                    className="rounded-lg bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700"
+                  >
+                    Подать заявку психолога
+                  </Link>
+                  <Link
+                    href="/me"
+                    className="rounded-lg border border-neutral-200 px-5 py-2.5 font-medium hover:border-brand-400"
+                  >
+                    Мой кабинет клиента
+                  </Link>
+                </div>
+              </>
+            )}
           </section>
         </main>
       </div>

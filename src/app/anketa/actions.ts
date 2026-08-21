@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { inArray } from "drizzle-orm";
 import { db, clientRequests, psychologists } from "@/db";
-import { currentAccount, linkAccount } from "@/lib/auth";
+import { claimRole, currentAccount, linkAccount } from "@/lib/auth";
 import { autoMatch, catalogUrlFor } from "@/lib/matching";
 import { isCrisisAnswer, isValidPhone, normalizePhone } from "@/lib/rules";
 
@@ -48,6 +48,10 @@ export async function submitAnketa(payload: AnketaPayload): Promise<AnketaResult
   if (!account) {
     return { ok: false, error: "Войдите в кабинет — подбор психолога запускается оттуда" };
   }
+
+  // Одна почта — один кабинет: с адреса специалиста анкету клиента не заполнить.
+  const conflict = await claimRole(account.id, "client");
+  if (conflict) return { ok: false, error: conflict };
 
   const name = payload.name?.trim().slice(0, 200);
   // Телефон нужен для срочной связи: кризисные заявки и случаи, когда письмо

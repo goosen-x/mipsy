@@ -129,6 +129,27 @@ export function parseAdminEmails(raw: string | null | undefined): string[] {
     .filter((e) => isEmail(e));
 }
 
+export type AccountRole = "client" | "psychologist";
+
+/**
+ * Одна почта — одна роль. Психолог и клиент на общем аккаунте раньше
+ * «схлопывались»: вход вёл в кабинет специалиста, а клиентский оставался
+ * доступен только по прямому адресу. Роль выбирается один раз — первым же
+ * действием (анкета и бронь делают клиентом, заявка психолога — специалистом);
+ * пока роли нет, аккаунт может стать любым.
+ *
+ * Возвращает текст отказа или null, если действие роли не противоречит.
+ */
+export function roleConflict(
+  current: AccountRole | null | undefined,
+  wanted: AccountRole,
+): string | null {
+  if (!current || current === wanted) return null;
+  return wanted === "psychologist"
+    ? "На этой почте кабинет клиента. Заявку психолога подайте с другого адреса — это будет отдельный вход."
+    : "На этой почте кабинет специалиста. Чтобы обратиться к психологу как клиент, войдите с другого адреса.";
+}
+
 /** Показываем в интерфейсе, куда ушёл код, не раскрывая адрес целиком. */
 export function maskEmail(email: string): string {
   const [name, domain] = normalizeEmail(email).split("@");
