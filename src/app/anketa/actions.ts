@@ -26,6 +26,7 @@ export type AnketaPayload = {
   name: string;
   phone: string;
   pdConsent: boolean;
+  marketingConsent: boolean;
 };
 
 export type ProposedPsy = {
@@ -93,6 +94,7 @@ export async function submitAnketa(payload: AnketaPayload): Promise<AnketaResult
     name,
     phone,
     pdConsent: true,
+    marketingConsent: payload.marketingConsent,
     crisisFlag,
     status: "new",
   }).returning({ id: clientRequests.id });

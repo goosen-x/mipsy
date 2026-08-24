@@ -25,7 +25,12 @@ export function ProfileBooking({
 }) {
   const router = useRouter();
   const [slotId, setSlotId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: viewer?.name ?? "", note: "", pdConsent: true });
+  const [form, setForm] = useState({
+    name: viewer?.name ?? "",
+    note: "",
+    pdConsent: true,
+    marketingConsent: false,
+  });
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -139,6 +144,20 @@ export function ProfileBooking({
               обработку персональных данных
             </a>
             . Ваши контакты видят только оператор и выбранный специалист.
+          </Label>
+        </div>
+        <div className="flex items-start gap-3">
+          <Checkbox
+            id="marketing-direct"
+            checked={form.marketingConsent}
+            onCheckedChange={(c) => setForm({ ...form, marketingConsent: c === true })}
+          />
+          <Label
+            htmlFor="marketing-direct"
+            className="text-sm font-normal leading-snug text-neutral-600"
+          >
+            Хочу получать новости и предложения mipsy на почту. Необязательно, можно отписаться в
+            любой момент.
           </Label>
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}

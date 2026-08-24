@@ -477,9 +477,8 @@ export default async function ClientCabinetPage() {
           <section className="border-t border-neutral-100 pt-8">
             <h2 className="text-lg font-bold">Оплата</h2>
             <p className="mt-2 text-neutral-600">
-              Сессии
-              {gradePriceLabel(chosen.psy.grade) ? ` стоят ${gradePriceLabel(chosen.psy.grade)} и` : ""}{" "}
-              оплачиваются напрямую специалисту, как вы договоритесь.
+              Сессия
+              {gradePriceLabel(chosen.psy.grade) ? ` стоит ${gradePriceLabel(chosen.psy.grade)}` : ""}.
             </p>
             <p className="mt-2 text-sm text-neutral-400">
               Онлайн-оплата на платформе появится позже.

@@ -72,6 +72,7 @@ export const clientRequests = sqliteTable("client_requests", {
   phone: text("phone"),
   email: text("email"),
   pdConsent: integer("pd_consent", { mode: "boolean" }).notNull().default(false),
+  marketingConsent: integer("marketing_consent", { mode: "boolean" }).notNull().default(false),
 
   crisisFlag: integer("crisis_flag", { mode: "boolean" }).notNull().default(false),
   status: text("status").notNull().default("new"), // new | called | matched | rematch | rejected

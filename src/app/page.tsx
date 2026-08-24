@@ -39,7 +39,7 @@ const STEPS = [
 const FAQ = [
   {
     q: "Как вы подбираете психолога?",
-    a: "Вручную. Оператор читает вашу анкету целиком — запрос, пожелания, удобное время — и подбирает специалиста, который работает именно с такими темами. Вам не нужно разбираться в подходах и листать каталог.",
+    a: "Мы читаем вашу анкету целиком — запрос, пожелания, удобное время — и подбираем специалиста, который работает именно с такими темами. Вам не нужно разбираться в подходах и листать каталог.",
   },
   {
     q: "А если психолог не подойдёт?",
@@ -83,8 +83,8 @@ export default async function Home() {
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-neutral-700">
               Не знаете, с чего начать? Создайте личный кабинет, ответьте на несколько вопросов о
-              себе — и мы вручную подберём специалиста под ваш запрос. Не подойдёт — бесплатно
-              подберём другого.
+              себе — и мы подберём специалиста под ваш запрос. Не подойдёт — бесплатно подберём
+              другого.
             </p>
             <Button
               asChild
@@ -95,12 +95,6 @@ export default async function Home() {
             </Button>
             <p className="mt-3 text-sm text-neutral-500">
               ≈ 5 минут · подбор бесплатный
-            </p>
-            <p className="mt-4 text-sm text-neutral-600">
-              или{" "}
-              <Link href="/catalog" className="font-medium text-brand-700 underline">
-                посмотреть психологов самостоятельно
-              </Link>
             </p>
           </div>
         </section>
@@ -152,12 +146,7 @@ export default async function Home() {
         {/* Примеры профилей — появляются, когда есть одобренные специалисты */}
         {approved.length > 0 && (
           <section className="mx-auto max-w-5xl px-4 pb-16">
-            <div className="flex flex-wrap items-baseline justify-between gap-3">
-              <h2 className="text-3xl font-bold">Наши специалисты</h2>
-              <Link href="/catalog" className="font-medium text-brand-700 underline">
-                Все психологи →
-              </Link>
-            </div>
+            <h2 className="text-3xl font-bold">Наши специалисты</h2>
             <div className="mt-8 grid gap-6 sm:grid-cols-3">
               {approved.map((p) => (
                 <Link

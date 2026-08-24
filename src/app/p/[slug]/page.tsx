@@ -199,8 +199,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
             <h2 className="text-2xl font-bold">Запись на встречу</h2>
             <p className="mx-auto mt-2 max-w-lg text-neutral-600">
               Выберите удобную дату и время
-              {gradePriceLabel(psy.grade) ? ` — сессия ${gradePriceLabel(psy.grade)}` : ""}. Оплата
-              напрямую специалисту.
+              {gradePriceLabel(psy.grade) ? ` — сессия ${gradePriceLabel(psy.grade)}` : ""}.
             </p>
           </div>
           <div className="mt-6">

@@ -12,6 +12,7 @@ export type DirectBooking = {
   name: string;
   note: string;
   pdConsent: boolean;
+  marketingConsent: boolean;
 };
 
 /**
@@ -70,6 +71,7 @@ export async function bookFirstSession(
       phone: account.phone,
       story: data.note?.trim().slice(0, 4000) || null,
       pdConsent: true,
+      marketingConsent: data.marketingConsent,
       status: "matched",
       clientToken: token,
     })

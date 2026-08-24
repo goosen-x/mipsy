@@ -212,9 +212,14 @@ export default async function CatalogPage({
                 // полей одинаковая во всех карточках — так их сравнивают.
                 <div
                   key={p.id}
-                  className="flex flex-col gap-5 rounded-2xl border border-neutral-200 p-4 transition-colors hover:border-brand-400 sm:flex-row sm:p-5"
+                  className="group relative flex flex-col gap-5 rounded-2xl border border-neutral-200 p-4 transition-colors hover:border-brand-400 sm:flex-row sm:p-5"
                 >
-                  <Link href={`/p/${p.slug}`} className="shrink-0">
+                  <Link
+                    href={`/p/${p.slug}`}
+                    className="absolute inset-0 z-0 rounded-2xl"
+                    aria-label={`Профиль психолога ${p.name}`}
+                  />
+                  <div className="shrink-0">
                     {p.photoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -227,16 +232,13 @@ export default async function CatalogPage({
                         {p.name.slice(0, 1)}
                       </div>
                     )}
-                  </Link>
+                  </div>
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <Link
-                        href={`/p/${p.slug}`}
-                        className="text-lg font-bold hover:text-brand-700"
-                      >
+                      <span className="text-lg font-bold group-hover:text-brand-700">
                         {p.name}
-                      </Link>
+                      </span>
                       <span
                         className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700"
                         title="Дипломы и опыт проверены при модерации"
@@ -289,7 +291,7 @@ export default async function CatalogPage({
                     ) : (
                       <div className="text-xs text-neutral-500">Свободных окон пока нет</div>
                     )}
-                    <Button asChild size="sm" className="mt-auto sm:w-full">
+                    <Button asChild size="sm" className="relative z-10 mt-auto sm:w-full">
                       <Link href={`/p/${p.slug}`}>Выбрать время</Link>
                     </Button>
                   </div>

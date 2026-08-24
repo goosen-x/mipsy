@@ -33,6 +33,7 @@ type State = {
   name: string;
   phone: string;
   pdConsent: boolean;
+  marketingConsent: boolean;
 };
 
 const FREQ_OPTIONS = [
@@ -105,6 +106,7 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
     name: "",
     phone: "",
     pdConsent: true,
+    marketingConsent: false,
   });
   const [stepIdx, setStepIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -200,6 +202,7 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
       name: state.name,
       phone: state.phone,
       pdConsent: state.pdConsent,
+      marketingConsent: state.marketingConsent,
     };
     startTransition(async () => {
       const res = await submitAnketa(payload);
@@ -640,6 +643,20 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
               </a>
               , включая сведения о состоянии из анкеты. Анкету увидят только оператор и
               подобранный психолог.
+            </Label>
+          </div>
+          <div className="mt-3 flex items-start gap-3">
+            <Checkbox
+              id="marketing"
+              checked={state.marketingConsent}
+              onCheckedChange={(c) => set("marketingConsent", c === true)}
+            />
+            <Label
+              htmlFor="marketing"
+              className="text-sm font-normal leading-snug text-neutral-600"
+            >
+              Хочу получать новости и предложения mipsy на почту. Необязательно, можно отписаться в
+              любой момент.
             </Label>
           </div>
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
