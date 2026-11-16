@@ -205,3 +205,17 @@ body {
 body:has([data-cabinet]) [data-site-footer] {
   display: none;
 }
+
+/* Кабинет занимает всю высоту под шапкой: фон до низа, короткий футер — у края. */
+[data-site-main]:has(> [data-cabinet]) {
+  display: flex;
+  flex-direction: column;
+}
+[data-cabinet] {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+}
+[data-cabinet-body] {
+  flex: 1 0 auto;
+}

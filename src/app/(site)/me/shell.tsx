@@ -66,6 +66,7 @@ function Count({ n, className }: { n?: number; className?: string }) {
 function TabsShell({ active, badges, children }: ShellProps) {
   return (
     <div data-cabinet className="bg-white">
+      <div data-cabinet-body>
       <div className="mx-auto max-w-5xl px-4 pt-6">
         <nav
           aria-label="Разделы кабинета"
@@ -91,6 +92,7 @@ function TabsShell({ active, badges, children }: ShellProps) {
         </nav>
       </div>
       <main className="mx-auto max-w-5xl space-y-12 px-4 py-10 pb-24">{children}</main>
+      </div>
       <CabinetFooter />
     </div>
   );
@@ -100,7 +102,7 @@ function TabsShell({ active, badges, children }: ShellProps) {
 function SidebarShell({ active, badges, children }: ShellProps) {
   return (
     <div data-cabinet className="bg-neutral-50">
-      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 md:grid-cols-[230px_1fr]">
+      <div data-cabinet-body className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8 md:grid-cols-[230px_1fr]">
         <aside className="md:sticky md:top-6 md:self-start">
           <div className="mb-3 hidden px-3 text-xs font-medium uppercase tracking-wide text-neutral-400 md:block">
             Мой кабинет
@@ -139,7 +141,7 @@ function TilesShell({ active, children }: Omit<ShellProps, "badges">) {
   const section = SECTIONS.find((s) => s.key === active)!;
   return (
     <div data-cabinet className="bg-neutral-50">
-      <main className="mx-auto max-w-5xl space-y-10 px-4 py-8 pb-24">
+      <main data-cabinet-body className="mx-auto w-full max-w-5xl space-y-10 px-4 py-8 pb-24">
         {active !== "home" && (
           <div className="flex items-center gap-3 text-sm">
             <Link
@@ -167,7 +169,7 @@ function TilesShell({ active, children }: Omit<ShellProps, "badges">) {
 function OnePageShell({ badges, children }: Omit<ShellProps, "active">) {
   return (
     <div data-cabinet className="bg-white">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 lg:grid-cols-[200px_1fr]">
+      <div data-cabinet-body className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-10 lg:grid-cols-[200px_1fr]">
         <aside className="hidden lg:block">
           <nav aria-label="Разделы кабинета" className="sticky top-6 space-y-1 border-l border-neutral-200">
             {SECTIONS.map((s) => (
@@ -192,8 +194,8 @@ function OnePageShell({ badges, children }: Omit<ShellProps, "active">) {
 /* 5. Приложение: узкая колонка и нижняя панель с иконками */
 function AppShell({ active, badges, children }: ShellProps) {
   return (
-    <div data-cabinet className="min-h-[calc(100svh-4.5rem)] bg-neutral-50">
-      <main className="mx-auto max-w-xl space-y-8 px-4 py-6 pb-40">{children}</main>
+    <div data-cabinet className="bg-neutral-50">
+      <main data-cabinet-body className="mx-auto w-full max-w-xl space-y-8 px-4 py-6 pb-40">{children}</main>
       <nav
         aria-label="Разделы кабинета"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 backdrop-blur"
@@ -265,7 +267,7 @@ export function waitingText(status: string): string {
  */
 export function CabinetFooter() {
   return (
-    <footer className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-6 text-xs text-neutral-400">
+    <footer className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-6 text-xs text-neutral-400">
       <span>© {new Date().getFullYear()} {ORG.shortName}</span>
       <Link href="/privacy" className="cursor-pointer hover:text-neutral-700">
         Политика обработки данных

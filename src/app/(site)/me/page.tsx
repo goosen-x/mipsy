@@ -59,8 +59,10 @@ export default async function ClientCabinetPage({ searchParams }: { searchParams
     const asked = Number((await searchParams).v);
     const variant = canSwitch && asked >= 1 && asked <= 5 ? asked : DEFAULT_EMPTY_VARIANT;
     return (
-      <div data-cabinet className="bg-white pb-20">
-        <EmptyCabinet variant={variant} name={account.name} />
+      <div data-cabinet className="bg-white">
+        <div data-cabinet-body className="pb-20">
+          <EmptyCabinet variant={variant} name={account.name} />
+        </div>
         <CabinetFooter />
         {canSwitch && <VariantSwitcher current={variant} variants={EMPTY_VARIANTS} basePath="/me" />}
       </div>
