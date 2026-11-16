@@ -12,18 +12,21 @@ import { LAYOUT_COOKIE } from "@/app/(site)/me/layout-config";
  */
 export function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
+  // За nginx request.url — внутренний адрес контейнера, редирект на него
+  // уводит браузер в никуда. Публичный адрес берём из SITE_URL.
+  const base = process.env.SITE_URL ?? request.nextUrl.origin;
   const state = sp.get("state") ?? "proposals";
 
   if (state === "off") {
-    const res = NextResponse.redirect(new URL("/", request.url));
+    const res = NextResponse.redirect(new URL("/", base));
     res.cookies.delete(DEMO_COOKIE);
     return res;
   }
-  if (!isDemoState(state)) return NextResponse.redirect(new URL("/demo", request.url));
+  if (!isDemoState(state)) return NextResponse.redirect(new URL("/demo", base));
 
   const to = sp.get("to");
   const path = to && /^\/me(\/(podbor|vstrechi|oplaty|podderzhka))?$/.test(to) ? to : "/me";
-  const target = new URL(path, request.url);
+  const target = new URL(path, base);
   const layout = sp.get("layout");
   const v = sp.get("v");
   if (layout) target.searchParams.set("layout", layout);
