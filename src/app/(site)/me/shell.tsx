@@ -4,13 +4,14 @@ import {
   IconCreditCard,
   IconHeadset,
   IconLayoutDashboard,
+  IconLayoutGrid,
   IconUserSearch,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
 export type CabinetSection = "home" | "podbor" | "vstrechi" | "oplaty" | "podderzhka";
 
-const SECTIONS: { key: CabinetSection; href: string; title: string; icon: typeof IconUserSearch }[] = [
+export const SECTIONS: { key: CabinetSection; href: string; title: string; icon: typeof IconUserSearch }[] = [
   { key: "home", href: "/me", title: "Главная", icon: IconLayoutDashboard },
   { key: "podbor", href: "/me/podbor", title: "Подбор", icon: IconUserSearch },
   { key: "vstrechi", href: "/me/vstrechi", title: "Встречи", icon: IconCalendarEvent },
@@ -19,18 +20,49 @@ const SECTIONS: { key: CabinetSection; href: string; title: string; icon: typeof
 ];
 
 /**
- * Каркас кабинета клиента: меню разделов и колонка контента. Счётчики в меню —
- * что ждёт действия клиента в разделе (выбрать специалиста, оплатить и т. п.).
+ * Каркас кабинета клиента в пяти вариантах (см. layout-config.ts). Содержимое
+ * разделов одно и то же — меняется только навигация вокруг него.
  */
 export function CabinetShell({
+  layout = 1,
   active,
   badges = {},
   children,
 }: {
+  layout?: number;
   active: CabinetSection;
   badges?: Partial<Record<CabinetSection, number>>;
   children: React.ReactNode;
 }) {
+  if (layout === 2) return <SidebarShell active={active} badges={badges}>{children}</SidebarShell>;
+  if (layout === 3) return <TilesShell active={active}>{children}</TilesShell>;
+  if (layout === 4) return <OnePageShell badges={badges}>{children}</OnePageShell>;
+  if (layout === 5) return <AppShell active={active} badges={badges}>{children}</AppShell>;
+  return <TabsShell active={active} badges={badges}>{children}</TabsShell>;
+}
+
+type ShellProps = {
+  active: CabinetSection;
+  badges: Partial<Record<CabinetSection, number>>;
+  children: React.ReactNode;
+};
+
+function Count({ n, className }: { n?: number; className?: string }) {
+  if (!n) return null;
+  return (
+    <span
+      className={cn(
+        "rounded-full bg-brand-600 px-1.5 text-xs font-medium leading-5 text-white",
+        className,
+      )}
+    >
+      {n}
+    </span>
+  );
+}
+
+/* 1. Вкладки над контентом */
+function TabsShell({ active, badges, children }: ShellProps) {
   return (
     <div className="bg-white">
       <div className="mx-auto max-w-5xl px-4 pt-6">
@@ -38,34 +70,147 @@ export function CabinetShell({
           aria-label="Разделы кабинета"
           className="-mx-4 flex gap-1 overflow-x-auto border-b border-neutral-100 px-4"
         >
-          {SECTIONS.map((s) => {
-            const isActive = s.key === active;
-            const badge = badges[s.key];
-            return (
-              <Link
-                key={s.key}
-                href={s.href}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "-mb-px flex cursor-pointer items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-sm transition-colors",
-                  isActive
-                    ? "border-brand-600 font-medium text-neutral-900"
-                    : "border-transparent text-neutral-500 hover:text-neutral-900",
-                )}
-              >
-                <s.icon size={18} />
-                {s.title}
-                {badge ? (
-                  <span className="rounded-full bg-brand-600 px-1.5 text-xs font-medium leading-5 text-white">
-                    {badge}
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
+          {SECTIONS.map((s) => (
+            <Link
+              key={s.key}
+              href={s.href}
+              aria-current={s.key === active ? "page" : undefined}
+              className={cn(
+                "-mb-px flex cursor-pointer items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-sm transition-colors",
+                s.key === active
+                  ? "border-brand-600 font-medium text-neutral-900"
+                  : "border-transparent text-neutral-500 hover:text-neutral-900",
+              )}
+            >
+              <s.icon size={18} />
+              {s.title}
+              <Count n={badges[s.key]} />
+            </Link>
+          ))}
         </nav>
       </div>
       <main className="mx-auto max-w-5xl space-y-12 px-4 py-10 pb-24">{children}</main>
+    </div>
+  );
+}
+
+/* 2. Боковое меню слева, на телефоне — строкой сверху */
+function SidebarShell({ active, badges, children }: ShellProps) {
+  return (
+    <div className="bg-neutral-50">
+      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 md:grid-cols-[230px_1fr]">
+        <aside className="md:sticky md:top-6 md:self-start">
+          <div className="mb-3 hidden px-3 text-xs font-medium uppercase tracking-wide text-neutral-400 md:block">
+            Мой кабинет
+          </div>
+          <nav aria-label="Разделы кабинета" className="flex gap-1 overflow-x-auto md:flex-col">
+            {SECTIONS.map((s) => (
+              <Link
+                key={s.key}
+                href={s.href}
+                aria-current={s.key === active ? "page" : undefined}
+                className={cn(
+                  "flex cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm transition-colors",
+                  s.key === active
+                    ? "bg-white font-medium text-brand-700 shadow-sm ring-1 ring-neutral-200"
+                    : "text-neutral-600 hover:bg-white",
+                )}
+              >
+                <s.icon size={20} />
+                <span className="flex-1">{s.title}</span>
+                <Count n={badges[s.key]} />
+              </Link>
+            ))}
+          </nav>
+        </aside>
+        <main className="min-w-0 space-y-10 rounded-3xl bg-white p-6 pb-24 shadow-sm ring-1 ring-neutral-200 sm:p-10">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+/* 3. Плитки: меню нет, главная — сетка разделов, из раздела — назад к сетке */
+function TilesShell({ active, children }: Omit<ShellProps, "badges">) {
+  const section = SECTIONS.find((s) => s.key === active)!;
+  return (
+    <div className="bg-neutral-50">
+      <main className="mx-auto max-w-5xl space-y-10 px-4 py-8 pb-24">
+        {active !== "home" && (
+          <div className="flex items-center gap-3 text-sm">
+            <Link
+              href="/me"
+              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3.5 py-2 font-medium text-neutral-700 shadow-sm ring-1 ring-neutral-200 hover:text-brand-700"
+            >
+              <IconLayoutGrid size={16} />
+              Все разделы
+            </Link>
+            <span className="text-neutral-300">/</span>
+            <span className="flex items-center gap-1.5 text-neutral-500">
+              <section.icon size={16} />
+              {section.title}
+            </span>
+          </div>
+        )}
+        {active === "home" ? children : <div className="space-y-10 rounded-3xl bg-white p-6 sm:p-10">{children}</div>}
+      </main>
+    </div>
+  );
+}
+
+/* 4. Одна страница: все разделы подряд, слева — оглавление с якорями */
+function OnePageShell({ badges, children }: Omit<ShellProps, "active">) {
+  return (
+    <div className="bg-white">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 lg:grid-cols-[200px_1fr]">
+        <aside className="hidden lg:block">
+          <nav aria-label="Разделы кабинета" className="sticky top-6 space-y-1 border-l border-neutral-200">
+            {SECTIONS.map((s) => (
+              <a
+                key={s.key}
+                href={`#${s.key}`}
+                className="-ml-px flex cursor-pointer items-center gap-2 border-l-2 border-transparent py-1.5 pl-4 text-sm text-neutral-500 hover:border-brand-600 hover:text-neutral-900"
+              >
+                {s.title}
+                <Count n={badges[s.key]} />
+              </a>
+            ))}
+          </nav>
+        </aside>
+        <main className="min-w-0 pb-24">{children}</main>
+      </div>
+    </div>
+  );
+}
+
+/* 5. Приложение: узкая колонка и нижняя панель с иконками */
+function AppShell({ active, badges, children }: ShellProps) {
+  return (
+    <div className="bg-neutral-50">
+      <main className="mx-auto max-w-xl space-y-8 px-4 py-6 pb-40">{children}</main>
+      <nav
+        aria-label="Разделы кабинета"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 backdrop-blur"
+      >
+        <div className="mx-auto grid max-w-xl grid-cols-5">
+          {SECTIONS.map((s) => (
+            <Link
+              key={s.key}
+              href={s.href}
+              aria-current={s.key === active ? "page" : undefined}
+              className={cn(
+                "relative flex cursor-pointer flex-col items-center gap-1 py-2.5 text-[11px] transition-colors",
+                s.key === active ? "font-medium text-brand-700" : "text-neutral-500 hover:text-neutral-900",
+              )}
+            >
+              <s.icon size={24} stroke={s.key === active ? 2 : 1.5} />
+              {s.title}
+              <Count n={badges[s.key]} className="absolute right-1/2 top-1 translate-x-5 px-1 text-[10px] leading-4" />
+            </Link>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }
