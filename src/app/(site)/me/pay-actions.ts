@@ -1,6 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
+import { DEMO_BLOCKED, readDemoState } from "./demo";
 import { clientRequests, db, payments, psychologists, slots } from "@/db";
 import { currentAccount } from "@/lib/auth";
 import { formatSlot } from "@/lib/datetime";
@@ -31,6 +32,7 @@ export type StartPaymentResult =
 
 /** Клиент запускает оплату своей брони выбранным провайдером. */
 export async function startPayment(slotId: number, provider: Provider): Promise<StartPaymentResult> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const account = await currentAccount();
   if (!account) return { ok: false, error: "Войдите, чтобы оплатить" };
 

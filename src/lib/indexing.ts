@@ -8,4 +8,4 @@ export const indexingAllowed = () => process.env.ALLOW_INDEXING === "1";
 export const siteUrl = () => (process.env.SITE_URL ?? "https://psyo.ru").replace(/\/$/, "");
 
 /** Разделы за входом и служебные — закрыты от поисковиков всегда. */
-export const PRIVATE_PATHS = ["/admin", "/me", "/cab", "/login", "/anketa", "/psy/anketa", "/api", "/uploads", "/logout"];
+export const PRIVATE_PATHS = ["/admin", "/me", "/cab", "/login", "/anketa", "/psy/anketa", "/api", "/uploads", "/logout", "/demo"];

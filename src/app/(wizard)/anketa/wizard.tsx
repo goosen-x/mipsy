@@ -227,7 +227,7 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
         // Подборка живёт в кабинете, а не в памяти этой страницы: иначе «Назад»
         // из профиля психолога возвращал на пустую анкету. replace — чтобы
         // «Назад» из кабинета не вёл в уже отправленную анкету.
-        if (res.matched > 0) router.replace("/me#proposals");
+        if (res.matched > 0) router.replace("/me/podbor");
         else setDone({ catalogUrl: res.catalogUrl });
       } else setError(res.error ?? "Что-то пошло не так, попробуйте ещё раз");
     });

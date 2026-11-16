@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { revalidateClientCabinet } from "@/lib/revalidate-cabinet";
 import { cleanEducation, educationText, type EducationData } from "@/lib/education";
 import { clientRequests, db, psychologists, supportTickets } from "@/db";
 import { currentAccountId } from "@/lib/auth";
@@ -234,7 +235,7 @@ export async function markSlotPaid(
   }
 
   revalidatePath("/cab");
-  revalidatePath("/me");
+  revalidateClientCabinet();
   return { ok: true };
 }
 

@@ -1,7 +1,9 @@
 "use server";
 
 import { and, desc, eq } from "drizzle-orm";
+import { DEMO_BLOCKED, readDemoState } from "./demo";
 import { revalidatePath } from "next/cache";
+import { revalidateClientCabinet } from "@/lib/revalidate-cabinet";
 import { accounts, clientRequests, db, matches, reviews, supportTickets } from "@/db";
 import { accountRequestIds, currentAccountId } from "@/lib/auth";
 import {
@@ -60,6 +62,7 @@ async function myRequestIds(): Promise<number[]> {
 export async function choosePsychologist(
   psychologistId: number,
 ): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
 
@@ -81,11 +84,12 @@ export async function choosePsychologist(
     .where(and(eq(matches.clientRequestId, c.id), eq(matches.active, true)));
   await db.update(matches).set({ chosen: true }).where(eq(matches.id, proposal.id));
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   return { ok: true };
 }
 
 export async function bookSlot(slotId: number): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
   const psy = await chosenPsychologist(db, c.id);
@@ -140,7 +144,7 @@ export async function bookSlot(slotId: number): Promise<{ ok: boolean; error?: s
     slotId,
   });
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   return { ok: true };
 }
 
@@ -150,6 +154,7 @@ export async function rescheduleSlot(
   // Подтверждение «стоимость прежней сессии удерживается» при переносе <24ч.
   allowLate = false,
 ): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
 
@@ -228,7 +233,7 @@ export async function rescheduleSlot(
     slotId: toSlotId,
   });
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   return { ok: true };
 }
 
@@ -237,6 +242,7 @@ export async function cancelBooking(
   // Подтверждение «стоимость сессии удерживается» при отмене <24ч.
   allowLate = false,
 ): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
 
@@ -300,11 +306,12 @@ export async function cancelBooking(
     slotId,
   });
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   return { ok: true };
 }
 
 export async function requestRematch(reason: string): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
 
@@ -343,7 +350,7 @@ export async function requestRematch(reason: string): Promise<{ ok: boolean; err
     });
   }
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   revalidatePath("/admin");
   return { ok: true };
 }
@@ -354,6 +361,7 @@ export async function leaveReview(
   rating: number,
   body: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
@@ -387,7 +395,7 @@ export async function leaveReview(
     return { ok: false, error: "Отзыв об этой встрече уже оставлен" };
   }
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   revalidatePath("/admin/reviews");
   return { ok: true };
 }
@@ -397,6 +405,7 @@ export async function createTicket(
   kind: "question" | "complaint",
   body: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
   const text = String(body ?? "").trim().slice(0, 4000);
@@ -414,7 +423,7 @@ export async function createTicket(
     psychologistId: psy?.id,
   });
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   revalidatePath("/admin/support");
   return { ok: true };
 }
