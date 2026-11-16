@@ -2,6 +2,7 @@
 
 import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { revalidateClientCabinet } from "@/lib/revalidate-cabinet";
 import { accounts, clientRequests, db, matches, reviews, supportTickets } from "@/db";
 import { accountRequestIds, currentAccountId } from "@/lib/auth";
 import {
@@ -81,7 +82,7 @@ export async function choosePsychologist(
     .where(and(eq(matches.clientRequestId, c.id), eq(matches.active, true)));
   await db.update(matches).set({ chosen: true }).where(eq(matches.id, proposal.id));
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   return { ok: true };
 }
 
@@ -140,7 +141,7 @@ export async function bookSlot(slotId: number): Promise<{ ok: boolean; error?: s
     slotId,
   });
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   return { ok: true };
 }
 
@@ -228,7 +229,7 @@ export async function rescheduleSlot(
     slotId: toSlotId,
   });
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   return { ok: true };
 }
 
@@ -300,7 +301,7 @@ export async function cancelBooking(
     slotId,
   });
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   return { ok: true };
 }
 
@@ -343,7 +344,7 @@ export async function requestRematch(reason: string): Promise<{ ok: boolean; err
     });
   }
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   revalidatePath("/admin");
   return { ok: true };
 }
@@ -387,7 +388,7 @@ export async function leaveReview(
     return { ok: false, error: "Отзыв об этой встрече уже оставлен" };
   }
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   revalidatePath("/admin/reviews");
   return { ok: true };
 }
@@ -414,7 +415,7 @@ export async function createTicket(
     psychologistId: psy?.id,
   });
 
-  revalidatePath("/me");
+  revalidateClientCabinet();
   revalidatePath("/admin/support");
   return { ok: true };
 }

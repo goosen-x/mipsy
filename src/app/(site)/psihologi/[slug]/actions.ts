@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { revalidateClientCabinet } from "@/lib/revalidate-cabinet";
 import { clientRequests, db, matches, psychologists } from "@/db";
 import { claimRole, currentAccount, linkAccount } from "@/lib/auth";
 import { takeSlot } from "@/lib/booking";
@@ -177,7 +178,7 @@ export async function bookFirstSession(
   });
 
   revalidatePath(`/psihologi/${slug}`);
-  revalidatePath("/me");
+  revalidateClientCabinet();
   revalidatePath("/admin");
   return { ok: true };
 }

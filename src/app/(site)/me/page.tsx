@@ -1,47 +1,33 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import { clientRequests, db, matches, psychologists, reviews, slots, topics } from "@/db";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { IconSearch } from "@tabler/icons-react";
-import { canClientChange, formatSlot, isPast, TZ_LABEL } from "@/lib/datetime";
-import { currentAccount, isAdmin } from "@/lib/auth";
-import { gradePriceLabel, gradeTitle } from "@/lib/grades";
-import { label, REQUEST_STATUS_LABELS } from "@/lib/labels";
-import { catalogUrlFor } from "@/lib/matching";
-import { enabledProviders } from "@/lib/payments";
-import { PayButtons } from "./pay";
-import { DEFAULT_EMPTY_VARIANT, EMPTY_VARIANTS, EmptyCabinet } from "./empty-variants";
-import { DEFAULT_PROPOSAL_VARIANT, PROPOSAL_VARIANTS, type Proposal } from "./proposals-config";
-import { ProposalsView } from "./proposals-variants";
-import { VariantSwitcher } from "@/components/variant-switcher";
 import {
-  BookingActions,
-  BookingSection,
-  ChoosePsychologist,
-  RematchControl,
-  ReviewForm,
-  SupportForm,
-} from "./controls";
+  IconArrowRight,
+  IconCalendarEvent,
+  IconCreditCard,
+  IconUserHeart,
+} from "@tabler/icons-react";
+import { Button } from "@/components/ui/button";
+import { VariantSwitcher } from "@/components/variant-switcher";
+import { formatSlot } from "@/lib/datetime";
+import { label, REQUEST_STATUS_LABELS } from "@/lib/labels";
+import { Badge } from "@/components/ui/badge";
+import { canSwitchVariants, loadAccount, loadCabinet, type Cabinet } from "./data";
+import { DEFAULT_EMPTY_VARIANT, EMPTY_VARIANTS, EmptyCabinet } from "./empty-variants";
+import { CabinetShell, cabinetBadges, waitingText } from "./shell";
 
 export const metadata = { title: "Личный кабинет — mipsy" };
 export const dynamic = "force-dynamic";
 
+/**
+ * Главная кабинета клиента. Без анкеты — стартовый экран (варианты на выбор),
+ * с анкетой — дашборд: следующий шаг и сводка по разделам. Сами подборка,
+ * встречи, оплаты и поддержка живут в своих разделах (/me/podbor и т. д.).
+ */
 export default async function ClientCabinetPage({
   searchParams,
 }: {
   searchParams: Promise<{ v?: string }>;
 }) {
-  const account = await currentAccount();
-  if (!account) redirect("/login?next=%2Fme");
-
-  const myRequests = await db
-    .select()
-    .from(clientRequests)
-    .where(eq(clientRequests.accountId, account.id))
-    .orderBy(desc(clientRequests.id));
-  const req = myRequests[0];
+  const { account, req } = await loadAccount("/me");
 
   // Аккаунт специалиста в клиентский кабинет не ходит. Исключение — заявки,
   // оставшиеся от времён, когда обе роли жили на одной почте: их не прячем,
@@ -77,11 +63,9 @@ export default async function ClientCabinetPage({
     );
   }
 
-  // Переключатель вариантов дизайна: локально и админам; клиентам — вариант по умолчанию.
-  const canSwitch = process.env.NODE_ENV === "development" || (await isAdmin());
-  const asked = Number((await searchParams).v);
-
   if (!req) {
+    const canSwitch = await canSwitchVariants();
+    const asked = Number((await searchParams).v);
     const variant = canSwitch && asked >= 1 && asked <= 5 ? asked : DEFAULT_EMPTY_VARIANT;
     return (
       <div className="bg-white pb-20">
@@ -91,491 +75,170 @@ export default async function ClientCabinetPage({
     );
   }
 
-  const requestIds = myRequests.map((r) => r.id);
-
-  const proposals = await db
-    .select({ matchId: matches.id, chosen: matches.chosen, note: matches.note, psy: psychologists })
-    .from(matches)
-    .innerJoin(psychologists, eq(matches.psychologistId, psychologists.id))
-    .where(and(eq(matches.clientRequestId, req.id), eq(matches.active, true)));
-  const chosen = proposals.find((p) => p.chosen);
-
-  const topicList = await db.select().from(topics).orderBy(asc(topics.sort));
-  const proposalSlots = proposals.length
-    ? (
-        await db
-          .select({ psychologistId: slots.psychologistId, startsAt: slots.startsAt })
-          .from(slots)
-          .where(
-            and(
-              inArray(
-                slots.psychologistId,
-                proposals.map((p) => p.psy.id),
-              ),
-              eq(slots.status, "free"),
-            ),
-          )
-          .orderBy(asc(slots.startsAt))
-      ).filter((s) => !isPast(s.startsAt, new Date()))
-    : [];
-  const topicTitle = (slug: string) => topicList.find((t) => t.slug === slug)?.title ?? slug;
-
-  const now = new Date();
-  const mySlots = await db
-    .select({
-      id: slots.id,
-      startsAt: slots.startsAt,
-      durationMin: slots.durationMin,
-      status: slots.status,
-      meetingLink: slots.meetingLink,
-      paidAt: slots.paidAt,
-      psychologistId: slots.psychologistId,
-      clientRequestId: slots.clientRequestId,
-      psyName: psychologists.name,
-      psyGrade: psychologists.grade,
-    })
-    .from(slots)
-    .innerJoin(psychologists, eq(slots.psychologistId, psychologists.id))
-    .where(inArray(slots.clientRequestId, requestIds))
-    .orderBy(asc(slots.startsAt));
-  const upcoming = mySlots.filter((s) => s.status === "booked" && !isPast(s.startsAt, now));
-  // Кнопки оплаты видны, только когда настроен хотя бы один платёжный провайдер.
-  const payProviders = enabledProviders();
-  // Прошедшее целиком: состоявшиеся, неявки и брони, где специалист ещё не
-  // отметил итог, — свежие сверху.
-  const past = mySlots
-    .filter(
-      (s) =>
-        s.status === "done" ||
-        s.status === "no_show" ||
-        (s.status === "booked" && isPast(s.startsAt, now)),
-    )
-    .reverse();
-  const held = past.filter((s) => s.status === "done");
-
-  // Пока по текущему подбору ничего не забронировано, выбор не окончательный:
-  // список предложенных остаётся на экране, и можно передумать без переподбора.
-  const bookedInThisRequest = mySlots.some(
-    (s) => s.clientRequestId === req.id && s.status !== "free",
-  );
-  const showProposals =
-    proposals.length > 0 && (!chosen || (!bookedInThisRequest && proposals.length > 1));
-  const catalogUrl = catalogUrlFor({
-    topicSlugs: req.topicSlugs ?? [],
-    prefGender: req.prefGender,
-    prefAge: req.prefAge,
-  });
-
-  const myReviews = held.length
-    ? await db
-        .select({ slotId: reviews.slotId, rating: reviews.rating, status: reviews.status })
-        .from(reviews)
-        .where(
-          inArray(
-            reviews.slotId,
-            held.map((s) => s.id),
-          ),
-        )
-    : [];
-
-  // Свободные окна нужны для двух вещей: запись к выбранному специалисту и
-  // перенос существующих броней. Бронь могла быть у другого психолога (запись
-  // из каталога, прошлый подбор) — перенос предлагает окна именно её специалиста.
-  const slotPsyIds = [
-    ...new Set([...(chosen ? [chosen.psy.id] : []), ...upcoming.map((s) => s.psychologistId)]),
-  ];
-  const freeSlots = slotPsyIds.length
-    ? (
-        await db
-          .select()
-          .from(slots)
-          .where(and(inArray(slots.psychologistId, slotPsyIds), eq(slots.status, "free")))
-          .orderBy(asc(slots.startsAt))
-      ).filter((s) => !isPast(s.startsAt, now))
-    : [];
-  const toCalendar = (list: typeof freeSlots) =>
-    list.map((s) => ({
-      id: s.id,
-      startsAt: s.startsAt,
-      durationMin: s.durationMin,
-      isIntroCall: s.isIntroCall,
-    }));
-  const calendarSlots = chosen
-    ? toCalendar(freeSlots.filter((s) => s.psychologistId === chosen.psy.id))
-    : [];
-  const freeSlotsByPsy = (psyId: number) =>
-    toCalendar(freeSlots.filter((s) => s.psychologistId === psyId));
+  const c = await loadCabinet("/me");
+  const step = nextStep(c);
+  const next = c.upcoming[0];
+  const unpaid = c.upcoming.filter((s) => !s.paidAt).length;
 
   return (
-    <div className="bg-white">
+    <CabinetShell active="home" badges={cabinetBadges(c)}>
+      {account.role === "psychologist" && (
+        // Наследие: до разделения ролей обе жили на одной почте. Заявки не
+        // прячем, но предупреждаем — новые заводятся только с другого адреса.
+        <div className="rounded-2xl bg-amber-50 p-5 text-sm text-amber-900">
+          На этой почте кабинет специалиста, а эти заявки остались от времени, когда роли
+          жили на одном адресе. Они продолжают работать, но новую анкету отсюда не подать —
+          для обращений как клиент заведите отдельный вход с другой почты. Если нужно
+          разнести — напишите в <Link href="/me/podderzhka" className="underline">поддержку</Link>.
+        </div>
+      )}
 
-      <main className="mx-auto max-w-5xl space-y-12 px-4 py-10 pb-24">
-        {account.role === "psychologist" && (
-          // Наследие: до разделения ролей обе жили на одной почте. Заявки не
-          // прячем, но предупреждаем — новые заводятся только с другого адреса.
-          <div className="rounded-2xl bg-amber-50 p-5 text-sm text-amber-900">
-            На этой почте кабинет специалиста, а эти заявки остались от времени, когда роли
-            жили на одном адресе. Они продолжают работать, но новую анкету отсюда не подать —
-            для обращений как клиент заведите отдельный вход с другой почты. Если нужно
-            разнести — напишите в <Link href="/support" className="underline">поддержку</Link>.
-          </div>
-        )}
-        <section>
-          <h1 className="text-2xl font-bold">Здравствуйте, {req.name}!</h1>
-          {req.status === "new" && (
-            <p className="mt-3 text-neutral-600">
-              Ваша анкета у оператора. Мы напишем на {req.email ?? account.email} в течение
-              рабочего дня, чтобы уточнить детали и подобрать специалистов.
-            </p>
-          )}
-          {req.status === "called" && (
-            <p className="mt-3 text-neutral-600">
-              Мы уже пообщались и подбираем для вас психологов. Как только они появятся здесь —
-              можно будет выбрать специалиста и время встречи.
-            </p>
-          )}
-          {req.status === "rematch" && (
-            <p className="mt-3 text-neutral-600">
-              Мы получили ваш запрос на другого специалиста и подбираем нового. Прежние записи
-              отменены.
-            </p>
-          )}
-          {req.status === "rejected" && (
-            <>
-              <p className="mt-3 text-neutral-600">
-                По вашей заявке мы больше не ведём подбор. Если запрос снова актуален — начните
-                новый подбор, прежние ответы не пропадут.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link
-                  href="/anketa"
-                  className="rounded-lg bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700"
-                >
-                  Подобрать психолога
-                </Link>
-                <Link
-                  href="/psihologi"
-                  className="rounded-lg border border-neutral-200 px-5 py-2.5 font-medium hover:border-brand-400"
-                >
-                  Открыть каталог
-                </Link>
-              </div>
-            </>
-          )}
-        </section>
-
-        {/* Выбор из предложенных специалистов */}
-        {showProposals && (
-          <section id="proposals" className="scroll-mt-6 border-t border-neutral-100 pt-8">
-            <h2 className="text-lg font-bold">
-              Мы подобрали для вас{" "}
-              {proposals.length === 1 ? "специалиста" : `${proposals.length} специалистов`}
-            </h2>
-            <p className="mt-1 text-sm text-neutral-500">
-              {chosen
-                ? "Пока вы не записались, выбор можно поменять — список никуда не денется."
-                : "Посмотрите профили и выберите того, кто откликнется. Если не подойдёт — бесплатно подберём другого."}
-            </p>
-            <ProposalsView
-              variant={canSwitch && asked >= 1 && asked <= 5 ? asked : DEFAULT_PROPOSAL_VARIANT}
-              anyChosen={Boolean(chosen)}
-              proposals={proposals.map(
-                (p): Proposal => ({
-                  matchId: p.matchId,
-                  chosen: p.chosen,
-                  note: p.note,
-                  psy: {
-                    id: p.psy.id,
-                    slug: p.psy.slug,
-                    name: p.psy.name,
-                    photoUrl: p.psy.photoUrl,
-                    approach: p.psy.approach,
-                    experienceYears: p.psy.experienceYears,
-                    about: p.psy.about,
-                    gradeTitle: gradeTitle(p.psy.grade),
-                    price: gradePriceLabel(p.psy.grade),
-                    nearestSlot: (() => {
-                      const slot = proposalSlots.find((s) => s.psychologistId === p.psy.id);
-                      return slot ? formatSlot(slot.startsAt) : null;
-                    })(),
-                    topics: (p.psy.topicSlugs ?? []).map(topicTitle),
-                  },
-                }),
-              )}
-            />
-          </section>
-        )}
-
-        {/* Второй путь — выбрать самому. Равноправный с подборкой, а не мелкая сноска. */}
-        {showProposals && (
-          <section className="flex flex-col gap-6 rounded-3xl border border-neutral-200 p-6 sm:flex-row sm:items-center sm:p-8">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
-              <IconSearch size={28} />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-bold">Хотите выбрать сами?</h2>
-              <p className="mt-1 text-neutral-600">
-                Откройте каталог всех проверенных психологов. Фильтры по вашим ответам из анкеты уже
-                включены — их можно поменять. Записаться можно к любому специалисту.
-              </p>
-            </div>
-            <Button asChild size="lg" variant="outline" className="shrink-0">
-              <Link href={catalogUrl}>Открыть каталог</Link>
-            </Button>
-          </section>
-        )}
-
-        {/* Выбранный психолог — когда список уже не нужен */}
-        {chosen && !showProposals && (
-          <section className="border-t border-neutral-100 pt-8">
-            <h2 className="text-lg font-bold">Ваш психолог</h2>
-            <div className="mt-4 flex flex-wrap items-center gap-4">
-              {chosen.psy.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={chosen.psy.photoUrl}
-                  alt={chosen.psy.name}
-                  className="h-20 w-20 rounded-2xl object-cover"
-                />
+      <section>
+        <h1 className="text-3xl font-bold">Здравствуйте, {req.name}!</h1>
+        <div className="mt-6 rounded-3xl bg-brand-50 p-6 sm:p-8">
+          <div className="text-sm font-medium uppercase tracking-wide text-brand-700">Что дальше</div>
+          <h2 className="mt-2 text-2xl font-bold">{step.title}</h2>
+          <p className="mt-2 max-w-2xl text-neutral-700">{step.text}</p>
+          {step.href && (
+            <Button asChild size="lg" className="mt-5 rounded-xl">
+              {step.external ? (
+                <a href={step.href} target="_blank" rel="noreferrer">
+                  {step.cta}
+                </a>
               ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-brand-100 text-2xl font-bold text-brand-700">
-                  {chosen.psy.name.slice(0, 1)}
-                </div>
+                <Link href={step.href}>{step.cta}</Link>
               )}
-              <div className="flex-1">
-                <div className="text-xl font-semibold">{chosen.psy.name}</div>
-                <div className="text-neutral-500">{chosen.psy.approach}</div>
-                <div className="mt-1 text-sm text-neutral-600">
-                  {gradePriceLabel(chosen.psy.grade) ?? "стоимость уточняется"}
-                </div>
-                {chosen.psy.slug && (
-                  <Link
-                    href={`/psihologi/${chosen.psy.slug}`}
-                    className="mt-1 inline-block text-sm text-brand-700 underline"
-                  >
-                    Открыть профиль
-                  </Link>
-                )}
-              </div>
-            </div>
-            {proposals.length > 1 && (
-              <p className="mt-3 text-xs text-neutral-500">
-                Вы выбрали из {proposals.length} предложенных. Передумали? Попросите другого
-                специалиста в разделе «Психолог не подошёл?» внизу страницы.
-              </p>
-            )}
-          </section>
-        )}
+            </Button>
+          )}
+        </div>
+      </section>
 
-        {/* Встречи */}
-        {upcoming.length > 0 && (
-          <section className="border-t border-neutral-100 pt-8">
-            <h2 className="text-lg font-bold">Предстоящие встречи</h2>
-            <p className="mt-1 text-xs text-neutral-500">Время указано {TZ_LABEL}</p>
-            <ul className="mt-2 divide-y divide-neutral-100">
-              {upcoming.map((s) => (
-                <li key={s.id} className="py-5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2 font-medium">
-                        {formatSlot(s.startsAt)}
-                        {s.paidAt ? (
-                          <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-800">
-                            оплачена
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-900">
-                            не оплачена
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-neutral-500">
-                        с {s.psyName} · {s.durationMin} минут
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-3 text-sm">
-                        <Link href={`/api/ics?slot=${s.id}`} className="text-brand-700 underline">
-                          Добавить в календарь
-                        </Link>
-                        {s.meetingLink && (
-                          <a
-                            href={s.meetingLink}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-medium text-brand-700 underline"
-                          >
-                            Ссылка на встречу
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                    <BookingActions
-                      slotId={s.id}
-                      startsAt={s.startsAt}
-                      canChange={canClientChange(s.startsAt, now)}
-                      freeSlots={freeSlotsByPsy(s.psychologistId)}
-                    />
-                  </div>
-                  {!s.paidAt && gradePriceLabel(s.psyGrade) && (
-                    <PayButtons
-                      slotId={s.id}
-                      priceLabel={gradePriceLabel(s.psyGrade)!}
-                      providers={payProviders}
-                    />
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+      <section className="grid gap-4 sm:grid-cols-3">
+        <SummaryCard
+          href="/me/podbor"
+          icon={IconUserHeart}
+          title="Психолог"
+          value={c.chosen ? c.chosen.psy.name : c.showProposals ? "Выберите из подборки" : "Ещё не выбран"}
+        />
+        <SummaryCard
+          href="/me/vstrechi"
+          icon={IconCalendarEvent}
+          title="Ближайшая встреча"
+          value={next ? formatSlot(next.startsAt) : "Не запланирована"}
+        />
+        <SummaryCard
+          href="/me/oplaty"
+          icon={IconCreditCard}
+          title="Оплата"
+          value={unpaid ? `К оплате: ${unpaid}` : "Долгов нет"}
+          warn={unpaid > 0}
+        />
+      </section>
 
-        {/* Прошедшие встречи: состоявшиеся (с отзывом), неявки и ждущие отметки */}
-        {past.length > 0 && (
-          <section className="border-t border-neutral-100 pt-8">
-            <h2 className="text-lg font-bold">Прошедшие встречи</h2>
-            <ul className="mt-2 divide-y divide-neutral-100">
-              {past.map((s) => {
-                const review = myReviews.find((r) => r.slotId === s.id);
-                return (
-                  <li key={s.id} className="py-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="font-medium">{formatSlot(s.startsAt)}</div>
-                      <span className="text-sm text-neutral-500">
-                        с {s.psyName} ·{" "}
-                        {s.status === "done"
-                          ? "состоялась"
-                          : s.status === "no_show"
-                            ? "не состоялась — вы не пришли"
-                            : "прошла, специалист ещё не подтвердил итог"}
-                      </span>
-                    </div>
-                    {s.status === "done" &&
-                      (review ? (
-                        <p className="mt-2 text-sm text-neutral-600">
-                          Ваша оценка: {"★".repeat(review.rating)}
-                          {review.status === "pending" && " · отзыв на модерации"}
-                          {review.status === "published" && " · опубликован"}
-                        </p>
-                      ) : (
-                        <div className="mt-3">
-                          <p className="text-sm text-neutral-600">
-                            Как всё прошло? Оценка помогает другим людям выбрать специалиста.
-                          </p>
-                          <div className="mt-3">
-                            <ReviewForm slotId={s.id} />
-                          </div>
-                        </div>
-                      ))}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        )}
-
-        {/* Запись */}
-        {chosen && (
-          <section id="booking" className="scroll-mt-6 border-t border-neutral-100 pt-8">
-            <h2 className="text-lg font-bold">Выберите время встречи</h2>
-            {showProposals && (
-              <p className="mt-1 text-sm text-neutral-500">Специалист: {chosen.psy.name}</p>
-            )}
-            {calendarSlots.length === 0 ? (
-              <p className="mt-3 text-neutral-500">
-                Свободного времени пока нет — специалист скоро откроет расписание. Оператор поможет
-                договориться, если нужно срочно.
-              </p>
-            ) : (
-              <div className="mt-4">
-                <BookingSection slots={calendarSlots} />
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* Оплата */}
-        {chosen && (
-          <section className="border-t border-neutral-100 pt-8">
-            <h2 className="text-lg font-bold">Оплата</h2>
-            <p className="mt-2 text-neutral-600">
-              Сессия
-              {gradePriceLabel(chosen.psy.grade) ? ` стоит ${gradePriceLabel(chosen.psy.grade)}` : ""}.
-            </p>
-            <p className="mt-2 text-sm text-neutral-400">
-              Онлайн-оплата на платформе появится позже.
-            </p>
-          </section>
-        )}
-
-        {/* Переподбор */}
-        {chosen && req.status !== "rematch" && (
-          <section id="rematch" className="border-t border-neutral-100 pt-8">
-            <h2 className="text-lg font-bold">Психолог не подошёл?</h2>
-            <p className="mt-2 text-sm text-neutral-600">
-              Это нормально и случается часто — совпасть с первого раза удаётся не всем. Мы
-              бесплатно подберём другого специалиста.
-            </p>
-            <div className="mt-4">
-              <RematchControl />
-            </div>
-          </section>
-        )}
-
-        {/* Прошлые обращения */}
-        {myRequests.length > 1 && (
-          <section className="border-t border-neutral-100 pt-8">
-            <h2 className="text-lg font-bold">Прошлые обращения</h2>
-            <ul className="mt-3 space-y-2 text-sm text-neutral-600">
-              {myRequests.slice(1).map((r) => (
-                <li key={r.id} className="flex flex-wrap items-center gap-2">
-                  <span>{r.createdAt.slice(0, 10)}</span>
-                  <Badge variant="secondary">{label(REQUEST_STATUS_LABELS, r.status)}</Badge>
-                  {r.mainProblem && <span className="text-neutral-500">{r.mainProblem}</span>}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-3 text-xs text-neutral-400">
-              Встречи по прошлым обращениям видны выше вместе с остальными.
-            </p>
-          </section>
-        )}
-
-        {/* Поддержка */}
-        <section className="border-t border-neutral-100 pt-8">
-          <h2 className="text-lg font-bold">Поддержка</h2>
-          <p className="mt-2 text-sm text-neutral-600">
-            Есть вопрос или что-то пошло не так? Напишите нам — оператор ответит на{" "}
-            {req.email ?? account.email}.
+      {req.crisisFlag && (
+        <section className="rounded-2xl border border-red-200 bg-red-50 p-5">
+          <p className="text-sm text-red-900">
+            Если станет совсем тяжело — не ждите звонка оператора:{" "}
+            <Link href="/crisis" className="font-medium underline">
+              телефоны круглосуточной поддержки
+            </Link>
+            .
           </p>
-          <div className="mt-4">
-            <SupportForm />
-          </div>
         </section>
+      )}
 
-        {req.crisisFlag && (
-          <section className="rounded-2xl border border-red-200 bg-red-50 p-5">
-            <p className="text-sm text-red-900">
-              Если станет совсем тяжело — не ждите звонка оператора:{" "}
-              <Link href="/crisis" className="font-medium underline">
-                телефоны круглосуточной поддержки
-              </Link>
-              .
-            </p>
-          </section>
-        )}
-
-        {canSwitch && showProposals && (
-          <VariantSwitcher
-            current={asked >= 1 && asked <= 5 ? asked : DEFAULT_PROPOSAL_VARIANT}
-            variants={PROPOSAL_VARIANTS}
-            basePath="/me"
-          />
-        )}
-
-        <p className="pb-4 text-center text-xs text-neutral-400">
-          Вход в кабинет — по адресу {account.email} и коду из письма. Статус обращения:{" "}
-          <Badge variant="secondary">{label(REQUEST_STATUS_LABELS, req.status)}</Badge>
-        </p>
-      </main>
-    </div>
+      <p className="pb-4 text-center text-xs text-neutral-400">
+        Вход в кабинет — по адресу {account.email} и коду из письма. Статус обращения:{" "}
+        <Badge variant="secondary">{label(REQUEST_STATUS_LABELS, req.status)}</Badge>
+      </p>
+    </CabinetShell>
   );
+}
+
+function SummaryCard({
+  href,
+  icon: Icon,
+  title,
+  value,
+  warn,
+}: {
+  href: string;
+  icon: typeof IconUserHeart;
+  title: string;
+  value: string;
+  warn?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex cursor-pointer flex-col rounded-3xl border border-neutral-200 p-5 transition-colors hover:border-brand-300"
+    >
+      <Icon size={24} className="text-brand-600" />
+      <div className="mt-4 text-sm text-neutral-500">{title}</div>
+      <div className={warn ? "mt-1 font-semibold text-amber-800" : "mt-1 font-semibold"}>{value}</div>
+      <IconArrowRight
+        size={18}
+        className="mt-3 text-neutral-400 transition-transform group-hover:translate-x-1"
+      />
+    </Link>
+  );
+}
+
+type Step = { title: string; text: string; href?: string; cta?: string; external?: boolean };
+
+/** Один главный шаг для клиента — по состоянию обращения, от срочного к фоновому. */
+function nextStep(c: Cabinet): Step {
+  const { req, chosen, showProposals, upcoming, calendarSlots, awaitingReview } = c;
+  const next = upcoming[0];
+
+  if (req.status === "rejected") {
+    return { title: "Начните новый подбор", text: waitingText(req.status), href: "/anketa", cta: "Подобрать психолога" };
+  }
+  if (next && !next.paidAt) {
+    return {
+      title: `Встреча ${formatSlot(next.startsAt)}`,
+      text: `С ${next.psyName}. Встреча ещё не оплачена — оплатить можно заранее.`,
+      href: "/me/oplaty",
+      cta: "Перейти к оплате",
+    };
+  }
+  if (next) {
+    return {
+      title: `Встреча ${formatSlot(next.startsAt)}`,
+      text: next.meetingLink
+        ? `С ${next.psyName}. Ссылка откроет комнату встречи.`
+        : `С ${next.psyName}. Ссылка на встречу появится здесь ближе ко времени.`,
+      href: next.meetingLink ?? "/me/vstrechi",
+      cta: next.meetingLink ? "Открыть встречу" : "Подробнее",
+      external: Boolean(next.meetingLink),
+    };
+  }
+  if (showProposals && !chosen) {
+    return {
+      title: "Выберите психолога",
+      text: "Мы подобрали специалистов под ваш запрос. Посмотрите профили и выберите того, кто откликнется.",
+      href: "/me/podbor",
+      cta: "Смотреть подборку",
+    };
+  }
+  if (chosen && req.status !== "rematch") {
+    return {
+      title: "Запишитесь на первую встречу",
+      text:
+        calendarSlots.length > 0
+          ? `${chosen.psy.name} ждёт вас. Выберите удобное время.`
+          : `Свободного времени у ${chosen.psy.name} пока нет — специалист скоро откроет расписание.`,
+      href: "/me/vstrechi#booking",
+      cta: "Выбрать время",
+    };
+  }
+  if (awaitingReview.length > 0) {
+    return {
+      title: "Как прошла встреча?",
+      text: "Оценка помогает другим людям выбрать специалиста.",
+      href: "/me/vstrechi",
+      cta: "Оставить отзыв",
+    };
+  }
+  return { title: "Подбираем специалистов", text: waitingText(req.status) };
 }

@@ -78,13 +78,13 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
         )
     : [];
   const back = proposal
-    ? { href: "/me#proposals", label: "Подобранные специалисты" }
+    ? { href: "/me/podbor", label: "Подобранные специалисты" }
     : { href: "/psihologi", label: "Все психологи" };
   // Нет окон: вошедшему с подборкой — к ней, вошедшему без неё — в анкету.
   const noSlots = !account
     ? { href: "/login?next=%2Fanketa", label: "Начать подбор" }
     : lastRequest
-      ? { href: "/me#proposals", label: "Вернуться в кабинет" }
+      ? { href: "/me/podbor", label: "Вернуться в кабинет" }
       : { href: "/anketa", label: "Начать подбор" };
 
   const now = new Date();

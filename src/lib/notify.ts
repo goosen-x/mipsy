@@ -206,17 +206,17 @@ export const messages = {
     `Вы записаны к психологу ${psyName} на ${formatSlot(startsAt)}.${meetingLink ? `\n\nСсылка на встречу: ${meetingLink}` : ""}\n\nЕсли планы изменятся, перенести или отменить встречу бесплатно можно не позднее чем за 24 часа в личном кабинете: ${SITE_URL}/me — позже стоимость сессии удерживается.\n\nКоманда mipsy`,
   clientMatched: (names: string[]) =>
     names.length > 1
-      ? `Мы подобрали для вас ${names.length} специалистов: ${names.join(", ")}. Посмотрите профили, выберите того, кто откликнется, и запишитесь на встречу: ${SITE_URL}/me`
-      : `Мы подобрали вам психолога — ${names[0]}. Выберите удобное время для первой встречи: ${SITE_URL}/me`,
+      ? `Мы подобрали для вас ${names.length} специалистов: ${names.join(", ")}. Посмотрите профили, выберите того, кто откликнется, и запишитесь на встречу: ${SITE_URL}/me/podbor`
+      : `Мы подобрали вам психолога — ${names[0]}. Выберите удобное время для первой встречи: ${SITE_URL}/me/vstrechi`,
   clientRescheduled: (psyName: string, startsAt: string) =>
     `Встреча с ${psyName} перенесена на ${formatSlot(startsAt)}. Подробности в кабинете: ${SITE_URL}/me`,
   clientCancelled: (psyName: string, startsAt: string) =>
-    `Встреча с ${psyName} ${formatSlot(startsAt)} отменена. Выбрать другое время: ${SITE_URL}/me`,
+    `Встреча с ${psyName} ${formatSlot(startsAt)} отменена. Выбрать другое время: ${SITE_URL}/me/vstrechi`,
   // Не «завтра в HH:MM»: у встреч сразу после полуночи напоминание уходит в тот же день.
   clientReminder: (psyName: string, startsAt: string) =>
     `Напоминаем о встрече с ${psyName} — ${formatSlot(startsAt)}. Подробности в кабинете: ${SITE_URL}/me`,
   clientReview: (psyName: string) =>
-    `Как прошла встреча с ${psyName}? Оцените её в личном кабинете — это помогает другим людям выбрать специалиста: ${SITE_URL}/me`,
+    `Как прошла встреча с ${psyName}? Оцените её в личном кабинете — это помогает другим людям выбрать специалиста: ${SITE_URL}/me/vstrechi`,
   clientSurvey: (psyName: string, startsAt: string) =>
     `Вчера у вас была назначена встреча с ${psyName} (${formatSlot(startsAt)}). Как она прошла? Оцените её в личном кабинете: ${SITE_URL}/me\n\nЕсли встреча не состоялась или что-то пошло не так — ответьте через форму поддержки, разберёмся: ${SITE_URL}/support`,
   psyOutcomeNudge: (clientName: string, startsAt: string) =>
