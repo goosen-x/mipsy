@@ -1,6 +1,7 @@
 "use server";
 
 import { and, desc, eq } from "drizzle-orm";
+import { DEMO_BLOCKED, readDemoState } from "./demo";
 import { revalidatePath } from "next/cache";
 import { revalidateClientCabinet } from "@/lib/revalidate-cabinet";
 import { accounts, clientRequests, db, matches, reviews, supportTickets } from "@/db";
@@ -61,6 +62,7 @@ async function myRequestIds(): Promise<number[]> {
 export async function choosePsychologist(
   psychologistId: number,
 ): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
 
@@ -87,6 +89,7 @@ export async function choosePsychologist(
 }
 
 export async function bookSlot(slotId: number): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
   const psy = await chosenPsychologist(db, c.id);
@@ -151,6 +154,7 @@ export async function rescheduleSlot(
   // Подтверждение «стоимость прежней сессии удерживается» при переносе <24ч.
   allowLate = false,
 ): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
 
@@ -238,6 +242,7 @@ export async function cancelBooking(
   // Подтверждение «стоимость сессии удерживается» при отмене <24ч.
   allowLate = false,
 ): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
 
@@ -306,6 +311,7 @@ export async function cancelBooking(
 }
 
 export async function requestRematch(reason: string): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
 
@@ -355,6 +361,7 @@ export async function leaveReview(
   rating: number,
   body: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
@@ -398,6 +405,7 @@ export async function createTicket(
   kind: "question" | "complaint",
   body: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  if (await readDemoState()) return DEMO_BLOCKED;
   const c = await client();
   if (!c) return NO_SESSION;
   const text = String(body ?? "").trim().slice(0, 4000);

@@ -37,6 +37,9 @@ export function isDemoState(value: string | undefined | null): value is DemoStat
   return DEMO_STATES.some((s) => s.key === value);
 }
 
+/** Ответ любого действия клиента в демо: ничего не сохраняем. */
+export const DEMO_BLOCKED = { ok: false, error: "Это демо: действия здесь не сохраняются" } as const;
+
 export async function readDemoState(): Promise<DemoState | null> {
   const value = (await cookies()).get(DEMO_COOKIE)?.value;
   return isDemoState(value) ? value : null;
