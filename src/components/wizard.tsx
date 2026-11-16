@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -13,16 +12,20 @@ export function Shell({
   children,
   progress,
   onBack,
+  onForward,
   footer,
 }: {
   children: React.ReactNode;
   progress: number;
   onBack: (() => void) | null;
+  /** Вернулись назад к уже отвеченному вопросу — можно идти дальше без перевыбора. */
+  onForward?: (() => void) | null;
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-brand-50/50">
-      <header className="mx-auto flex max-w-xl items-center justify-between px-4 py-4">
+    // Шапку и фон даёт лейаут (wizard); здесь — «назад/далее», прогресс и карточка.
+    <div className="pb-10">
+      <div className="mx-auto flex max-w-xl items-center justify-between px-4 py-4">
         <button
           type="button"
           onClick={onBack ?? undefined}
@@ -33,10 +36,14 @@ export function Shell({
         >
           ← Назад
         </button>
-        <Link href="/" className="text-xl font-bold text-brand-700">
-          mipsy
-        </Link>
-      </header>
+        <button
+          type="button"
+          onClick={onForward ?? undefined}
+          className={cn("text-sm text-neutral-500 hover:text-brand-700", !onForward && "invisible")}
+        >
+          Далее →
+        </button>
+      </div>
       <div className="mx-auto max-w-xl px-4">
         <Progress value={progress} className="h-1.5" />
         <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm sm:p-8">{children}</div>

@@ -36,9 +36,9 @@ test("темы весят больше возраста", () => {
 test("ссылка «выбрать самому» несёт фильтры анкеты", () => {
   assert.equal(
     catalogUrlFor({ topicSlugs: ["anxiety", "sleep"], prefGender: "man", prefAge: "over40" }),
-    "/catalog?topic=anxiety&gender=male&age=over40",
+    "/psihologi?topic=anxiety&gender=male&age=over40",
   );
-  assert.equal(catalogUrlFor({ topicSlugs: [], prefGender: "any", prefAge: null }), "/catalog");
+  assert.equal(catalogUrlFor({ topicSlugs: [], prefGender: "any", prefAge: null }), "/psihologi");
   assert.equal(wantedGender("woman"), "female");
   assert.equal(wantedGender("any"), null);
 });

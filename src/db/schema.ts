@@ -106,11 +106,13 @@ export const psychologists = sqliteTable("psychologists", {
 
   // Поля модерации — широкая заявка, пороги оператор решает вручную
   education: text("education"), // вузы, программы, годы
+  // Структурированно (lib/education.ts); `education` выше — текст, собранный из него.
+  educationItems: text("education_items", { mode: "json" }).$type<import("@/lib/education").EducationData>(),
   educationDocs: text("education_docs"), // ссылки/описание документов
   experienceYears: integer("experience_years"),
   supervision: text("supervision"),
   personalTherapy: text("personal_therapy"),
-  moderationStatus: text("moderation_status").notNull().default("new"), // new | approved | rejected
+  moderationStatus: text("moderation_status").notNull().default("new"), // draft | new | approved | rejected
   moderationNotes: text("moderation_notes"),
   // Присваивается на модерации; определяет фиксированную цену сессии (lib/grades.ts).
   grade: integer("grade"), // 1 базовый | 2 опытный | 3 ведущий

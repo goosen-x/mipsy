@@ -106,7 +106,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin" className="text-sm text-neutral-500 hover:text-brand-700">
+        <Link href="/admin/requests" className="text-sm text-neutral-500 hover:text-brand-700">
           ← Все заявки
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">

@@ -45,7 +45,7 @@ export default async function ReviewsPage() {
           {pending.map((r) => (
             <li key={r.id} className="border-l-2 border-brand-200 py-1 pl-4">
               <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-500">
-                <span className="text-accent-500">{"★".repeat(r.rating)}</span>
+                <span className="text-brand-600">{"★".repeat(r.rating)}</span>
                 <span className="font-medium text-neutral-900">{r.authorName}</span>
                 <span>о специалисте {r.psyName}</span>
                 <span>{formatDbTime(r.createdAt)}</span>
@@ -69,7 +69,7 @@ export default async function ReviewsPage() {
                   <Badge variant={r.status === "published" ? "secondary" : "destructive"}>
                     {r.status === "published" ? "опубликован" : "отклонён"}
                   </Badge>
-                  <span className="text-accent-500">{"★".repeat(r.rating)}</span>
+                  <span className="text-brand-600">{"★".repeat(r.rating)}</span>
                   <span className="font-medium">{r.authorName}</span>
                   <span className="text-neutral-500">о {r.psyName}</span>
                 </div>

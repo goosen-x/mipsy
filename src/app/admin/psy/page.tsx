@@ -14,7 +14,8 @@ import { label, MODERATION_STATUS_LABELS } from "@/lib/labels";
 import { requireAdmin } from "../require-admin";
 import { formatDbTime } from "@/lib/datetime";
 
-const TONE: Record<string, "default" | "secondary" | "destructive"> = {
+const TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  draft: "outline",
   new: "default",
   approved: "secondary",
   rejected: "destructive",

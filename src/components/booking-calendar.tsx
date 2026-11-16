@@ -87,7 +87,7 @@ export function BookingCalendar({
 
   return (
     <div>
-      <p className="mb-3 text-sm text-accent-600 sm:hidden">
+      <p className="mb-3 text-sm text-brand-700 sm:hidden">
         Бронь можно отменить не позднее чем за 24 часа до начала встречи.
       </p>
       <div className="flex flex-col gap-4 rounded-2xl border p-3 sm:flex-row">
@@ -118,7 +118,7 @@ export function BookingCalendar({
 
           <div className="mt-3 grid grid-cols-7 gap-0.5">
             {WEEKDAYS.map((w) => (
-              <div key={w} className="text-center text-xs font-medium uppercase text-accent-500">
+              <div key={w} className="text-center text-xs font-medium uppercase text-brand-600">
                 {w}
               </div>
             ))}
@@ -142,9 +142,9 @@ export function BookingCalendar({
                   className={cn(
                     "mx-auto flex h-9 w-9 items-center justify-center rounded-full text-sm transition-colors",
                     !has && "text-neutral-300",
-                    has && !isSelected && "font-medium hover:bg-accent-400/40",
-                    isSelected && "bg-accent-500 font-medium text-white",
-                    isToday && !isSelected && "text-accent-600",
+                    has && !isSelected && "font-medium hover:bg-brand-500/40",
+                    isSelected && "bg-brand-600 font-medium text-white",
+                    isToday && !isSelected && "text-brand-700",
                   )}
                 >
                   {day}
@@ -193,7 +193,7 @@ export function BookingCalendar({
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
       <Button
-        className="mt-4 rounded-lg bg-accent-500 px-8 hover:bg-accent-600"
+        className="mt-4 rounded-lg bg-brand-600 px-8 hover:bg-brand-700"
         size="lg"
         disabled={pending || selectedSlot === null}
         onClick={() =>

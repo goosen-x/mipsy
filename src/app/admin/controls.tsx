@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { GRADES } from "@/lib/grades";
+import { canApprove } from "@/lib/rules";
 import { REQUEST_STATUS_LABELS } from "@/lib/labels";
 import {
   assignPsychologist,
@@ -588,7 +589,10 @@ export function ModerationControl({
       />
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-3">
-        <Button disabled={pending || !grade} onClick={() => decide("approved")}>
+        <Button
+          disabled={pending || !grade || !canApprove(status)}
+          onClick={() => decide("approved")}
+        >
           {status === "approved" ? "Сохранить грейд" : "Одобрить"}
         </Button>
         <Button

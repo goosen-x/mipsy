@@ -4,6 +4,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "../db/schema.ts";
 import { matches, payments, psychologists, slots } from "../db/schema.ts";
 import { canClientChange, isPast, nowMsk } from "./datetime.ts";
+import { addMinutes, overlapsAny, type Interval } from "./schedule.ts";
 
 /**
  * Жизненный цикл слота: free → booked → done | no_show, и обратно в free при
@@ -430,4 +431,84 @@ export async function openSlots(
   // параллельных вызовов — дубликаты молча пропускаются, added честный.
   const res = (await db.insert(slots).values(rows).onConflictDoNothing()) as unknown as RunResult;
   return { ok: true, added: res.changes };
+}
+
+
+export type ApplyScheduleResult =
+  | { ok: true; added: number; removed: number; skipped: number }
+  | { ok: false; error: string };
+
+/**
+ * Пакетное изменение расписания из редакторов кабинета: закрыть свободные окна
+ * и открыть новые сессии. Записи клиентов не трогаются никогда. Новые сессии,
+ * которые пересекаются по времени с оставшимися (с учётом длительности — парная
+ * идёт 90 минут) или друг с другом, пропускаются и считаются в skipped.
+ */
+export async function applySchedule(
+  db: Db,
+  params: {
+    psychologistId: number;
+    open: Interval[];
+    closeIds: number[];
+    now?: Date;
+  },
+): Promise<ApplyScheduleResult> {
+  if (params.open.length > 500 || params.closeIds.length > 500) {
+    return { ok: false, error: "Слишком много изменений за раз — разбейте на части" };
+  }
+  const open = params.open.filter(
+    (s) =>
+      /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/.test(s.startsAt) &&
+      Number.isInteger(s.durationMin) &&
+      s.durationMin >= 20 &&
+      s.durationMin <= 180 &&
+      !isPast(s.startsAt, params.now),
+  );
+
+  let removed = 0;
+  const closeIds = [...new Set(params.closeIds.filter((id) => Number.isInteger(id)))];
+  if (closeIds.length) {
+    const res = (await db
+      .delete(slots)
+      .where(
+        and(
+          inArray(slots.id, closeIds),
+          eq(slots.psychologistId, params.psychologistId),
+          eq(slots.status, "free"),
+        ),
+      )) as unknown as RunResult;
+    removed = res.changes;
+  }
+
+  if (open.length === 0) return { ok: true, added: 0, removed, skipped: params.open.length };
+
+  // Всё, что уже стоит в расписании с начала самой ранней новой сессии
+  // (минус 3 часа — длинная сессия могла начаться раньше и ещё идти).
+  const earliest = open.map((s) => s.startsAt).sort()[0];
+  const existing: Interval[] = (
+    await db
+      .select({ startsAt: slots.startsAt, durationMin: slots.durationMin })
+      .from(slots)
+      .where(and(eq(slots.psychologistId, params.psychologistId), gte(slots.startsAt, addMinutes(earliest, -180))))
+  ).map((s) => ({ startsAt: s.startsAt, durationMin: s.durationMin }));
+
+  const accepted: Interval[] = [];
+  for (const s of [...open].sort((a, b) => a.startsAt.localeCompare(b.startsAt))) {
+    if (overlapsAny(s, existing) || overlapsAny(s, accepted)) continue;
+    accepted.push(s);
+  }
+  if (accepted.length === 0) return { ok: true, added: 0, removed, skipped: params.open.length };
+
+  const res = (await db
+    .insert(slots)
+    .values(
+      accepted.map((s) => ({
+        psychologistId: params.psychologistId,
+        startsAt: s.startsAt,
+        durationMin: s.durationMin,
+        isIntroCall: false,
+      })),
+    )
+    .onConflictDoNothing()) as unknown as RunResult;
+  return { ok: true, added: res.changes, removed, skipped: params.open.length - res.changes };
 }

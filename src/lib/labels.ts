@@ -65,6 +65,7 @@ export const REQUEST_STATUS_LABELS: Record<string, string> = {
 };
 
 export const MODERATION_STATUS_LABELS: Record<string, string> = {
+  draft: "Черновик",
   new: "На модерации",
   approved: "Одобрен",
   rejected: "Отклонён",

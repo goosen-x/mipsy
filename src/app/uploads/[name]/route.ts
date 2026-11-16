@@ -18,6 +18,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ name: s
     headers: {
       "Content-Type": MIME[name.split(".").pop() as string],
       "Cache-Control": "public, max-age=31536000, immutable",
+      // Сканы дипломов и фото — не для поисковиков, даже когда сайт открыт.
+      "X-Robots-Tag": "noindex, nofollow",
     },
   });
 }

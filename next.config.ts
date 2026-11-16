@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
     return [
       { source: "/op", destination: "/admin", permanent: false },
       { source: "/op/:path*", destination: "/admin/:path*", permanent: false },
+      // Понятные адреса вместо /p, /catalog, /psy. Постоянные редиректы:
+      // старые ссылки из писем и закладок работают, вес страниц переходит.
+      { source: "/catalog", destination: "/psihologi", permanent: true },
+      { source: "/p/:slug", destination: "/psihologi/:slug", permanent: true },
+      { source: "/psy", destination: "/psihologam", permanent: true },
     ];
   },
 };

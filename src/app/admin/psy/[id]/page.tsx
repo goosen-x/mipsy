@@ -5,6 +5,7 @@ import { db, psychologists } from "@/db";
 import { Badge } from "@/components/ui/badge";
 import { gradePriceLabel, gradeTitle } from "@/lib/grades";
 import { label, MODERATION_STATUS_LABELS } from "@/lib/labels";
+import { DocThumbnails, PhotoPreview } from "../../media-preview";
 import { ModerationControl, PsyHiddenControl } from "../../controls";
 import { requireAdmin } from "../../require-admin";
 import { formatDbTime } from "@/lib/datetime";
@@ -34,7 +35,7 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
           <div className="flex items-center gap-3">
             <PsyHiddenControl psyId={psy.id} hidden={psy.hidden} />
             {psy.slug && psy.moderationStatus === "approved" && !psy.hidden && (
-              <Link href={`/p/${psy.slug}`} className="text-sm text-brand-700 underline">
+              <Link href={`/psihologi/${psy.slug}`} className="text-sm text-brand-700 underline">
                 Публичная страница →
               </Link>
             )}
@@ -61,31 +62,32 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
         </p>
       </div>
 
+      {psy.moderationStatus === "draft" && (
+        <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
+          <strong>Кабинет только зарегистрирован.</strong> Психолог ещё не приложил образование и
+          документы — заявка появится здесь как «На модерации», когда он это сделает.
+        </div>
+      )}
+
       <section className="rounded-2xl border border-neutral-100 p-6">
         <h2 className="text-lg font-bold">Заявка на модерацию</h2>
         <dl className="mt-4 space-y-3 text-sm">
           <Block k="Образование" v={psy.education} />
           <div>
             <dt className="text-xs font-medium uppercase text-neutral-400">Документы</dt>
-            <dd className="mt-0.5 text-neutral-800">
-              {psy.educationDocs ? (
-                <ul className="space-y-1">
-                  {psy.educationDocs.split("\n").map((doc, i) =>
-                    doc.startsWith("/uploads/") ? (
-                      <li key={doc}>
-                        <a href={doc} target="_blank" className="text-brand-700 underline">
-                          Документ {i + 1} ({doc.split(".").pop()?.toUpperCase()})
-                        </a>
-                      </li>
-                    ) : (
-                      // Заявки до загрузки файлов: в поле — текст со ссылками.
-                      <li key={doc} className="whitespace-pre-line">{doc}</li>
-                    ),
-                  )}
-                </ul>
-              ) : (
-                "—"
-              )}
+            <dd className="mt-1">
+              <DocThumbnails
+                urls={(psy.educationDocs ?? "").split("\n").filter((u) => u.startsWith("/uploads/"))}
+              />
+              {/* Заявки до загрузки файлов: в поле мог остаться обычный текст со ссылками. */}
+              {(psy.educationDocs ?? "")
+                .split("\n")
+                .filter((u) => u && !u.startsWith("/uploads/"))
+                .map((line, i) => (
+                  <p key={i} className="mt-1 whitespace-pre-line text-neutral-800">
+                    {line}
+                  </p>
+                ))}
             </dd>
           </div>
           <Block k="Опыт практики" v={psy.experienceYears != null ? `${psy.experienceYears} лет` : null} />
@@ -104,6 +106,12 @@ export default async function OpPsyDetailPage({ params }: { params: Promise<{ id
       <section className="rounded-2xl border border-neutral-100 p-6">
         <h2 className="text-lg font-bold">Профиль (заполняет психолог)</h2>
         <dl className="mt-4 space-y-3 text-sm">
+          <div>
+            <dt className="text-xs font-medium uppercase text-neutral-400">Фото</dt>
+            <dd className="mt-1">
+              <PhotoPreview url={psy.photoUrl} />
+            </dd>
+          </div>
           <Block k="Подход" v={psy.approach} />
           <Block
             k="Грейд и цена"

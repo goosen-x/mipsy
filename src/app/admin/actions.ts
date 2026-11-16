@@ -20,6 +20,7 @@ import { isEmail, normalizeEmail } from "@/lib/auth-core";
 import { gradeTitle, isGrade } from "@/lib/grades";
 import { meetingCancel, meetingInvite, messages, notify, psyMeetingInvite, subjects } from "@/lib/notify";
 import { logAdmin } from "@/lib/logs";
+import { canApprove } from "@/lib/rules";
 import { errorLog } from "@/db";
 
 async function guard() {
@@ -115,7 +116,7 @@ export async function setPsychologistHidden(
   });
   revalidatePath(`/admin/psy/${id}`);
   revalidatePath("/admin/psy");
-  revalidatePath("/catalog");
+  revalidatePath("/psihologi");
   return { ok: true };
 }
 
@@ -360,7 +361,7 @@ export async function moderateReview(
     id,
   });
   revalidatePath("/admin/reviews");
-  revalidatePath("/catalog");
+  revalidatePath("/psihologi");
   return { ok: true };
 }
 
@@ -629,6 +630,9 @@ export async function moderatePsychologist(
     .from(psychologists)
     .where(eq(psychologists.id, id));
   if (!psy) return { ok: false, error: "Заявка не найдена" };
+  if (decision === "approved" && !canApprove(psy.moderationStatus)) {
+    return { ok: false, error: "Психолог ещё не приложил образование и документы — одобрять рано" };
+  }
 
   await db
     .update(psychologists)
