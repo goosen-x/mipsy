@@ -191,16 +191,44 @@ function OnePageShell({ badges, children }: Omit<ShellProps, "active">) {
   );
 }
 
-/* 5. Приложение: узкая колонка и нижняя панель с иконками */
+/* 5. Приложение: на компьютере — колонка иконок слева и контент на всю ширину,
+   на телефоне — та же навигация нижней панелью. */
 function AppShell({ active, badges, children }: ShellProps) {
   return (
     <div data-cabinet className="bg-neutral-50">
-      <main data-cabinet-body className="mx-auto w-full max-w-xl space-y-8 px-4 py-6 pb-40">{children}</main>
+      <div data-cabinet-body className="mx-auto flex w-full max-w-6xl gap-8 px-4 py-6 md:py-8">
+        <nav
+          aria-label="Разделы кабинета"
+          className="sticky top-6 hidden flex-col gap-1 self-start rounded-3xl bg-white p-2 shadow-sm ring-1 ring-neutral-200 md:flex"
+        >
+          {SECTIONS.map((s) => (
+            <Link
+              key={s.key}
+              href={s.href}
+              aria-current={s.key === active ? "page" : undefined}
+              className={cn(
+                "relative flex w-20 cursor-pointer flex-col items-center gap-1 rounded-2xl py-3 text-[11px] transition-colors",
+                s.key === active
+                  ? "bg-brand-50 font-medium text-brand-700"
+                  : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900",
+              )}
+            >
+              <s.icon size={24} stroke={s.key === active ? 2 : 1.5} />
+              {s.title}
+              <Count n={badges[s.key]} className="absolute right-3 top-1.5 px-1 text-[10px] leading-4" />
+            </Link>
+          ))}
+        </nav>
+        <main className="min-w-0 flex-1 space-y-8 pb-40 md:pb-24">{children}</main>
+      </div>
+      <div className="hidden md:block">
+        <CabinetFooter />
+      </div>
       <nav
         aria-label="Разделы кабинета"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 backdrop-blur"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 backdrop-blur md:hidden"
       >
-        <div className="mx-auto grid max-w-xl grid-cols-5">
+        <div className="grid grid-cols-5">
           {SECTIONS.map((s) => (
             <Link
               key={s.key}
@@ -262,8 +290,8 @@ export function waitingText(status: string): string {
 
 /**
  * Футер кабинета: большой футер сайта здесь только мешает, но политика ПД,
- * оферта и телефон должны оставаться под рукой. В «Приложении» их нет —
- * там внизу панель, ссылки живут в разделе «Поддержка».
+ * оферта и телефон должны оставаться под рукой. В «Приложении» на телефоне
+ * его нет — внизу панель, ссылки живут в разделе «Поддержка».
  */
 export function CabinetFooter() {
   return (
