@@ -95,7 +95,7 @@ export default async function StatsPage() {
           {days.map((d) => (
             <div key={d.day} className="flex flex-1 flex-col items-center gap-1">
               <div
-                className={`w-full rounded-t ${d.day === today ? "bg-accent-500" : "bg-brand-400"}`}
+                className={`w-full rounded-t ${d.day === today ? "bg-brand-600" : "bg-brand-400"}`}
                 style={{ height: `${(d.count / maxDay) * 100}%`, minHeight: d.count ? 4 : 1 }}
                 title={`${d.day}: ${d.count}`}
               />

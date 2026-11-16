@@ -6,7 +6,7 @@
     <rect width="400" height="400" fill="#f1e9fe"/>
     <circle cx="200" cy="168" r="118" fill="#e7dffa"/>
     <!-- плечи -->
-    <path d="M60 400c0-78 63-141 140-141s140 63 140 141z" fill="#6f01c6"/>
+    <path d="M60 400c0-78 63-141 140-141s140 63 140 141z" fill="#855edf"/>
     <path d="M148 268c14 22 34 33 52 33s38-11 52-33l-18-10h-68z" fill="#f8b28a"/>
     <!-- шея и голова -->
     <rect x="176" y="214" width="48" height="60" rx="24" fill="#f8b28a"/>

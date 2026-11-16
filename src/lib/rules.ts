@@ -4,6 +4,8 @@
  * психолога и тестах. Раньше каждое правило жило копиями в трёх местах.
  */
 
+import { parsePhoneNumberFromString, validatePhoneNumberLength } from "libphonenumber-js";
+
 /** Шкала частоты из скрининга анкеты — по возрастанию тяжести. */
 export const FREQ_SCALE = ["never", "seldom", "monthly", "weekly", "daily"] as const;
 
@@ -42,10 +44,62 @@ export const CONTACTS_ERROR =
   "Похоже, в тексте профиля есть телефон, ссылка или @-контакт. Уберите их, пожалуйста — вся связь с клиентами идёт через платформу.";
 
 /** Оставляет в номере только цифры и «+» — так телефон хранится в базе. */
+/**
+ * Телефон в формате E.164 (+79001234567). Номер без кода страны считаем
+ * российским: «8 900…» и «900…» тоже приводятся к +7. Непарсящийся ввод
+ * возвращается как есть, без мусора, — его отсечёт isValidPhone.
+ */
 export function normalizePhone(raw: string | null | undefined): string {
-  return (raw ?? "").replace(/[^\d+]/g, "");
+  const parsed = parsePhoneNumberFromString(raw ?? "", "RU");
+  return parsed?.number ?? (raw ?? "").replace(/[^\d+]/g, "");
 }
 
+/**
+ * Что не так с номером — для подсказки под полем; null, если номер верный.
+ * Отличаем «не хватает цифр» от «лишних»: раньше на лишние цифры поле честно
+ * говорило «не хватает», и человек не понимал, что исправлять.
+ */
+export function phoneProblem(raw: string | null | undefined): string | null {
+  if (isValidPhone(raw)) return null;
+  const digits = (raw ?? "").replace(/\D/g, "");
+  if (!digits) return "Введите номер телефона";
+  const length = validatePhoneNumberLength(raw ?? "", "RU");
+  if (length === "TOO_SHORT") return "Не хватает цифр";
+  if (length === "TOO_LONG" || length === "INVALID_LENGTH") {
+    // У RU номер всегда 10 цифр после +7: больше — значит лишние.
+    const national = parsePhoneNumberFromString(raw ?? "", "RU")?.nationalNumber ?? "";
+    return national.length > 10 || length === "TOO_LONG" ? "Лишние цифры — проверьте номер" : "Неверная длина номера";
+  }
+  return "Такого номера не бывает — проверьте код оператора";
+}
+
+/** Настоящий номер по правилам страны (libphonenumber), а не «есть десять цифр». */
 export function isValidPhone(raw: string | null | undefined): boolean {
-  return normalizePhone(raw).replace(/\D/g, "").length >= 10;
+  if (!raw || /[a-zа-яё]/i.test(raw)) return false;
+  return parsePhoneNumberFromString(raw, "RU")?.isValid() ?? false;
+}
+
+// Модерация психолога: draft (только зарегистрировался) → new (приложил
+// образование и документы) → approved | rejected.
+
+/** Одобрить можно только заявку с образованием и документами: черновик
+ * модерация ещё не видела, опубликовать его значит пропустить проверку дипломов. */
+export function canApprove(status: string): boolean {
+  return status !== "draft";
+}
+
+/** Наши загрузки: /uploads/<uuid>.<ext>. Произвольные ссылки в заявку не попадают. */
+export function onlyOwnUploads(urls: readonly string[] | null | undefined): string[] {
+  return (urls ?? []).filter((u) => /^\/uploads\/[a-f0-9-]{36}\.\w{3,4}$/.test(u));
+}
+
+/** Что станет со статусом, когда психолог сохраняет образование и документы.
+ * Черновик и отклонённая заявка уходят на (повторную) модерацию; одобренный
+ * профиль остаётся опубликованным, но помечается для вычитки оператором. */
+export function afterEducationSubmit(status: string): {
+  moderationStatus: string;
+  needsReview: boolean;
+} {
+  if (status === "draft" || status === "rejected") return { moderationStatus: "new", needsReview: false };
+  return { moderationStatus: status, needsReview: status === "approved" };
 }

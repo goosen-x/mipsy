@@ -1,73 +1,49 @@
 import Link from "next/link";
-import { currentAccountId, homePathFor } from "@/lib/auth";
-import { signOutAction } from "@/app/logout/actions";
+import { currentAccount, homePathFor } from "@/lib/auth";
+import { AccountMenu } from "./account-menu";
+import { SiteNav } from "./site-nav";
+import { SITE_SECTIONS } from "./site-sections";
 import { MobileNav } from "./mobile-nav";
+import { HeaderLockup } from "./logo";
+import { ORG } from "@/lib/org";
 
+
+
+/**
+ * Единая шапка сайта и кабинетов (подключается в app/(site)/layout.tsx).
+ * Без входа — «Войти» и «Подобрать психолога», после входа — «Мой кабинет»
+ * и меню аккаунта.
+ */
 export async function SiteHeader() {
-  const accountId = await currentAccountId();
-  const cabinet = accountId ? await homePathFor(accountId) : null;
+  const account = await currentAccount();
+  const cabinet = account ? await homePathFor(account.id) : null;
 
   return (
-    <header className="relative border-b border-neutral-100">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-2xl font-bold tracking-tight text-brand-700"
-        >
-          <span aria-hidden className="h-3.5 w-3.5 rounded-full bg-brand-600" />
-          mipsy
-        </Link>
-        <nav className="hidden items-center gap-6 text-sm sm:flex">
-          <Link href="/catalog" className="text-neutral-600 hover:text-brand-700">
-            Психологи
-          </Link>
-          <Link href="/psy" className="text-neutral-600 hover:text-brand-700">
-            Психологам
-          </Link>
-          {cabinet ? (
-            <Link
-              href={cabinet}
-              className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
-            >
-              Мой кабинет
-            </Link>
+    <header className="relative z-30 border-b border-neutral-100 bg-white">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-4 py-3">
+        <HeaderLockup />
+        <SiteNav />
+        <div className="hidden items-center gap-5 text-sm sm:flex">
+          {account && cabinet ? (
+            <AccountMenu cabinet={cabinet} name={account.name} email={account.email} />
           ) : (
-            <Link
-              href="/login"
-              className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
-            >
-              Войти
-            </Link>
+            <>
+              <Link href="/psihologam" className="text-neutral-600 hover:text-brand-700">
+                Я психолог
+              </Link>
+              <Link href="/login" className="text-neutral-600 hover:text-brand-700">
+                Войти
+              </Link>
+              <Link
+                href="/login?next=%2Fanketa"
+                className="rounded-xl bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700"
+              >
+                Подобрать психолога
+              </Link>
+            </>
           )}
-        </nav>
-        <MobileNav cabinet={cabinet} />
-      </div>
-    </header>
-  );
-}
-
-/** Шапка кабинета: имя владельца и выход. */
-export function CabinetHeader({ title, wide }: { title: string; wide?: boolean }) {
-  return (
-    <header className="border-b bg-white">
-      <div
-        className={`mx-auto flex ${wide ? "max-w-4xl" : "max-w-3xl"} items-center justify-between px-4 py-4`}
-      >
-        <Link
-          href="/"
-          className="flex shrink-0 items-center gap-2 text-xl font-bold text-brand-700"
-        >
-          <span aria-hidden className="h-3 w-3 rounded-full bg-brand-600" />
-          mipsy
-        </Link>
-        <div className="flex min-w-0 items-center gap-4 text-sm text-neutral-500">
-          <span className="truncate">{title}</span>
-          <form action={signOutAction} className="shrink-0">
-            <button type="submit" className="text-neutral-500 underline hover:text-brand-700">
-              Выйти
-            </button>
-          </form>
         </div>
+        <MobileNav cabinet={cabinet} signedIn={Boolean(account)} />
       </div>
     </header>
   );
@@ -76,38 +52,66 @@ export function CabinetHeader({ title, wide }: { title: string; wide?: boolean }
 export function SiteFooter() {
   return (
     <footer className="border-t border-neutral-100 bg-neutral-50">
-      <div className="mx-auto max-w-5xl px-4 py-8 text-sm text-neutral-500">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto max-w-6xl px-4 py-10 text-sm text-neutral-600">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <span className="font-semibold text-brand-700">mipsy</span> · подбор психолога
+            <HeaderLockup size="sm" />
+            <p className="mt-3 text-neutral-500">Проект Московского института психологии (МИП)</p>
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <Link href="/catalog" className="hover:text-brand-700">
-              Психологи
-            </Link>
-            <Link href="/psy" className="hover:text-brand-700">
-              Психологам
-            </Link>
-            <Link href="/crisis" className="hover:text-brand-700">
-              Срочная помощь
-            </Link>
-            <Link href="/support" className="hover:text-brand-700">
-              Поддержка
-            </Link>
-          </div>
-        </div>
-        <div className="mt-4 flex flex-col gap-2 border-t border-neutral-200 pt-4 text-xs text-neutral-400 sm:flex-row sm:items-center sm:justify-end">
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <div className="flex flex-col gap-2">
             <Link href="/oferta" className="hover:text-brand-700">
               Пользовательское соглашение
             </Link>
             <Link href="/privacy" className="hover:text-brand-700">
-              Политика персональных данных
+              Политика обработки персональных данных
             </Link>
             <Link href="/soglasie" className="hover:text-brand-700">
-              Согласие на обработку
+              Согласие на обработку данных
+            </Link>
+            <Link href="/rassylka" className="hover:text-brand-700">
+              Согласие на рассылку
+            </Link>
+            <Link href="/rules" className="hover:text-brand-700">
+              Правила безопасной консультации
+            </Link>
+            <Link href="/ethics" className="hover:text-brand-700">
+              Стандарты и этика для психологов
             </Link>
           </div>
+          <div className="flex flex-col gap-2">
+            {SITE_SECTIONS.map((l) => (
+              <Link key={l.href} href={l.href} className="hover:text-brand-700">
+                {l.label}
+              </Link>
+            ))}
+            <Link href="/psihologi" className="hover:text-brand-700">
+              Психологи
+            </Link>
+            <Link href="/psihologam" className="hover:text-brand-700">
+              Я психолог
+            </Link>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Link href="/support" className="font-medium text-neutral-800 hover:text-brand-700">
+              Поддержка
+            </Link>
+            <Link href="/faq" className="hover:text-brand-700">
+              Частые вопросы
+            </Link>
+            <Link href="/crisis" className="hover:text-brand-700">
+              Срочная помощь
+            </Link>
+            <a href={`tel:${ORG.phone.replace(/[^+\d]/g, "")}`} className="hover:text-brand-700">
+              {ORG.phone}
+            </a>
+            <a href={`mailto:${ORG.email}`} className="hover:text-brand-700">
+              {ORG.email}
+            </a>
+          </div>
+        </div>
+        <div className="mt-8 border-t border-dashed border-neutral-200 pt-4 text-xs text-neutral-400">
+          © {new Date().getFullYear()} mipsy · {ORG.fullName} ({ORG.shortName}) · ИНН {ORG.inn} ·
+          ОГРН {ORG.ogrn} · {ORG.address}
         </div>
       </div>
     </footer>

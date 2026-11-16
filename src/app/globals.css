@@ -4,21 +4,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Палитра по дизайн-системе mip.institute: фиолетовый + оранжевый акцент */
+/* Палитра по логотипу mipsy (вариант 1): фиолетовый #855edf — тот же, что в
+   логотипе Московского института психологии. Оранжевого акцента больше нет. */
 @theme {
-  --color-brand-50: #faf5ff;
-  --color-brand-100: #f1e9fe;
-  --color-brand-200: #e7dffa;
-  --color-brand-300: #c9b3f2;
-  --color-brand-400: #947aff;
-  --color-brand-500: #855edf;
-  --color-brand-600: #6f01c6;
-  --color-brand-700: #5d01a6;
-  --color-brand-800: #4a0184;
-  --color-brand-900: #3a0168;
-  --color-accent-400: #ff8f52;
-  --color-accent-500: #f87e1b;
-  --color-accent-600: #e56f0e;
+  --color-brand-50: #f7f4fd;
+  --color-brand-100: #eee8fb;
+  --color-brand-200: #ddd1f7;
+  --color-brand-300: #c3b0f0;
+  --color-brand-400: #a588e8;
+  --color-brand-500: #9572e4;
+  --color-brand-600: #855edf;
+  --color-brand-700: #6e47cc;
+  --color-brand-800: #5a38ab;
+  --color-brand-900: #472c86;
 }
 
 body {
@@ -26,8 +24,8 @@ body {
 }
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: var(--font-sans);
+  --font-heading: var(--font-onest);
+  --font-sans: var(--font-onest), ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -75,18 +73,18 @@ body {
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #6f01c6;
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: #faf5ff;
-  --secondary-foreground: #4a0184;
+  --primary: #855edf;
+  --primary-foreground: #ffffff;
+  --secondary: #f7f4fd;
+  --secondary-foreground: #5a38ab;
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: #faf5ff;
-  --accent-foreground: #4a0184;
+  --accent: #f7f4fd;
+  --accent-foreground: #5a38ab;
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: #947aff;
+  --ring: #a588e8;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -146,5 +144,59 @@ body {
   }
   html {
     @apply font-sans;
+    font-size: 16px;
+    /* Плавный скролл к якорям главной (#about, #how, #prices, #faq). */
+    scroll-behavior: smooth;
+    /* Без резинового оверскролла и «потяни, чтобы обновить». */
+    overscroll-behavior: none;
   }
+  body {
+    overscroll-behavior: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+  /* Поля и кнопки — тем же шрифтом и не мельче 16px: iOS зумит страницу при
+     фокусе на поле с текстом меньше 16px. */
+  input,
+  textarea,
+  select,
+  button {
+    font-family: inherit;
+  }
+  /* Tailwind 4 ставит кнопкам обычную стрелку — возвращаем руку всему, что нажимается. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="menuitem"],
+  [role="tab"],
+  [role="checkbox"],
+  [role="radio"],
+  select,
+  summary,
+  label[for],
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"],
+  input[type="file"]::file-selector-button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+/* react-phone-number-input: флаг страны рядом с полем, в размер наших инпутов. */
+.mipsy-phone {
+  --PhoneInputCountryFlag-height: 1.1em;
+  --PhoneInputCountryFlag-borderColor: transparent;
+  --PhoneInputCountrySelectArrow-color: var(--color-neutral-500);
+  --PhoneInputCountrySelectArrow-opacity: 1;
+}
+.mipsy-phone .PhoneInputCountry {
+  height: 2.75rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--input);
+  border-radius: 0.75rem;
+  margin-right: 0;
 }

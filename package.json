@@ -11,6 +11,7 @@
     "lint": "tsc --noEmit",
     "db:push": "drizzle-kit push",
     "db:seed": "node --experimental-strip-types src/db/seed.ts",
+    "db:pull": "node scripts/pull-prod-db.mjs",
     "test": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "repository": {
@@ -27,11 +28,14 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
+    "libphonenumber-js": "^1.13.16",
+    "motion": "^14.12.0",
     "next": "^16.3.0",
     "nodemailer": "^9.0.5",
     "radix-ui": "^1.6.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-phone-number-input": "^3.4.18",
     "server-only": "^0.0.1",
     "shadcn": "^4.16.2",
     "sonner": "^2.0.8",

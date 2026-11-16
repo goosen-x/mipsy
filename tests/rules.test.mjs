@@ -7,6 +7,7 @@ import {
   containsContacts,
   isCrisisAnswer,
   isValidPhone,
+  phoneProblem,
   normalizePhone,
   publicProfileText,
 } from "../src/lib/rules.ts";
@@ -72,4 +73,18 @@ test("телефон нормализуется и проверяется по �
   assert.equal(isValidPhone("123"), false);
   assert.equal(isValidPhone(""), false);
   assert.equal(isValidPhone(null), false);
+  // Буквы и обрывки номера не проходят — раньше хватало «десяти цифр где угодно».
+  assert.equal(isValidPhone("abc"), false);
+  assert.equal(isValidPhone("+7 900 123-45-6x"), false);
+  assert.equal(isValidPhone("1234567890abc"), false);
+  assert.equal(isValidPhone("+7 123"), false);
+  // Российский номер без +7 и зарубежный номер — валидны и нормализуются.
+  assert.equal(normalizePhone("8 900 123-45-67"), "+79001234567");
+  assert.equal(isValidPhone("+49 151 23456789"), true);
+  assert.equal(normalizePhone("+49 151 23456789"), "+4915123456789");
+  // Подсказка под полем различает «мало» и «много» цифр.
+  assert.equal(phoneProblem("+7 900 123-45-67"), null);
+  assert.equal(phoneProblem("+7 900 123"), "Не хватает цифр");
+  assert.equal(phoneProblem("+7 99999999999"), "Лишние цифры — проверьте номер");
+  assert.equal(phoneProblem("+7 000 123-45-67"), "Такого номера не бывает — проверьте код оператора");
 });

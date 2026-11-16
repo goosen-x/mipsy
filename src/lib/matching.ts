@@ -64,7 +64,7 @@ export function catalogUrlFor(prefs: MatchPrefs): string {
   if (gender) usp.set("gender", gender);
   if (prefs.prefAge && prefs.prefAge !== "any") usp.set("age", prefs.prefAge);
   const s = usp.toString();
-  return s ? `/catalog?${s}` : "/catalog";
+  return s ? `/psihologi?${s}` : "/psihologi";
 }
 
 /**
