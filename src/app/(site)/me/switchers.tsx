@@ -1,4 +1,6 @@
 import { VariantSwitcher } from "@/components/variant-switcher";
+import { DemoBar } from "./demo-bar";
+import { DEMO_STATES, readDemoState } from "./demo";
 import { LAYOUT_COOKIE, LAYOUT_VARIANTS } from "./layout-config";
 import { LayoutSwitcher } from "./layout-switcher";
 import { DEFAULT_PROPOSAL_VARIANT, PROPOSAL_VARIANTS } from "./proposals-config";
@@ -10,37 +12,45 @@ export function proposalVariant(canSwitch: boolean, v: string | undefined): numb
 }
 
 /**
- * Плашки выбора внизу экрана: вариант кабинета и, где есть подборка, её вариант
- * — второй плашкой над первой. В варианте «Приложение» обе поднимаются над
- * нижней панелью.
+ * Плашки выбора внизу экрана, одним блоком колонкой: вариант экрана (подборки
+ * или стартового), вариант кабинета и — в демо — состояние клиента со ссылкой.
+ * Высота одна для всех вариантов — над нижней панелью «Приложения» и над
+ * футером кабинета, — чтобы при переключении блок не прыгал.
  */
-export function CabinetSwitchers({
+export async function CabinetSwitchers({
   canSwitch,
   layout,
-  proposals,
+  screen,
 }: {
   canSwitch: boolean;
-  layout: number;
-  proposals?: { variant: number; basePath: string };
+  /** Нет у стартового экрана — там каркаса кабинета ещё нет. */
+  layout?: number;
+  screen?: {
+    title: string;
+    variants: readonly { n: number; label: string }[];
+    current: number;
+    basePath: string;
+  };
 }) {
   if (!canSwitch) return null;
-  // Один закреплённый блок: плашки стоят колонкой и не наезжают друг на друга.
-  // Высота одна для всех вариантов — над нижней панелью «Приложения» и над
-  // футером кабинета, — чтобы при переключении плашка не прыгала.
+  const demo = await readDemoState();
   return (
-    <div
-      className="fixed inset-x-0 bottom-20 z-50 mx-auto flex w-fit max-w-[calc(100%-2rem)] flex-col items-center gap-2"
-    >
-      {proposals && (
+    <div className="fixed inset-x-0 bottom-20 z-50 mx-auto flex w-fit max-w-[calc(100%-2rem)] flex-col items-center gap-2">
+      {screen && (
         <VariantSwitcher
           inline
-          title="Подборка"
-          current={proposals.variant}
-          variants={PROPOSAL_VARIANTS}
-          basePath={proposals.basePath}
+          title={screen.title}
+          current={screen.current}
+          variants={screen.variants}
+          basePath={screen.basePath}
         />
       )}
-      <LayoutSwitcher current={layout} variants={LAYOUT_VARIANTS} cookie={LAYOUT_COOKIE} />
+      {layout && <LayoutSwitcher current={layout} variants={LAYOUT_VARIANTS} cookie={LAYOUT_COOKIE} />}
+      {demo && <DemoBar state={demo} states={DEMO_STATES} layout={layout ?? 1} />}
     </div>
   );
+}
+
+export function proposalsScreen(variant: number, basePath: string) {
+  return { title: "Подборка", variants: PROPOSAL_VARIANTS, current: variant, basePath };
 }

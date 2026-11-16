@@ -7,10 +7,17 @@ import { currentAccount, isAdmin } from "@/lib/auth";
 import { gradePriceLabel, gradeTitle } from "@/lib/grades";
 import { catalogUrlFor } from "@/lib/matching";
 import { enabledProviders } from "@/lib/payments";
+import { buildDemoCabinet, DEMO_ACCOUNT, demoRequest, readDemoState } from "./demo";
 import type { Proposal } from "./proposals-config";
 
 /** Аккаунт и его обращения. Без входа — на /login с возвратом в нужный раздел. */
 export async function loadAccount(returnTo = "/me") {
+  // Демо по ссылке /demo: выдуманный клиент, вход не нужен.
+  const demo = await readDemoState();
+  if (demo) {
+    const req = demoRequest(demo);
+    return { account: DEMO_ACCOUNT, myRequests: req ? [req] : [], req, demo };
+  }
   const account = await currentAccount();
   if (!account) redirect(`/login?next=${encodeURIComponent(returnTo)}`);
   const myRequests = await db
@@ -18,21 +25,30 @@ export async function loadAccount(returnTo = "/me") {
     .from(clientRequests)
     .where(eq(clientRequests.accountId, account.id))
     .orderBy(desc(clientRequests.id));
-  return { account, myRequests, req: myRequests[0] };
+  return { account, myRequests, req: myRequests[0], demo: null };
 }
 
 /** Переключатель вариантов дизайна: локально и админам; клиентам — вариант по умолчанию. */
 export async function canSwitchVariants() {
-  return process.env.NODE_ENV === "development" || (await isAdmin());
+  return process.env.NODE_ENV === "development" || Boolean(await readDemoState()) || (await isAdmin());
 }
 
 /**
  * Всё, что нужно разделам кабинета по текущему обращению. Разделу без обращения
  * показывать нечего — отправляем на главную кабинета, она объяснит, с чего начать.
  */
-export async function loadCabinet(returnTo: string) {
-  const { account, myRequests, req } = await loadAccount(returnTo);
+export async function loadCabinet(returnTo: string): Promise<Cabinet> {
+  const { account, myRequests, req, demo } = await loadAccount(returnTo);
   if (!req) redirect("/me");
+  if (demo) return buildDemoCabinet(demo);
+  return loadRealCabinet(account, myRequests, req);
+}
+
+async function loadRealCabinet(
+  account: NonNullable<Awaited<ReturnType<typeof currentAccount>>>,
+  myRequests: (typeof clientRequests.$inferSelect)[],
+  req: typeof clientRequests.$inferSelect,
+) {
 
   const requestIds = myRequests.map((r) => r.id);
   const now = new Date();
@@ -193,4 +209,4 @@ export async function loadCabinet(returnTo: string) {
   };
 }
 
-export type Cabinet = Awaited<ReturnType<typeof loadCabinet>>;
+export type Cabinet = Awaited<ReturnType<typeof loadRealCabinet>>;

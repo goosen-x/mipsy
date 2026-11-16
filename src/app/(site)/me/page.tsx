@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { VariantSwitcher } from "@/components/variant-switcher";
 import { canSwitchVariants, loadAccount, loadCabinet } from "./data";
 import { DEFAULT_EMPTY_VARIANT, EMPTY_VARIANTS, EmptyCabinet } from "./empty-variants";
 import { resolveLayout } from "./layout-config";
 import { HomeBody, OplatyBody, PodborBody, PodderzhkaBody, TilesHome, VstrechiBody } from "./sections";
 import { CabinetFooter, CabinetShell, cabinetBadges, SECTIONS } from "./shell";
-import { CabinetSwitchers, proposalVariant } from "./switchers";
+import { CabinetSwitchers, proposalsScreen, proposalVariant } from "./switchers";
 
 export const metadata = { title: "Личный кабинет — mipsy" };
 export const dynamic = "force-dynamic";
@@ -64,7 +63,10 @@ export default async function ClientCabinetPage({ searchParams }: { searchParams
           <EmptyCabinet variant={variant} name={account.name} />
         </div>
         <CabinetFooter />
-        {canSwitch && <VariantSwitcher current={variant} variants={EMPTY_VARIANTS} basePath="/me" />}
+        <CabinetSwitchers
+          canSwitch={canSwitch}
+          screen={{ title: "Стартовый экран", variants: EMPTY_VARIANTS, current: variant, basePath: "/me" }}
+        />
       </div>
     );
   }
@@ -97,7 +99,7 @@ export default async function ClientCabinetPage({ searchParams }: { searchParams
         <CabinetSwitchers
           canSwitch={canSwitch}
           layout={layout}
-          proposals={c.showProposals ? { variant, basePath: "/me" } : undefined}
+          screen={c.showProposals ? proposalsScreen(variant, "/me") : undefined}
         />
       </CabinetShell>
     );
