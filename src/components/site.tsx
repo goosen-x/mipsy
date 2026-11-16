@@ -51,7 +51,7 @@ export async function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-neutral-100 bg-neutral-50">
+    <footer data-site-footer className="border-t border-neutral-100 bg-neutral-50">
       <div className="mx-auto max-w-6xl px-4 py-10 text-sm text-neutral-600">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>

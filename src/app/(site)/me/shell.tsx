@@ -7,6 +7,7 @@ import {
   IconLayoutGrid,
   IconUserSearch,
 } from "@tabler/icons-react";
+import { ORG } from "@/lib/org";
 import { cn } from "@/lib/utils";
 
 export type CabinetSection = "home" | "podbor" | "vstrechi" | "oplaty" | "podderzhka";
@@ -64,7 +65,7 @@ function Count({ n, className }: { n?: number; className?: string }) {
 /* 1. Вкладки над контентом */
 function TabsShell({ active, badges, children }: ShellProps) {
   return (
-    <div className="bg-white">
+    <div data-cabinet className="bg-white">
       <div className="mx-auto max-w-5xl px-4 pt-6">
         <nav
           aria-label="Разделы кабинета"
@@ -90,6 +91,7 @@ function TabsShell({ active, badges, children }: ShellProps) {
         </nav>
       </div>
       <main className="mx-auto max-w-5xl space-y-12 px-4 py-10 pb-24">{children}</main>
+      <CabinetFooter />
     </div>
   );
 }
@@ -97,7 +99,7 @@ function TabsShell({ active, badges, children }: ShellProps) {
 /* 2. Боковое меню слева, на телефоне — строкой сверху */
 function SidebarShell({ active, badges, children }: ShellProps) {
   return (
-    <div className="bg-neutral-50">
+    <div data-cabinet className="bg-neutral-50">
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 md:grid-cols-[230px_1fr]">
         <aside className="md:sticky md:top-6 md:self-start">
           <div className="mb-3 hidden px-3 text-xs font-medium uppercase tracking-wide text-neutral-400 md:block">
@@ -127,6 +129,7 @@ function SidebarShell({ active, badges, children }: ShellProps) {
           {children}
         </main>
       </div>
+      <CabinetFooter />
     </div>
   );
 }
@@ -135,7 +138,7 @@ function SidebarShell({ active, badges, children }: ShellProps) {
 function TilesShell({ active, children }: Omit<ShellProps, "badges">) {
   const section = SECTIONS.find((s) => s.key === active)!;
   return (
-    <div className="bg-neutral-50">
+    <div data-cabinet className="bg-neutral-50">
       <main className="mx-auto max-w-5xl space-y-10 px-4 py-8 pb-24">
         {active !== "home" && (
           <div className="flex items-center gap-3 text-sm">
@@ -155,6 +158,7 @@ function TilesShell({ active, children }: Omit<ShellProps, "badges">) {
         )}
         {active === "home" ? children : <div className="space-y-10 rounded-3xl bg-white p-6 sm:p-10">{children}</div>}
       </main>
+      <CabinetFooter />
     </div>
   );
 }
@@ -162,7 +166,7 @@ function TilesShell({ active, children }: Omit<ShellProps, "badges">) {
 /* 4. Одна страница: все разделы подряд, слева — оглавление с якорями */
 function OnePageShell({ badges, children }: Omit<ShellProps, "active">) {
   return (
-    <div className="bg-white">
+    <div data-cabinet className="bg-white">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 lg:grid-cols-[200px_1fr]">
         <aside className="hidden lg:block">
           <nav aria-label="Разделы кабинета" className="sticky top-6 space-y-1 border-l border-neutral-200">
@@ -180,6 +184,7 @@ function OnePageShell({ badges, children }: Omit<ShellProps, "active">) {
         </aside>
         <main className="min-w-0 pb-24">{children}</main>
       </div>
+      <CabinetFooter />
     </div>
   );
 }
@@ -187,7 +192,7 @@ function OnePageShell({ badges, children }: Omit<ShellProps, "active">) {
 /* 5. Приложение: узкая колонка и нижняя панель с иконками */
 function AppShell({ active, badges, children }: ShellProps) {
   return (
-    <div className="bg-neutral-50">
+    <div data-cabinet className="min-h-[calc(100svh-4.5rem)] bg-neutral-50">
       <main className="mx-auto max-w-xl space-y-8 px-4 py-6 pb-40">{children}</main>
       <nav
         aria-label="Разделы кабинета"
@@ -251,4 +256,26 @@ export function waitingText(status: string): string {
     default:
       return "Ваша анкета у оператора. Мы напишем вам в течение рабочего дня, чтобы уточнить детали и подобрать специалистов.";
   }
+}
+
+/**
+ * Футер кабинета: большой футер сайта здесь только мешает, но политика ПД,
+ * оферта и телефон должны оставаться под рукой. В «Приложении» их нет —
+ * там внизу панель, ссылки живут в разделе «Поддержка».
+ */
+export function CabinetFooter() {
+  return (
+    <footer className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-6 text-xs text-neutral-400">
+      <span>© {new Date().getFullYear()} {ORG.shortName}</span>
+      <Link href="/privacy" className="cursor-pointer hover:text-neutral-700">
+        Политика обработки данных
+      </Link>
+      <Link href="/oferta" className="cursor-pointer hover:text-neutral-700">
+        Пользовательское соглашение
+      </Link>
+      <a href={`tel:${ORG.phone.replace(/[^+\d]/g, "")}`} className="cursor-pointer hover:text-neutral-700 sm:ml-auto">
+        {ORG.phone}
+      </a>
+    </footer>
+  );
 }

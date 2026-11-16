@@ -4,7 +4,7 @@ import { canSwitchVariants, loadAccount, loadCabinet } from "./data";
 import { DEFAULT_EMPTY_VARIANT, EMPTY_VARIANTS, EmptyCabinet } from "./empty-variants";
 import { resolveLayout } from "./layout-config";
 import { HomeBody, OplatyBody, PodborBody, PodderzhkaBody, TilesHome, VstrechiBody } from "./sections";
-import { CabinetShell, cabinetBadges, SECTIONS } from "./shell";
+import { CabinetFooter, CabinetShell, cabinetBadges, SECTIONS } from "./shell";
 import { CabinetSwitchers, proposalVariant } from "./switchers";
 
 export const metadata = { title: "Личный кабинет — mipsy" };
@@ -59,8 +59,9 @@ export default async function ClientCabinetPage({ searchParams }: { searchParams
     const asked = Number((await searchParams).v);
     const variant = canSwitch && asked >= 1 && asked <= 5 ? asked : DEFAULT_EMPTY_VARIANT;
     return (
-      <div className="bg-white pb-20">
+      <div data-cabinet className="bg-white pb-20">
         <EmptyCabinet variant={variant} name={account.name} />
+        <CabinetFooter />
         {canSwitch && <VariantSwitcher current={variant} variants={EMPTY_VARIANTS} basePath="/me" />}
       </div>
     );

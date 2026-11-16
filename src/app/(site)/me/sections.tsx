@@ -2,6 +2,8 @@ import Link from "next/link";
 import {
   IconArrowRight,
   IconCalendarEvent,
+  IconCheck,
+  IconChevronRight,
   IconCreditCard,
   IconHeadset,
   IconSearch,
@@ -11,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatSlot, TZ_LABEL } from "@/lib/datetime";
 import { gradePriceLabel } from "@/lib/grades";
+import { cn } from "@/lib/utils";
 import { label, REQUEST_STATUS_LABELS } from "@/lib/labels";
 import { BookingActions, BookingSection, RematchControl, ReviewForm, SupportForm } from "./controls";
 import type { Cabinet } from "./data";
@@ -25,83 +28,193 @@ import { SectionTitle, waitingText } from "./shell";
  */
 
 export function HomeBody({ c }: { c: Cabinet }) {
-  const { account, req } = c;
+  const { account, req, chosen } = c;
   const step = nextStep(c);
   const next = c.upcoming[0];
   const unpaid = c.upcoming.filter((s) => !s.paidAt).length;
   return (
     <>
-          {account.role === "psychologist" && (
-            // Наследие: до разделения ролей обе жили на одной почте. Заявки не
-            // прячем, но предупреждаем — новые заводятся только с другого адреса.
-            <div className="rounded-2xl bg-amber-50 p-5 text-sm text-amber-900">
-              На этой почте кабинет специалиста, а эти заявки остались от времени, когда роли
-              жили на одном адресе. Они продолжают работать, но новую анкету отсюда не подать —
-              для обращений как клиент заведите отдельный вход с другой почты. Если нужно
-              разнести — напишите в <Link href="/me/podderzhka" className="underline">поддержку</Link>.
-            </div>
-          )}
+      {account.role === "psychologist" && (
+        // Наследие: до разделения ролей обе жили на одной почте. Заявки не
+        // прячем, но предупреждаем — новые заводятся только с другого адреса.
+        <div className="rounded-2xl bg-amber-50 p-5 text-sm text-amber-900">
+          На этой почте кабинет специалиста, а эти заявки остались от времени, когда роли
+          жили на одном адресе. Они продолжают работать, но новую анкету отсюда не подать —
+          для обращений как клиент заведите отдельный вход с другой почты. Если нужно
+          разнести — напишите в <Link href="/me/podderzhka" className="underline">поддержку</Link>.
+        </div>
+      )}
 
-          <section>
-            <h1 className="text-3xl font-bold">Здравствуйте, {req.name}!</h1>
-            <div className="mt-6 rounded-3xl bg-brand-50 p-6 sm:p-8">
-              <div className="text-sm font-medium uppercase tracking-wide text-brand-700">Что дальше</div>
-              <h2 className="mt-2 text-2xl font-bold">{step.title}</h2>
-              <p className="mt-2 max-w-2xl text-neutral-700">{step.text}</p>
-              {step.href && (
-                <Button asChild size="lg" className="mt-5 rounded-xl">
-                  {step.external ? (
-                    <a href={step.href} target="_blank" rel="noreferrer">
-                      {step.cta}
-                    </a>
-                  ) : (
-                    <Link href={step.href}>{step.cta}</Link>
-                  )}
-                </Button>
-              )}
-            </div>
-          </section>
+      <section className="space-y-6">
+        <h1 className="text-3xl font-bold">Здравствуйте, {req.name}!</h1>
+        <NextStepCard step={step} c={c} />
+      </section>
 
-          <section className="grid gap-4 sm:grid-cols-3">
-            <SummaryCard
-              href="/me/podbor"
-              icon={IconUserHeart}
-              title="Психолог"
-              value={c.chosen ? c.chosen.psy.name : c.showProposals ? "Выберите из подборки" : "Ещё не выбран"}
-            />
-            <SummaryCard
-              href="/me/vstrechi"
-              icon={IconCalendarEvent}
-              title="Ближайшая встреча"
-              value={next ? formatSlot(next.startsAt) : "Не запланирована"}
-            />
-            <SummaryCard
-              href="/me/oplaty"
-              icon={IconCreditCard}
-              title="Оплата"
-              value={unpaid ? `К оплате: ${unpaid}` : "Долгов нет"}
-              warn={unpaid > 0}
-            />
-          </section>
+      <section className="divide-y divide-neutral-100 overflow-hidden rounded-3xl bg-white ring-1 ring-neutral-200">
+        <SummaryRow
+          href="/me/podbor"
+          title="Психолог"
+          value={chosen ? chosen.psy.name : c.showProposals ? "Выберите из подборки" : "Подбираем"}
+          media={
+            chosen ? (
+              <PsyThumb name={chosen.psy.name} photoUrl={chosen.psy.photoUrl} />
+            ) : (
+              <RowIcon icon={IconUserHeart} />
+            )
+          }
+        />
+        <SummaryRow
+          href="/me/vstrechi"
+          title="Ближайшая встреча"
+          value={next ? formatSlot(next.startsAt) : "Пока не запланирована"}
+          media={<RowIcon icon={IconCalendarEvent} />}
+        />
+        <SummaryRow
+          href="/me/oplaty"
+          title="Оплата"
+          value={unpaid ? `Ждут оплаты: ${unpaid}` : "Всё оплачено"}
+          media={<RowIcon icon={IconCreditCard} tone={unpaid ? "warn" : "brand"} />}
+          warn={unpaid > 0}
+        />
+      </section>
 
-          {req.crisisFlag && (
-            <section className="rounded-2xl border border-red-200 bg-red-50 p-5">
-              <p className="text-sm text-red-900">
-                Если станет совсем тяжело — не ждите звонка оператора:{" "}
-                <Link href="/crisis" className="font-medium underline">
-                  телефоны круглосуточной поддержки
-                </Link>
-                .
-              </p>
-            </section>
-          )}
-
-          <p className="pb-4 text-center text-xs text-neutral-400">
-            Вход в кабинет — по адресу {account.email} и коду из письма. Статус обращения:{" "}
-            <Badge variant="secondary">{label(REQUEST_STATUS_LABELS, req.status)}</Badge>
+      {req.crisisFlag && (
+        <section className="rounded-2xl border border-red-200 bg-red-50 p-5">
+          <p className="text-sm text-red-900">
+            Если станет совсем тяжело — не ждите звонка оператора:{" "}
+            <Link href="/crisis" className="font-medium underline">
+              телефоны круглосуточной поддержки
+            </Link>
+            .
           </p>
-    
+        </section>
+      )}
     </>
+  );
+}
+
+/** Карточка главного шага: шкала пути клиента и одно действие. */
+export function NextStepCard({ step, c, tone = "soft" }: { step: Step; c: Cabinet; tone?: "soft" | "solid" }) {
+  const solid = tone === "solid";
+  return (
+    <div className={solid ? "flex h-full flex-col rounded-3xl bg-brand-600 p-6 text-white sm:p-8" : "rounded-3xl bg-brand-50 p-6 sm:p-8"}>
+      <Journey c={c} solid={solid} />
+      <div className={solid ? "mt-8 text-sm font-medium uppercase tracking-wide text-white/70" : "mt-8 text-sm font-medium uppercase tracking-wide text-brand-700"}>
+        Что дальше
+      </div>
+      <h2 className="mt-2 text-2xl font-bold">{step.title}</h2>
+      <p className={solid ? "mt-2 max-w-xl text-white/85" : "mt-2 max-w-xl text-neutral-700"}>{step.text}</p>
+      {step.href && (
+        <div className={solid ? "mt-auto pt-6" : "mt-6"}>
+          <Button asChild size="lg" variant={solid ? "secondary" : "default"} className="rounded-xl">
+            {step.external ? (
+              <a href={step.href} target="_blank" rel="noreferrer">
+                {step.cta}
+              </a>
+            ) : (
+              <Link href={step.href}>{step.cta}</Link>
+            )}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Путь клиента от анкеты до первой встречи: пройденное, текущее, впереди. */
+function Journey({ c, solid }: { c: Cabinet; solid: boolean }) {
+  const met = c.past.some((s) => s.status === "done");
+  const booked = met || c.upcoming.length > 0;
+  const picked = booked || Boolean(c.chosen);
+  const offered = picked || c.proposals.length > 0;
+  const steps = [
+    { label: "Анкета", done: true },
+    { label: "Подборка", done: offered },
+    { label: "Выбор психолога", done: picked },
+    { label: booked && !met ? "Встреча назначена" : "Первая встреча", done: met },
+  ];
+  const current = steps.findIndex((s) => !s.done);
+  return (
+    <ol className="grid grid-cols-4 gap-2">
+      {steps.map((s, i) => {
+        const isCurrent = i === current;
+        return (
+          <li key={s.label} className="min-w-0">
+            <div
+              className={cn(
+                "h-1.5 rounded-full",
+                s.done
+                  ? solid ? "bg-white" : "bg-brand-600"
+                  : isCurrent
+                    ? solid ? "bg-white/50" : "bg-brand-300"
+                    : solid ? "bg-white/20" : "bg-brand-100",
+              )}
+            />
+            <div
+              className={cn(
+                "mt-2 flex items-center gap-1 text-xs leading-tight",
+                solid
+                  ? s.done || isCurrent ? "text-white" : "text-white/60"
+                  : s.done || isCurrent ? "text-neutral-800" : "text-neutral-400",
+                isCurrent && "font-medium",
+              )}
+            >
+              {s.done && <IconCheck size={14} className="shrink-0" />}
+              <span>{s.label}</span>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function RowIcon({ icon: Icon, tone = "brand" }: { icon: typeof IconUserHeart; tone?: "brand" | "warn" }) {
+  return (
+    <div
+      className={cn(
+        "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
+        tone === "warn" ? "bg-amber-50 text-amber-700" : "bg-brand-50 text-brand-600",
+      )}
+    >
+      <Icon size={22} />
+    </div>
+  );
+}
+
+function PsyThumb({ name, photoUrl }: { name: string; photoUrl: string | null }) {
+  return photoUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={photoUrl} alt="" className="h-11 w-11 shrink-0 rounded-2xl object-cover" />
+  ) : (
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-100 font-bold text-brand-700">
+      {name.slice(0, 1)}
+    </div>
+  );
+}
+
+function SummaryRow({
+  href,
+  title,
+  value,
+  media,
+  warn,
+}: {
+  href: string;
+  title: string;
+  value: string;
+  media: React.ReactNode;
+  warn?: boolean;
+}) {
+  return (
+    <Link href={href} className="group flex cursor-pointer items-center gap-4 px-5 py-4 transition-colors hover:bg-neutral-50">
+      {media}
+      <div className="min-w-0 flex-1">
+        <div className="text-sm text-neutral-500">{title}</div>
+        <div className={cn("truncate font-semibold", warn && "text-amber-800")}>{value}</div>
+      </div>
+      <IconChevronRight size={20} className="shrink-0 text-neutral-300 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-600" />
+    </Link>
   );
 }
 
@@ -132,7 +245,7 @@ export function PodborBody({ c, variant }: { c: Cabinet; variant: number }) {
                   </Button>
                 </div>
               )}
-              <div className="mt-6">
+              <div className="@container mt-6">
                 <ProposalsView variant={variant} anyChosen={Boolean(chosen)} proposals={proposals} />
               </div>
             </section>
@@ -190,7 +303,8 @@ export function PodborBody({ c, variant }: { c: Cabinet; variant: number }) {
 
           {/* Второй путь — выбрать самому. Равноправный с подборкой, а не мелкая сноска. */}
           {!chosen || showProposals ? (
-            <section className="flex flex-col gap-6 rounded-3xl border border-neutral-200 p-6 sm:flex-row sm:items-center sm:p-8">
+            <section className="@container rounded-3xl border border-neutral-200 p-6 sm:p-8">
+          <div className="flex flex-col gap-6 @2xl:flex-row @2xl:items-center">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
                 <IconSearch size={28} />
               </div>
@@ -204,6 +318,7 @@ export function PodborBody({ c, variant }: { c: Cabinet; variant: number }) {
               <Button asChild size="lg" variant="outline" className="shrink-0">
                 <Link href={c.catalogUrl}>Открыть каталог</Link>
               </Button>
+          </div>
             </section>
           ) : null}
 
@@ -477,37 +592,13 @@ export function PodderzhkaBody({ c }: { c: Cabinet }) {
               .
             </p>
           </section>
+      <section className="flex flex-wrap gap-x-5 gap-y-2 border-t border-neutral-100 pt-6 text-sm text-neutral-500">
+        <Link href="/privacy" className="hover:text-brand-700">Политика обработки данных</Link>
+        <Link href="/oferta" className="hover:text-brand-700">Пользовательское соглашение</Link>
+        <Link href="/faq" className="hover:text-brand-700">Частые вопросы</Link>
+      </section>
     
     </>
-  );
-}
-
-export function SummaryCard({
-  href,
-  icon: Icon,
-  title,
-  value,
-  warn,
-}: {
-  href: string;
-  icon: typeof IconUserHeart;
-  title: string;
-  value: string;
-  warn?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex cursor-pointer flex-col rounded-3xl border border-neutral-200 p-5 transition-colors hover:border-brand-300"
-    >
-      <Icon size={24} className="text-brand-600" />
-      <div className="mt-4 text-sm text-neutral-500">{title}</div>
-      <div className={warn ? "mt-1 font-semibold text-amber-800" : "mt-1 font-semibold"}>{value}</div>
-      <IconArrowRight
-        size={18}
-        className="mt-3 text-neutral-400 transition-transform group-hover:translate-x-1"
-      />
-    </Link>
   );
 }
 
@@ -524,7 +615,7 @@ export function nextStep(c: Cabinet): Step {
   if (next && !next.paidAt) {
     return {
       title: `Встреча ${formatSlot(next.startsAt)}`,
-      text: `С ${next.psyName}. Встреча ещё не оплачена — оплатить можно заранее.`,
+      text: `Психолог: ${next.psyName}. Встреча ещё не оплачена — оплатить можно заранее.`,
       href: "/me/oplaty",
       cta: "Перейти к оплате",
     };
@@ -533,8 +624,8 @@ export function nextStep(c: Cabinet): Step {
     return {
       title: `Встреча ${formatSlot(next.startsAt)}`,
       text: next.meetingLink
-        ? `С ${next.psyName}. Ссылка откроет комнату встречи.`
-        : `С ${next.psyName}. Ссылка на встречу появится здесь ближе ко времени.`,
+        ? `Психолог: ${next.psyName}. Ссылка откроет комнату встречи.`
+        : `Психолог: ${next.psyName}. Ссылка на встречу появится здесь ближе ко времени.`,
       href: next.meetingLink ?? "/me/vstrechi",
       cta: next.meetingLink ? "Открыть встречу" : "Подробнее",
       external: Boolean(next.meetingLink),
@@ -549,15 +640,19 @@ export function nextStep(c: Cabinet): Step {
     };
   }
   if (chosen && req.status !== "rematch") {
-    return {
-      title: "Запишитесь на первую встречу",
-      text:
-        calendarSlots.length > 0
-          ? `${chosen.psy.name} ждёт вас. Выберите удобное время.`
-          : `Свободного времени у ${chosen.psy.name} пока нет — специалист скоро откроет расписание.`,
-      href: "/me/vstrechi#booking",
-      cta: "Выбрать время",
-    };
+    return calendarSlots.length > 0
+      ? {
+          title: "Запишитесь на первую встречу",
+          text: `Психолог: ${chosen.psy.name}. Свободные окна уже открыты — выберите удобное время.`,
+          href: "/me/vstrechi#booking",
+          cta: "Выбрать время",
+        }
+      : {
+          title: "Ждём расписание психолога",
+          text: `Психолог: ${chosen.psy.name}. Свободного времени пока нет — как только появятся окна, их можно будет выбрать в разделе «Встречи».`,
+          href: chosen.psy.slug ? `/psihologi/${chosen.psy.slug}` : undefined,
+          cta: "Профиль психолога",
+        };
   }
   if (awaitingReview.length > 0) {
     return {
@@ -579,24 +674,9 @@ export function TilesHome({ c }: { c: Cabinet }) {
   return (
     <>
       <h1 className="text-3xl font-bold">Здравствуйте, {req.name}!</h1>
-      <div className="grid auto-rows-[minmax(180px,auto)] gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="flex flex-col rounded-3xl bg-brand-600 p-7 text-white sm:col-span-2 lg:row-span-2">
-          <div className="text-sm font-medium uppercase tracking-wide text-white/70">Что дальше</div>
-          <div className="mt-3 text-3xl font-bold leading-tight">{step.title}</div>
-          <p className="mt-3 max-w-lg text-white/85">{step.text}</p>
-          <div className="mt-auto pt-6">
-            {step.href && (
-              <Button asChild size="lg" variant="secondary" className="rounded-xl">
-                {step.external ? (
-                  <a href={step.href} target="_blank" rel="noreferrer">
-                    {step.cta}
-                  </a>
-                ) : (
-                  <Link href={step.href}>{step.cta}</Link>
-                )}
-              </Button>
-            )}
-          </div>
+      <div className="grid auto-rows-[minmax(150px,auto)] gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="sm:col-span-2 lg:row-span-2">
+          <NextStepCard step={step} c={c} tone="solid" />
         </div>
 
         <Tile href="/me/podbor" title="Подбор" icon={IconUserHeart} badge={showProposals && !chosen ? proposals.length : 0}>
@@ -629,7 +709,7 @@ export function TilesHome({ c }: { c: Cabinet }) {
           {next ? (
             <div>
               <div className="font-semibold">{formatSlot(next.startsAt)}</div>
-              <div className="text-sm text-neutral-500">с {next.psyName}</div>
+              <div className="text-sm text-neutral-500">Психолог: {next.psyName}</div>
             </div>
           ) : (
             <div className="text-sm text-neutral-500">Ближайших встреч нет</div>

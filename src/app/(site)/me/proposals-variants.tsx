@@ -67,12 +67,12 @@ function Actions({ item, anyChosen, stretch }: { item: Proposal; anyChosen: bool
   return (
     <div className={cn("flex flex-wrap items-center gap-3", stretch && "flex-col items-stretch [&>div]:w-full [&_button]:w-full")}>
       {item.chosen ? (
-        <a
-          href="#booking"
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-50 px-4 py-2.5 text-sm font-medium text-brand-800 hover:bg-brand-100"
+        <Link
+          href="/me/vstrechi#booking"
+          className="inline-flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-brand-50 px-4 py-2.5 text-sm font-medium text-brand-800 hover:bg-brand-100"
         >
-          <IconCheck size={16} /> Вы выбрали · время ниже
-        </a>
+          <IconCheck size={16} /> Выбран · записаться
+        </Link>
       ) : (
         <ChoosePsychologist psychologistId={item.psy.id} label={anyChosen ? "Выбрать вместо" : undefined} />
       )}
@@ -121,7 +121,7 @@ function List({ proposals, anyChosen }: Props) {
 
 function Cards({ proposals, anyChosen }: Props) {
   return (
-    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="mt-6 grid gap-4 @xl:grid-cols-2 @3xl:grid-cols-3">
       {proposals.map((item) => (
         <div
           key={item.matchId}
@@ -130,7 +130,7 @@ function Cards({ proposals, anyChosen }: Props) {
             item.chosen ? "border-brand-600 bg-brand-50/40" : "border-neutral-200",
           )}
         >
-          <PsyAvatar name={item.psy.name} photoUrl={item.psy.photoUrl} className="aspect-square w-full rounded-2xl" />
+          <PsyAvatar name={item.psy.name} photoUrl={item.psy.photoUrl} className="h-52 w-full @xl:h-auto @xl:aspect-square rounded-2xl" />
           <div className="mt-4 text-lg font-semibold">{item.psy.name}</div>
           <div className="text-sm text-neutral-500">
             <Meta p={item.psy} />
@@ -233,8 +233,8 @@ function Tabs({ proposals, anyChosen }: Props) {
           </button>
         ))}
       </div>
-      <div className="mt-4 grid gap-6 rounded-3xl border border-neutral-200 p-6 md:grid-cols-[220px_1fr]">
-        <PsyAvatar name={item.psy.name} photoUrl={item.psy.photoUrl} className="aspect-[4/5] w-full rounded-2xl" />
+      <div className="mt-4 grid gap-6 rounded-3xl border border-neutral-200 p-6 @xl:grid-cols-[220px_1fr]">
+        <PsyAvatar name={item.psy.name} photoUrl={item.psy.photoUrl} className="h-52 w-full @xl:h-auto @xl:aspect-[4/5] rounded-2xl" />
         <div>
           <div className="text-2xl font-semibold">{item.psy.name}</div>
           <div className="mt-1 text-neutral-500">
@@ -262,10 +262,10 @@ function Tabs({ proposals, anyChosen }: Props) {
 
 function Photos({ proposals, anyChosen }: Props) {
   return (
-    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="mt-6 grid gap-4 @xl:grid-cols-2 @3xl:grid-cols-3">
       {proposals.map((item) => (
         <div key={item.matchId} className="flex flex-col">
-          <div className="relative aspect-[3/4] overflow-hidden rounded-3xl bg-brand-100">
+          <div className="relative h-64 @xl:h-auto @xl:aspect-[3/4] overflow-hidden rounded-3xl bg-brand-100">
             <PsyAvatar
               name={item.psy.name}
               photoUrl={item.psy.photoUrl}

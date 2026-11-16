@@ -200,3 +200,8 @@ body {
   border-radius: 0.75rem;
   margin-right: 0;
 }
+
+/* В кабинете клиента большой футер сайта не нужен — у кабинета свой, короткий. */
+body:has([data-cabinet]) [data-site-footer] {
+  display: none;
+}

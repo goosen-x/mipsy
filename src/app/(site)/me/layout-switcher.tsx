@@ -13,22 +13,16 @@ export function LayoutSwitcher({
   current,
   variants,
   cookie,
-  lifted,
 }: {
   current: number;
   variants: readonly { n: number; label: string }[];
   cookie: string;
-  /** Поднять над нижней панелью варианта «Приложение». */
-  lifted?: boolean;
 }) {
   const pathname = usePathname();
   return (
     <nav
       aria-label="Варианты кабинета"
-      className={cn(
-        "fixed inset-x-0 z-50 mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-1 overflow-x-auto rounded-2xl bg-brand-900/95 p-1.5 text-sm text-white shadow-lg backdrop-blur",
-        lifted ? "bottom-24" : "bottom-4",
-      )}
+      className="flex w-fit max-w-full items-center gap-1 overflow-x-auto rounded-2xl bg-brand-900/95 p-1.5 text-sm text-white shadow-lg backdrop-blur"
     >
       <span className="px-2 text-white/60">Кабинет</span>
       {variants.map((v) => (

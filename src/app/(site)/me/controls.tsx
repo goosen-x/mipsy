@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -321,16 +322,24 @@ export function BookingActions({
         {!canChange && (
           <p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
             До встречи меньше 24 часов — при переносе стоимость прежней сессии удерживается. Если
-            случилось что-то серьёзное, напишите в поддержку ниже — разберём вручную.
+            случилось что-то серьёзное,{" "}
+            <Link href="/me/podderzhka" className="underline">
+              напишите в поддержку
+            </Link>{" "}
+            — разберём вручную.
           </p>
         )}
         {freeSlots.length === 0 ? (
           <p className="text-sm text-neutral-500">
             У специалиста нет других свободных окон.{" "}
-            <a href="#rematch" className="text-brand-700 underline" onClick={() => setMode("idle")}>
+            <Link href="/me/podbor#rematch" className="text-brand-700 underline">
               Поменяйте психолога
-            </a>{" "}
-            — переподбор бесплатный, или напишите в поддержку ниже.
+            </Link>{" "}
+            — переподбор бесплатный, или{" "}
+            <Link href="/me/podderzhka" className="text-brand-700 underline">
+              напишите в поддержку
+            </Link>
+            .
           </p>
         ) : (
           <>

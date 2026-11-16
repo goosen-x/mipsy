@@ -24,19 +24,22 @@ export function CabinetSwitchers({
   proposals?: { variant: number; basePath: string };
 }) {
   if (!canSwitch) return null;
-  const app = layout === 5;
+  // Один закреплённый блок: плашки стоят колонкой и не наезжают друг на друга.
+  // В «Приложении» блок поднят над нижней панелью.
   return (
-    <>
-      <LayoutSwitcher current={layout} variants={LAYOUT_VARIANTS} cookie={LAYOUT_COOKIE} lifted={app} />
+    <div
+      className={`fixed inset-x-0 z-50 mx-auto flex w-fit max-w-[calc(100%-2rem)] flex-col items-center gap-2 ${layout === 5 ? "bottom-20" : "bottom-4"}`}
+    >
       {proposals && (
         <VariantSwitcher
+          inline
           title="Подборка"
           current={proposals.variant}
           variants={PROPOSAL_VARIANTS}
           basePath={proposals.basePath}
-          positionClass={app ? "bottom-36" : "bottom-16"}
         />
       )}
-    </>
+      <LayoutSwitcher current={layout} variants={LAYOUT_VARIANTS} cookie={LAYOUT_COOKIE} />
+    </div>
   );
 }
