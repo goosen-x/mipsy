@@ -25,10 +25,11 @@ export function CabinetSwitchers({
 }) {
   if (!canSwitch) return null;
   // Один закреплённый блок: плашки стоят колонкой и не наезжают друг на друга.
-  // В «Приложении» блок поднят над нижней панелью.
+  // Высота одна для всех вариантов — над нижней панелью «Приложения» и над
+  // футером кабинета, — чтобы при переключении плашка не прыгала.
   return (
     <div
-      className={`fixed inset-x-0 z-50 mx-auto flex w-fit max-w-[calc(100%-2rem)] flex-col items-center gap-2 ${layout === 5 ? "bottom-20" : "bottom-4"}`}
+      className="fixed inset-x-0 bottom-20 z-50 mx-auto flex w-fit max-w-[calc(100%-2rem)] flex-col items-center gap-2"
     >
       {proposals && (
         <VariantSwitcher
