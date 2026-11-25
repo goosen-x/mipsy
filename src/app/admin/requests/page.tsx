@@ -28,6 +28,7 @@ const TABS = [
   ["matched", "Подобран"],
   ["rematch", "Переподбор"],
   ["rejected", "Отказ"],
+  ["closed", "Закрыты"],
   ["all", "Все"],
 ] as const;
 

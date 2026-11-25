@@ -186,6 +186,7 @@ export async function buildDemoCabinet(state: DemoState): Promise<Cabinet> {
     freeSlotsByPsy: () => free,
     canChange: (startsAt: string) => canClientChange(startsAt, now),
     payProviders: enabledProviders(),
+    canRetake: upcoming.length === 0,
     catalogUrl: catalogUrlFor({ topicSlugs: req.topicSlugs ?? [], prefGender: req.prefGender, prefAge: req.prefAge }),
   };
 }
