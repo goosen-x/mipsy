@@ -335,6 +335,21 @@ export function PodborBody({ c, variant }: { c: Cabinet; variant: number }) {
             </section>
           )}
 
+          {/* Запрос со временем меняется: человек мог не выбрать никого и вернуться
+              на следующий день с другим вопросом. Имя и контакты заново не спрашиваем. */}
+          {c.canRetake && req.status !== "rejected" && (
+            <section id="retake" className="border-t border-neutral-100 pt-8">
+              <h2 className="text-lg font-bold">Запрос изменился?</h2>
+              <p className="mt-2 text-sm text-neutral-600">
+                Пройдите анкету заново, и мы подберем специалистов под новый запрос. Имя и
+                контакты вводить не нужно, текущая подборка закроется.
+              </p>
+              <Button asChild variant="outline" className="mt-4 cursor-pointer rounded-lg">
+                <Link href="/anketa?retake=1">Пройти анкету заново</Link>
+              </Button>
+            </section>
+          )}
+
           {c.myRequests.length > 1 && (
             <section className="border-t border-neutral-100 pt-8">
               <h2 className="text-lg font-bold">Прошлые обращения</h2>

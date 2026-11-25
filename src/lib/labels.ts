@@ -62,6 +62,7 @@ export const REQUEST_STATUS_LABELS: Record<string, string> = {
   matched: "Подобран",
   rematch: "Нужен переподбор",
   rejected: "Отказ",
+  closed: "Закрыта: новая анкета",
 };
 
 export const MODERATION_STATUS_LABELS: Record<string, string> = {

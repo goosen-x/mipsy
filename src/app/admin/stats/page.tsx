@@ -35,7 +35,7 @@ export default async function StatsPage() {
     { label: "Встреча состоялась", value: held.length },
   ];
 
-  const byStatus = ["new", "called", "matched", "rematch", "rejected"].map((s) => ({
+  const byStatus = ["new", "called", "matched", "rematch", "rejected", "closed"].map((s) => ({
     label: s,
     value: requests.filter((r) => r.status === s).length,
   }));

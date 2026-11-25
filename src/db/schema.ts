@@ -75,7 +75,7 @@ export const clientRequests = sqliteTable("client_requests", {
   marketingConsent: integer("marketing_consent", { mode: "boolean" }).notNull().default(false),
 
   crisisFlag: integer("crisis_flag", { mode: "boolean" }).notNull().default(false),
-  status: text("status").notNull().default("new"), // new | called | matched | rematch | rejected
+  status: text("status").notNull().default("new"), // new | called | matched | rematch | rejected | closed (клиент прошел анкету заново)
   operatorNotes: text("operator_notes"),
 
   // Старые письма ведут на /me/<token>; ссылка сама доступа не даёт, только редирект на вход.

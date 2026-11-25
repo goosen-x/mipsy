@@ -1,13 +1,30 @@
 import { redirect } from "next/navigation";
-import { asc, desc, eq } from "drizzle-orm";
-import { clientRequests, db, topics } from "@/db";
+import { asc } from "drizzle-orm";
+import { db, topics } from "@/db";
 import { currentAccount } from "@/lib/auth";
+import { DEMO_ACCOUNT, readDemoState } from "@/app/(site)/me/demo";
+import { hasUpcomingBooking, lastRequestOf } from "@/lib/client-requests";
 import { AnketaWizard } from "./wizard";
 
 export const metadata = { title: "Анкета — mipsy" };
 export const dynamic = "force-dynamic";
 
-export default async function AnketaPage() {
+export default async function AnketaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ retake?: string }>;
+}) {
+  const retake = (await searchParams).retake === "1";
+  const topicList = await db.select().from(topics).orderBy(asc(topics.sort));
+  const topicOptions = topicList.map((t) => ({ slug: t.slug, title: t.title }));
+
+  // Демо кабинета (/demo): повторную анкету можно пройти, отправка не сохраняется.
+  if (retake && (await readDemoState())) {
+    return (
+      <AnketaWizard topics={topicOptions} email={DEMO_ACCOUNT.email} retakeName={DEMO_ACCOUNT.name} />
+    );
+  }
+
   // Анкета — шаг подбора из личного кабинета, а не отдельный вход на сайт:
   // сначала человек подтверждает почту, потом рассказывает о себе.
   const account = await currentAccount();
@@ -16,23 +33,22 @@ export default async function AnketaPage() {
   // Объяснение ждёт в /cab, здесь незачем показывать анкету ради отказа.
   if (account.role === "psychologist") redirect("/cab");
 
-  // Подбор уже идёт — вторая анкета завела бы новую заявку и подменила
-  // подборку в кабинете. Кнопки «Подобрать психолога» ведут сюда и тех, кто
-  // анкету уже прошёл (вход через /login?next=/anketa), поэтому решаем здесь.
-  // Новую анкету можно начать только после отказа по прошлой заявке.
-  const [last] = await db
-    .select({ status: clientRequests.status })
-    .from(clientRequests)
-    .where(eq(clientRequests.accountId, account.id))
-    .orderBy(desc(clientRequests.id))
-    .limit(1);
-  if (last && last.status !== "rejected") redirect("/me");
+  const last = await lastRequestOf(account.id);
 
-  const topicList = await db.select().from(topics).orderBy(asc(topics.sort));
+  // Подбор уже идёт — кнопки «Подобрать психолога» ведут сюда и тех, кто
+  // анкету уже прошёл (вход через /login?next=/anketa), поэтому решаем здесь.
+  // Новая анкета — после отказа по прошлой заявке или осознанно, кнопкой
+  // «Пройти анкету заново» в кабинете (?retake=1). Повторная не начинается,
+  // пока впереди встреча: её сначала отменяют в кабинете.
+  if (last && last.status !== "rejected" && !retake) redirect("/me");
+  if (last && retake && (await hasUpcomingBooking(account.id))) redirect("/me/podbor");
+
   return (
     <AnketaWizard
-      topics={topicList.map((t) => ({ slug: t.slug, title: t.title }))}
+      topics={topicOptions}
       email={account.email}
+      // Повторная анкета не спрашивает заново имя, телефон, пол, возраст и согласия.
+      retakeName={last && retake ? last.name : null}
     />
   );
 }

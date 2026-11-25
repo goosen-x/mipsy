@@ -1,10 +1,12 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db, clientRequests, psychologists } from "@/db";
 import { claimRole, currentAccount, linkAccount } from "@/lib/auth";
-import { autoMatch, catalogUrlFor } from "@/lib/matching";
+import { autoMatch, catalogUrlFor, deactivateMatches } from "@/lib/matching";
+import { hasUpcomingBooking, lastRequestOf } from "@/lib/client-requests";
+import { DEMO_BLOCKED, readDemoState } from "@/app/(site)/me/demo";
 import { isCrisisAnswer, isValidPhone, normalizePhone } from "@/lib/rules";
 
 export type AnketaPayload = {
@@ -28,6 +30,13 @@ export type AnketaPayload = {
   pdConsent: boolean;
   marketingConsent: boolean;
 };
+
+/** Ответы о запросе. Повторная анкета спрашивает только их: имя, телефон,
+ * пол, возраст и согласия уже есть в прошлом обращении. */
+export type RetakePayload = Omit<
+  AnketaPayload,
+  "gender" | "age" | "name" | "phone" | "pdConsent" | "marketingConsent"
+>;
 
 export type ProposedPsy = {
   slug: string | null;
@@ -69,6 +78,57 @@ export async function submitAnketa(payload: AnketaPayload): Promise<AnketaResult
   // Имя и телефон аккаунта анкета уточняет (имя могло быть заглушкой из адреса).
   await linkAccount({ email: account.email, name, phone });
 
+  return createRequest(account, { ...payload, name, phone, age, pdConsent: true });
+}
+
+/**
+ * Повторная анкета: запрос изменился, а подборка по старому уже не нужна.
+ * Новое обращение заменяет прошлое — оно закрывается, его подборка гаснет.
+ * Если впереди встреча, сначала её нужно отменить: молча снимать бронь
+ * (а она может быть оплачена) ради новой анкеты нельзя.
+ */
+export async function submitRetake(payload: RetakePayload): Promise<AnketaResult> {
+  // Демо кабинета показывает повторную анкету, но ничего не сохраняет.
+  if (await readDemoState()) return DEMO_BLOCKED;
+  const account = await currentAccount();
+  if (!account) {
+    return { ok: false, error: "Войдите в кабинет — подбор психолога запускается оттуда" };
+  }
+  const conflict = await claimRole(account.id, "client");
+  if (conflict) return { ok: false, error: conflict };
+
+  const prev = await lastRequestOf(account.id);
+  if (!prev) return { ok: false, error: "Прошлой анкеты нет — заполните анкету целиком" };
+  if (await hasUpcomingBooking(account.id)) {
+    return {
+      ok: false,
+      error: "У вас запланирована встреча. Отмените ее в кабинете, а потом пройдите анкету заново",
+    };
+  }
+
+  const result = await createRequest(account, {
+    ...payload,
+    gender: prev.gender,
+    age: prev.age,
+    name: prev.name,
+    phone: prev.phone ?? account.phone ?? null,
+    pdConsent: true,
+    marketingConsent: prev.marketingConsent,
+  });
+  if (!result.ok) return result;
+
+  await db.update(clientRequests).set({ status: "closed" }).where(eq(clientRequests.id, prev.id));
+  await deactivateMatches(db, prev.id);
+  return result;
+}
+
+type Account = NonNullable<Awaited<ReturnType<typeof currentAccount>>>;
+
+async function createRequest(
+  account: Account,
+  payload: Omit<AnketaPayload, "phone"> & { phone: string | null },
+): Promise<AnketaResult> {
+  const { name, phone, age } = payload;
   const crisisFlag = isCrisisAnswer(payload.freqSelfHarm);
   const token = randomUUID();
 

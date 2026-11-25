@@ -12,19 +12,19 @@ import { cn } from "@/lib/utils";
 const SELECTION = [
   {
     title: "Диплом и образование",
-    text: "Проверяем документ о профильном психологическом образовании.",
+    text: "Проверяем документ о психологическом образовании или профессиональной переподготовке",
   },
   {
     title: "Опыт и супервизии",
-    text: "Подтверждаем стаж, практику и участие в супервизиях.",
+    text: "Подтверждаем стаж, практику и участие в супервизиях",
   },
   {
     title: "Собеседование",
-    text: "Специалист проходит интервью с экспертным советом МИП.",
+    text: "Специалист проходит интервью с экспертным советом Московского института психологии",
   },
   {
     title: "Допуск и уровень",
-    text: "Присваиваем уровень — базовый, опытный или ведущий. От него зависит цена сессии.",
+    text: "Присваиваем уровень — базовый, опытный или ведущий. От него зависит цена сессии",
   },
 ];
 
@@ -35,7 +35,7 @@ const GRADE_INFO: Record<number, { description: string; features: string[] }> =
       description: "Психолог в начале практики",
       features: [
         "Диплом и допуск подтверждены",
-        "Ведёт приём под супервизией опытного коллеги",
+        "Ведет прием под супервизией опытного коллеги",
         "Подходит, чтобы начать терапию",
       ],
     },
@@ -89,7 +89,7 @@ export function SelectionSection({ asPage = false }: { asPage?: boolean }) {
               Проект Московского института психологии
             </div>
             <div className="mt-1 text-sm text-white/80">
-              Специалистов отбирает экспертный совет МИП
+              Специалистов отбирает экспертный совет института
             </div>
           </div>
         </div>
@@ -115,7 +115,7 @@ export function HowSection({ startHref, asPage = false }: { startHref: string; a
             <h3 className="mt-2 text-2xl font-semibold">Заполните анкету</h3>
             <p className="mt-2 max-w-md text-white">
               Расскажите, с чем хотите поработать и что для вас важно в
-              психологе. Это займёт около 5 минут.
+              психологе. Это займет около 5 минут.
             </p>
             <Button
               asChild
@@ -128,7 +128,7 @@ export function HowSection({ startHref, asPage = false }: { startHref: string; a
             <div className="flex-1">
               <div className="text-sm text-neutral-400">02</div>
               <h3 className="mt-2 text-xl font-semibold">
-                Алгоритм подберёт подходящих специалистов
+                Алгоритм подберет подходящих специалистов
               </h3>
               <p className="mt-2 text-neutral-600">
                 Изучите профили и выберите психолога, с которым хотите начать
@@ -146,7 +146,7 @@ export function HowSection({ startHref, asPage = false }: { startHref: string; a
             </h3>
             <p className="mt-2 text-neutral-600">
               Свободные окна видны в календаре психолога. Ссылка на встречу
-              придёт на почту.
+              придет на почту.
             </p>
           </div>
           <CalendarMock />
@@ -164,7 +164,7 @@ export function PricesSection({ startHref, asPage = false }: { startHref: string
           Сколько стоит консультация
         </SectionTitle>
         <p className="mt-4 max-w-2xl text-lg text-neutral-600">
-          Цена зависит только от уровня психолога. Сессия идёт 50 минут онлайн,
+          Цена зависит только от уровня психолога. Сессия идет 50 минут онлайн,
           подбор бесплатный.
         </p>
         <div className="mt-10 grid gap-6 lg:mt-12 lg:grid-cols-3">

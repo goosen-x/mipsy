@@ -201,6 +201,9 @@ async function loadRealCabinet(
     canChange: (startsAt: string) => canClientChange(startsAt, now),
     // Кнопки оплаты видны, только когда настроен хотя бы один платёжный провайдер.
     payProviders: enabledProviders(),
+    // Анкету заново — когда впереди нет встреч: бронь (возможно, оплаченную)
+    // молча не снимаем, ее отменяют отдельно.
+    canRetake: upcoming.length === 0,
     catalogUrl: catalogUrlFor({
       topicSlugs: req.topicSlugs ?? [],
       prefGender: req.prefGender,

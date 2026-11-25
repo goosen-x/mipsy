@@ -29,7 +29,7 @@ async function guard() {
 
 // Статусы принимаются только из белого списка: опечатка в клиентском коде не
 // должна заводить заявку в состояние, которого не знает ни один экран.
-const REQUEST_STATUSES = new Set(["new", "called", "matched", "rematch", "rejected"]);
+const REQUEST_STATUSES = new Set(["new", "called", "matched", "rematch", "rejected", "closed"]);
 const TICKET_STATUSES = new Set(["new", "in_progress", "closed"]);
 
 /**

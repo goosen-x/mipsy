@@ -12,7 +12,7 @@ import { Hint, OptionButton, Question, Shell } from "@/components/wizard";
 import { cn } from "@/lib/utils";
 import { isValidPhone, phoneProblem } from "@/lib/rules";
 import { PhoneInput } from "@/components/phone-input";
-import { submitAnketa, type AnketaPayload } from "./actions";
+import { submitAnketa, submitRetake, type AnketaPayload } from "./actions";
 
 type Topic = { slug: string; title: string };
 
@@ -69,16 +69,17 @@ function countWords(s: string) {
 
 // Черновик анкеты переживает случайное обновление страницы. Живёт в localStorage
 // до успешной отправки; ключ включает почту, чтобы черновик не достался другому
-// аккаунту на том же устройстве.
+// аккаунту на том же устройстве. У повторной анкеты свой черновик: шагов в ней
+// меньше, и индекс шага из первичной ей не подходит.
 const DRAFT_VERSION = 1;
 
-function draftKey(email: string) {
-  return `mipsy-anketa-draft:${email}`;
+function draftKey(email: string, retake: boolean) {
+  return `mipsy-anketa-draft:${email}${retake ? ":retake" : ""}`;
 }
 
-function loadDraft(email: string): { state: State; stepIdx: number } | null {
+function loadDraft(key: string): { state: State; stepIdx: number } | null {
   try {
-    const raw = localStorage.getItem(draftKey(email));
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed?.version !== DRAFT_VERSION || typeof parsed.stepIdx !== "number") return null;
@@ -88,7 +89,18 @@ function loadDraft(email: string): { state: State; stepIdx: number } | null {
   }
 }
 
-export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string }) {
+export function AnketaWizard({
+  topics,
+  email,
+  retakeName,
+}: {
+  topics: Topic[];
+  email: string;
+  /** Имя из прошлого обращения — значит, это повторная анкета. */
+  retakeName: string | null;
+}) {
+  const retake = retakeName !== null;
+  const key = draftKey(email, retake);
   const [state, setState] = useState<State>({
     gender: null,
     age: "",
@@ -119,26 +131,26 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
   const [restored, setRestored] = useState(false);
 
   useEffect(() => {
-    const draft = loadDraft(email);
+    const draft = loadDraft(key);
     if (draft) {
       setState((prev) => ({ ...prev, ...draft.state }));
       setStepIdx(draft.stepIdx);
       setMaxIdx(draft.stepIdx);
     }
     setRestored(true);
-  }, [email]);
+  }, [key]);
 
   useEffect(() => {
     if (!restored) return;
     try {
       localStorage.setItem(
-        draftKey(email),
+        key,
         JSON.stringify({ version: DRAFT_VERSION, state, stepIdx }),
       );
     } catch {
       // нет места или приватный режим — анкета работает и без черновика
     }
-  }, [restored, email, state, stepIdx]);
+  }, [restored, key, state, stepIdx]);
   const router = useRouter();
   // Экран «никого не нашли»: подборки нет, остаётся оператор и каталог.
   const [done, setDone] = useState<{ catalogUrl: string } | null>(null);
@@ -146,9 +158,9 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
   // Кризисный экран вставляется в маршрут сразу после вопроса о самоповреждении,
   // если ответ — не «никогда».
   const steps = useMemo(() => {
+    // Повторная анкета — только о запросе: пол, возраст и контакты не меняются.
     const s = [
-      "gender",
-      "age",
+      ...(retake ? [] : ["gender", "age"]),
       "therapy",
       "problem",
       "topics",
@@ -157,9 +169,10 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
       "freqSelfHarm",
     ];
     if (state.freqSelfHarm && state.freqSelfHarm !== "never") s.push("crisis");
-    s.push("lifeImpact", "prefs", "time", "story", "contact");
+    s.push("lifeImpact", "prefs", "time", "story");
+    if (!retake) s.push("contact");
     return s;
-  }, [state.freqSelfHarm]);
+  }, [state.freqSelfHarm, retake]);
 
   // Черновик мог сохранить индекс глубже текущего маршрута (кризисный экран
   // вставляется условно) — не даём выйти за последний шаг.
@@ -219,10 +232,10 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
       marketingConsent: state.marketingConsent,
     };
     startTransition(async () => {
-      const res = await submitAnketa(payload);
+      const res = retake ? await submitRetake(payload) : await submitAnketa(payload);
       if (res.ok) {
         try {
-          localStorage.removeItem(draftKey(email));
+          localStorage.removeItem(key);
         } catch {}
         // Подборка живёт в кабинете, а не в памяти этой страницы: иначе «Назад»
         // из профиля психолога возвращал на пустую анкету. replace — чтобы
@@ -236,7 +249,7 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
   if (done) {
     return (
       <Shell progress={100} onBack={null} footer={<CrisisFooter />}>
-        <h1 className="text-3xl font-bold">Спасибо, {state.name}!</h1>
+        <h1 className="text-3xl font-bold">Спасибо, {retakeName ?? state.name}!</h1>
         <p className="mt-4 text-lg text-neutral-600">
           Анкета у нас. Под ваши пожелания сейчас нет свободного специалиста, поэтому подбором
           займётся оператор — он напишет вам на{" "}
@@ -545,13 +558,14 @@ export function AnketaWizard({ topics, email }: { topics: Topic[]; email: string
             className="text-base"
           />
           <WordMeter words={countWords(state.story)} />
+          {retake && error && <p className="mt-3 text-sm text-red-600">{error}</p>}
           <Button
             className="mt-4 w-full"
             size="lg"
-            disabled={countWords(state.story) === 0}
-            onClick={next}
+            disabled={countWords(state.story) === 0 || pending}
+            onClick={retake ? submit : next}
           >
-            Продолжить
+            {retake ? (pending ? "Отправляем…" : "Отправить анкету") : "Продолжить"}
           </Button>
         </Question>
       )}
