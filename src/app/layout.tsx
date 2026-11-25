@@ -11,9 +11,9 @@ const onest = Onest({ subsets: ["latin", "cyrillic"], variable: "--font-onest" }
 // Пока индексация закрыта (lib/indexing.ts) — noindex на каждой странице.
 export const metadata: Metadata = {
   robots: indexingAllowed() ? undefined : { index: false, follow: false },
-  title: "mipsy — мы подберём вам психолога",
+  title: "mipsy — подберем вам психолога",
   description:
-    "Ответьте на несколько вопросов — и мы подберём психолога под ваш запрос. Не подошёл — бесплатно переподберём.",
+    "Ответьте на несколько вопросов, и мы подберем психолога под ваш запрос. Если не подойдет, бесплатно подберем другого.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -5,7 +5,7 @@
  */
 
 export const GRADES = {
-  1: { title: "Базовый", price: 2500 },
+  1: { title: "Базовый", price: 1500 },
   2: { title: "Опытный", price: 3500 },
   3: { title: "Ведущий", price: 5000 },
 } as const;
